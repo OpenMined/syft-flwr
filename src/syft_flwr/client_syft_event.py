@@ -4,7 +4,7 @@ from loguru import logger
 from syft_event import SyftEvents
 from syft_event.types import Request
 from flwr.common.serde import message_from_proto
-from flwr.proto.messages_pb2 import Message as ProtoMessage
+from flwr.proto.message_pb2 import Message as ProtoMessage
 
 box = SyftEvents("flwr")
 
