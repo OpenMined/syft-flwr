@@ -17,7 +17,7 @@ box = SyftEvents("flwr")
 
 @box.on_request("/messages")
 def handle_messages(request: Request) -> None:
-    logger.info(f"Received request size: {len(request.body)} bytes")
+    logger.info(f"Received request id: {request.id}, size: {len(request.body)} bytes")
     message = message_from_proto(ProtoMessage.FromString(request.body))
     # logger.info(f"Message: {message}")
     run_id = 12345 # same as server
@@ -29,11 +29,12 @@ def handle_messages(request: Request) -> None:
         run_config=UserConfig(),
     )
     reply_message = client_app(message=message, context=context)
-    logger.info(f"Reply message: {reply_message}")
+    logger.info(f"Reply message type: {type(reply_message)}")
 
     msg_proto = message_to_proto(reply_message)
-    return msg_proto.SerializeToString()
-
+    res_bytes =  msg_proto.SerializeToString()
+    logger.info(f"Reply message size: {len(res_bytes)/2**20} MB")
+    return res_bytes
 
 if __name__ == "__main__":
     box.run_forever()
