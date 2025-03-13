@@ -166,9 +166,16 @@ class SyftDriver(Driver):
         while timeout is None or time.time() < end_time:
             res_msgs = self.pull_messages(msg_ids)
             ret.extend(res_msgs)
-            msg_ids.difference_update(
-                {msg.metadata.reply_to_message for msg in res_msgs}
-            )
+            # TODO: QUICK HACK: In the flower code, they expect the reply_to_message
+            # to be present in the response message. This is not the case in our custom driver
+            # as the message id is generated after rpc.send
+            # this would be explored tmrw
+            # OLD Code:
+            # msg_ids.difference_update(
+            #     {msg.metadata.reply_to_message for msg in res_msgs} )
+            msg_ids = []
+            
+            
             if len(msg_ids) == 0:
                 break
             # Sleep
