@@ -18,7 +18,9 @@ box = SyftEvents("flwr")
 @box.on_request("/messages")
 def handle_messages(request: Request) -> None:
     logger.info(f"Received request id: {request.id}, size: {len(request.body)} bytes")
-    message = message_from_proto(ProtoMessage.FromString(request.body))
+    message_pb = ProtoMessage()
+    message_pb.ParseFromString(request.body)
+    message = message_from_proto(message_pb)
     # logger.info(f"Message: {message}")
     run_id = 12345 # same as server
     context = Context(

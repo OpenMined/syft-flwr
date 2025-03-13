@@ -125,18 +125,20 @@ class SyftDriver(Driver):
 
     def pull_messages(self, message_ids):
         """Pull messages based on message IDs."""
-
+        logger.info(f"Pulling messages: {message_ids}")
         messages = []
         for msg_id in message_ids:
             future = rpc_db.get_future(future_id=msg_id, client=self._client)
             response = future.resolve()
             if response is None:
+                logger.info(f"Response is None for message ID: {msg_id}")
                 continue
 
             if not response.body:
                 raise ValueError(f"Empty response: {response}")
 
-            msg_proto = ProtoMessage.ParseFromString(response.body)
+            msg_proto = ProtoMessage()
+            msg_proto.ParseFromString(response.body)
             message = message_from_proto(msg_proto)
             messages.append(message)
             rpc_db.delete_future(future_id=msg_id, client=self._client)
