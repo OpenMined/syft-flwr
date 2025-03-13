@@ -6,6 +6,12 @@ from syft_event.types import Request
 from flwr.common.serde import message_from_proto
 from flwr.proto.message_pb2 import Message as ProtoMessage
 
+from client import app as client_app
+
+from flwr.common.record import RecordSet
+from flwr.common.typing import UserConfig
+from flwr.common import Context
+
 box = SyftEvents("flwr")
 
 
@@ -13,9 +19,17 @@ box = SyftEvents("flwr")
 def handle_messages(request: Request) -> None:
     logger.info(f"Received request size: {len(request.body)} bytes")
     message = message_from_proto(ProtoMessage.FromString(request.body))
-    logger.info(f"Message: {message}")
-    # reply_message = client_app(message=message, context=context)
-
+    # logger.info(f"Message: {message}")
+    run_id = 12345 # same as server
+    context = Context(
+        run_id=run_id,
+        node_id=0,
+        node_config=UserConfig(),
+        state=RecordSet(),
+        run_config=UserConfig(),
+    )
+    reply_message = client_app(message=message, context=context)
+    logger.info(f"Reply message: {reply_message}")
 
 
 if __name__ == "__main__":

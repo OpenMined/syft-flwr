@@ -39,7 +39,7 @@ run-jupyter jupyter_args="":
 
 [group('client')]
 run-client:
-    uv run src/syft_flwr/client_syft_event.py
+    uv run examples/basic/client_syft_event.py
 
 
 [group('server')]
