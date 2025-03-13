@@ -3,7 +3,7 @@ from __future__ import annotations
 from loguru import logger
 from syft_event import SyftEvents
 from syft_event.types import Request
-from flwr.common.serde import message_from_proto
+from flwr.common.serde import message_from_proto, message_to_proto
 from flwr.proto.message_pb2 import Message as ProtoMessage
 
 from client import app as client_app
@@ -30,6 +30,9 @@ def handle_messages(request: Request) -> None:
     )
     reply_message = client_app(message=message, context=context)
     logger.info(f"Reply message: {reply_message}")
+
+    msg_proto = message_to_proto(reply_message)
+    return msg_proto.SerializeToString()
 
 
 if __name__ == "__main__":
