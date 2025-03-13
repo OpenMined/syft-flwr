@@ -44,4 +44,4 @@ run-client:
 
 [group('server')]
 run-server:
-    uv run examples/serverapp/server.py
+    uv run examples/basic/server.py

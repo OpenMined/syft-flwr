@@ -10,7 +10,7 @@ from syft_flwr.driver import SyftDriver
 
 
 def get_dummy_model():
-    return np.random.rand(100, 100)
+    return np.random.rand(1000, 1000)
 
 
 def server_fn(context: Context):

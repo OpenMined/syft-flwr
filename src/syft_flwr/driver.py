@@ -31,6 +31,10 @@ class SyftDriver(Driver):
         self.node = Node(node_id=SUPERLINK_NODE_ID)
 
     def set_run(self, run_id: int) -> None:
+        # Convert to Flower Run object
+        self._run = Run.create_empty(run_id)
+
+        # todo rpc this
         # url = rpc.make_url(
         #     datasite=self._client.email,
         #     app_name="flwr",
@@ -51,9 +55,6 @@ class SyftDriver(Driver):
 
         # if run_data["run_id"] != run_id:
         #     raise RuntimeError(f"Cannot find the run with ID: {run_id}")
-
-        # Convert to Flower Run object
-        self._run = Run.create_empty(run_id)
 
     @property
     def run(self) -> Run:
@@ -86,9 +87,10 @@ class SyftDriver(Driver):
 
     def get_node_ids(self) -> list[int]:
         """Get node IDs of all connected nodes."""
+        return [7, 8, 9]
+
         # TODO: modify the method to retrive node IDs from all the clients
         # maybe using rpc.broadcast?
-        return [7, 8, 9]
         # url = rpc.make_url(self._client.email, app_name="flwr", endpoint="get_nodes")
         # future = rpc.send(
         #     url=url,
@@ -98,18 +100,6 @@ class SyftDriver(Driver):
 
         # nodes = future.wait()
         # return [node.node_id for node in nodes]
-
-    def _check_message(self, message: Message) -> None:
-        # Check if the message is valid
-        if not (
-            # Assume self._run being initialized
-            message.metadata.run_id == cast(Run, self._run).run_id
-            and message.metadata.src_node_id == self.node.node_id
-            and message.metadata.message_id == ""
-            and message.metadata.reply_to_message == ""
-            and message.metadata.ttl > 0
-        ):
-            raise ValueError(f"Invalid message: {message}")
 
     def push_messages(self, messages: Iterable[Message]) -> Iterable[str]:
         """Push messages to specified node IDs."""
@@ -182,6 +172,18 @@ class SyftDriver(Driver):
             # Sleep
             time.sleep(3)
         return ret
+
+    def _check_message(self, message: Message) -> None:
+        # Check if the message is valid
+        if not (
+            # Assume self._run being initialized
+            message.metadata.run_id == cast(Run, self._run).run_id
+            and message.metadata.src_node_id == self.node.node_id
+            and message.metadata.message_id == ""
+            and message.metadata.reply_to_message == ""
+            and message.metadata.ttl > 0
+        ):
+            raise ValueError(f"Invalid message: {message}")
 
 
 if __name__ == "__main__":
