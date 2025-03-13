@@ -1,3 +1,4 @@
+import random
 import time
 from loguru import logger
 from typing_extensions import Optional
@@ -91,15 +92,18 @@ class SyftDriver(Driver):
 
     def get_node_ids(self) -> list[int]:
         """Get node IDs of all connected nodes."""
-        url = rpc.make_url(self._client.email, app_name="flwr", endpoint="get_nodes")
-        future = rpc.send(
-            url=url,
-            body={"run_id": cast(Run, self._run).run_id},
-            client=self._client,
-        )
+        # TODO: modify the method to retrive node IDs from all the clients
+        # maybe using rpc.broadcast?
+        return [99]
+        # url = rpc.make_url(self._client.email, app_name="flwr", endpoint="get_nodes")
+        # future = rpc.send(
+        #     url=url,
+        #     body={"run_id": cast(Run, self._run).run_id},
+        #     client=self._client,
+        # )
 
-        nodes = future.wait()
-        return [node.node_id for node in nodes]
+        # nodes = future.wait()
+        # return [node.node_id for node in nodes]
 
     def _check_message(self, message: Message) -> None:
         # Check if the message is valid
@@ -115,7 +119,8 @@ class SyftDriver(Driver):
 
     def push_messages(self, messages: Iterable[Message]) -> Iterable[str]:
         """Push messages to specified node IDs."""
-        url = rpc.make_url(self._client.email, app_name="flwr", endpoint="push_message")
+        print
+        url = rpc.make_url(self._client.email, app_name="flwr", endpoint="messages")
 
         # Construct Messages
         message_ids = []
@@ -126,8 +131,7 @@ class SyftDriver(Driver):
             # Convert to proto
             msg_proto = message_to_proto(msg)
             msg_bytes = msg_proto.SerializeToString()
-            msg_bytes_str = base64.b32encode(msg_bytes).decode()
-            future = rpc.send(url=url, body=msg_bytes_str, client=self._client)
+            future = rpc.send(url=url, body=msg_bytes, client=self._client)
             save_future(future=future, namespace="flwr", client=self._client)
             message_ids.append(future.id)
 
