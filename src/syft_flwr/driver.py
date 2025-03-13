@@ -31,40 +31,40 @@ class SyftDriver(Driver):
     """
 
     def __init__(self, pull_interval: float = 0.1, client: Client = None) -> None:
-        logger.info(f"Initializing SyftDriver")
+        logger.info("Initializing SyftDriver")
         self._client = Client.load() if client is None else client
         self._run: Optional[Run] = None
         self.node = Node(node_id=SUPERLINK_NODE_ID)
 
     def set_run(self, run_id: int) -> None:
-        url = rpc.make_url(
-            datasite=self._client.email,
-            app_name="flwr",
-            endpoint="get_run",
-        )
-        path = url.to_local_path(self._client.datasites)
-        run_file = path / f"run_{run_id}.json"
+        # url = rpc.make_url(
+        #     datasite=self._client.email,
+        #     app_name="flwr",
+        #     endpoint="get_run",
+        # )
+        # path = url.to_local_path(self._client.datasites)
+        # run_file = path / f"run_{run_id}.json"
 
-        if not run_file.exists():
-            # Create a new run file
-            run_file.parent.mkdir(parents=True, exist_ok=True)
-            run_obj = Run.create_empty(run_id=run_id)
-            run_data = asdict(run_obj)
-            run_file.write_text(json.dumps(run_data))
+        # if not run_file.exists():
+        #     # Create a new run file
+        #     run_file.parent.mkdir(parents=True, exist_ok=True)
+        #     run_obj = Run.create_empty(run_id=run_id)
+        #     run_data = asdict(run_obj)
+        #     run_file.write_text(json.dumps(run_data))
 
-        # Load run data
-        run_data = Run(**json.loads(run_file.read_text()))
+        # # Load run data
+        # run_data = Run(**json.loads(run_file.read_text()))
 
         # if run_data["run_id"] != run_id:
         #     raise RuntimeError(f"Cannot find the run with ID: {run_id}")
 
         # Convert to Flower Run object
-        self._run = run_data
+        self._run = Run.create_empty(run_id)
 
     @property
     def run(self) -> Run:
-        """Run information"""
-        return Run(**vars(self._run))
+        """Run ID."""
+        return Run(**vars(cast(Run, self._run)))
 
     def create_message(
         self,
@@ -94,7 +94,7 @@ class SyftDriver(Driver):
         """Get node IDs of all connected nodes."""
         # TODO: modify the method to retrive node IDs from all the clients
         # maybe using rpc.broadcast?
-        return [99]
+        return [7,8,9]
         # url = rpc.make_url(self._client.email, app_name="flwr", endpoint="get_nodes")
         # future = rpc.send(
         #     url=url,
@@ -119,7 +119,8 @@ class SyftDriver(Driver):
 
     def push_messages(self, messages: Iterable[Message]) -> Iterable[str]:
         """Push messages to specified node IDs."""
-        print
+
+        # todo - replace with dest node id
         url = rpc.make_url(self._client.email, app_name="flwr", endpoint="messages")
 
         # Construct Messages
@@ -130,8 +131,7 @@ class SyftDriver(Driver):
 
             # Convert to proto
             msg_proto = message_to_proto(msg)
-            msg_bytes = msg_proto.SerializeToString()
-            future = rpc.send(url=url, body=msg_bytes, client=self._client)
+            future = rpc.send(url=url, body=msg_proto.SerializeToString(), client=self._client)
             save_future(future=future, namespace="flwr", client=self._client)
             message_ids.append(future.id)
 
@@ -147,8 +147,10 @@ class SyftDriver(Driver):
             if response is None:
                 continue
 
-            msg_bytes = base64.b32decode(response.body)
-            msg_proto = ProtoMessage.ParseFromString(msg_bytes)
+            if not response.body:
+                raise ValueError(f"Empty response: {response}")
+
+            msg_proto = ProtoMessage.ParseFromString(response.body)
             message = message_from_proto(msg_proto)
             messages.append(message)
 

@@ -33,12 +33,12 @@ if __name__ == "__main__":
     # Create ServerApp
     app = ServerApp(server_fn=server_fn)
 
-    run = Run.create_empty(run_id=1234)
+    run_id = 12345
     syft_driver = SyftDriver()
-    syft_driver.set_run(run)
+    syft_driver.set_run(run_id)
 
     context = Context(
-        run_id=run.run_id,
+        run_id=run_id,
         node_id=0,
         node_config=UserConfig(),
         state=RecordSet(),

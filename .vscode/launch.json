@@ -4,14 +4,20 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
+        {
+            "name": "Debug serverapp",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "examples/serverapp/server.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
         {
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal",
-            "justMyCode": false 
+            "console": "integratedTerminal"
         }
     ]
 }
