@@ -7,8 +7,21 @@ requires-python = ">=3.9"
 dependencies = [
     "flwr[simulation]>=1.15.2",
     "syft-core>=0.1.0",
-    "syft-rpc>=0.1.0",
+    "syft-rpc",
+    "syft-event",
+    "loguru>=0.7.3",
 ]
+
+[tool.uv]
+dev-dependencies = [
+    "ipykernel>=6.29.5",
+    "ipywidgets>=8.1.5",
+    "matplotlib>=3.9.4",
+]
+
+[tool.uv.sources]
+syft-event = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-event", rev = "main" }
+syft-rpc = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-rpc", rev = "main" }
 
 [build-system]
 requires = ["hatchling"]
