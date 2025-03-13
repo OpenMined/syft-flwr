@@ -1,4 +1,5 @@
 import time
+from loguru import logger
 from typing_extensions import Optional
 from flwr.common.typing import Run
 from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
@@ -6,6 +7,7 @@ from flwr.server.driver import Driver
 from flwr.common.constant import SUPERLINK_NODE_ID
 from flwr.common import DEFAULT_TTL, Message, Metadata, RecordSet
 from flwr.common.serde import message_from_proto, message_to_proto, run_from_proto
+from flwr.common.serde import ProtoMessage
 
 from syft_core import Client
 from syft_rpc import rpc
@@ -28,6 +30,7 @@ class SyftDriver(Driver):
     """
 
     def __init__(self, pull_interval: float = 0.1, client: Client = None) -> None:
+        logger.info(f"Initializing SyftDriver")
         self._client = Client.load() if client is None else client
         self._run: Optional[Run] = None
         self.node = Node(node_id=SUPERLINK_NODE_ID)
@@ -38,7 +41,7 @@ class SyftDriver(Driver):
             app_name="flwr",
             endpoint="get_run",
         )
-        path = url.to_local_path(self._client.datasite_path)
+        path = url.to_local_path(self._client.datasites)
         run_file = path / f"run_{run_id}.json"
 
         if not run_file.exists():
@@ -88,8 +91,9 @@ class SyftDriver(Driver):
 
     def get_node_ids(self) -> list[int]:
         """Get node IDs of all connected nodes."""
+        url = rpc.make_url(self._client.email, app_name="flwr", endpoint="get_nodes")
         future = rpc.send(
-            url=self._url / "get_nodes",
+            url=url,
             body={"run_id": cast(Run, self._run).run_id},
             client=self._client,
         )
@@ -131,7 +135,6 @@ class SyftDriver(Driver):
 
     def pull_messages(self, message_ids):
         """Pull messages based on message IDs."""
-        from flwr.common.serde import ProtoMessage
 
         messages = []
         for msg_id in message_ids:
@@ -180,6 +183,7 @@ class SyftDriver(Driver):
 
 if __name__ == "__main__":
     client = Client.load()
+    logger.info(f"Running SyftBox client: {client.email}. SyftBox Folder: {client.workspace.data_dir}")
 
     driver = SyftDriver(client=client)
     run_id = 2
