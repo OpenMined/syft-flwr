@@ -1,17 +1,16 @@
-from syft_flwr.driver import SyftDriver
-from flwr.common.typing import Run, UserConfig
-from flwr.server.run_serverapp import run as run_server
-from flwr.common.context import Context
-from flwr.common.record import RecordSet
+import numpy as np
 from flwr.common import Context, ndarrays_to_parameters
+from flwr.common.record import RecordSet
+from flwr.common.typing import UserConfig
 from flwr.server import ServerApp, ServerAppComponents, ServerConfig
+from flwr.server.run_serverapp import run as run_server
 from flwr.server.strategy import FedAvg
 
-import numpy as np
+from syft_flwr.driver import SyftDriver
 
 
 def get_dummy_model():
-    return np.ones((1, 1))
+    return np.random.rand(100, 100)
 
 
 def server_fn(context: Context):
@@ -46,8 +45,8 @@ if __name__ == "__main__":
     )
 
     updated_context = run_server(
-        driver = syft_driver,
-        context = context,
-        loaded_server_app =app ,
-        server_app_dir="./examples/quickstart"
+        driver=syft_driver,
+        context=context,
+        loaded_server_app=app,
+        server_app_dir="./examples/quickstart",
     )

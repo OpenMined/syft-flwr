@@ -1,22 +1,16 @@
-import random
 import time
-from loguru import logger
-from typing_extensions import Optional
+from typing import Iterable, cast
+
+from flwr.common import DEFAULT_TTL, Message, Metadata, RecordSet
+from flwr.common.constant import SUPERLINK_NODE_ID
+from flwr.common.serde import ProtoMessage, message_from_proto, message_to_proto
 from flwr.common.typing import Run
 from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
 from flwr.server.driver import Driver
-from flwr.common.constant import SUPERLINK_NODE_ID
-from flwr.common import DEFAULT_TTL, Message, Metadata, RecordSet
-from flwr.common.serde import message_from_proto, message_to_proto, run_from_proto
-from flwr.common.serde import ProtoMessage
-
+from loguru import logger
 from syft_core import Client
-from syft_rpc import rpc
-from typing import cast, Iterable
-import json
-from dataclasses import asdict
-from syft_rpc.rpc_db import save_future, get_future
-import base64
+from syft_rpc import rpc, rpc_db
+from typing_extensions import Optional
 
 
 class SyftDriver(Driver):
@@ -94,7 +88,7 @@ class SyftDriver(Driver):
         """Get node IDs of all connected nodes."""
         # TODO: modify the method to retrive node IDs from all the clients
         # maybe using rpc.broadcast?
-        return [7,8,9]
+        return [7, 8, 9]
         # url = rpc.make_url(self._client.email, app_name="flwr", endpoint="get_nodes")
         # future = rpc.send(
         #     url=url,
@@ -131,8 +125,10 @@ class SyftDriver(Driver):
 
             # Convert to proto
             msg_proto = message_to_proto(msg)
-            future = rpc.send(url=url, body=msg_proto.SerializeToString(), client=self._client)
-            save_future(future=future, namespace="flwr", client=self._client)
+            future = rpc.send(
+                url=url, body=msg_proto.SerializeToString(), client=self._client
+            )
+            rpc_db.save_future(future=future, namespace="flwr", client=self._client)
             message_ids.append(future.id)
 
         return message_ids
@@ -142,7 +138,7 @@ class SyftDriver(Driver):
 
         messages = []
         for msg_id in message_ids:
-            future = get_future(future_id=msg_id, client=self._client)
+            future = rpc_db.get_future(future_id=msg_id, client=self._client)
             response = future.resolve()
             if response is None:
                 continue
@@ -153,6 +149,7 @@ class SyftDriver(Driver):
             msg_proto = ProtoMessage.ParseFromString(response.body)
             message = message_from_proto(msg_proto)
             messages.append(message)
+            rpc_db.delete_future(future_id=msg_id, client=self._client)
 
         return messages
 
@@ -189,7 +186,9 @@ class SyftDriver(Driver):
 
 if __name__ == "__main__":
     client = Client.load()
-    logger.info(f"Running SyftBox client: {client.email}. SyftBox Folder: {client.workspace.data_dir}")
+    logger.info(
+        f"Running SyftBox client: {client.email}. SyftBox Folder: {client.workspace.data_dir}"
+    )
 
     driver = SyftDriver(client=client)
     run_id = 2

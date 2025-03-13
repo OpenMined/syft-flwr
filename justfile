@@ -22,6 +22,8 @@ _nc := '\033[0m'
 # Aliases
 
 alias rj := run-jupyter
+alias rc := run-client
+alias rs := run-server
 
 # ---------------------------------------------------------------------------------------------------------------------
 
@@ -35,6 +37,11 @@ run-jupyter jupyter_args="":
     uv run --frozen --with "jupyterlab" \
         jupyter lab {{ jupyter_args }}
 
-[group('example')]
-run-example:
-    uv run examples/run.py
+[group('client')]
+run-client:
+    uv run src/syft_flwr/client_syft_event.py
+
+
+[group('server')]
+run-server:
+    uv run examples/serverapp/server.py

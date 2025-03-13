@@ -1,6 +1,6 @@
-from quickstart.quickstart.server_app import app as server_app
 from quickstart.quickstart.client_app import app as client_app
-from flwr.simulation import run_simulation
+from quickstart.quickstart.server_app import app as server_app
+
 from syft_flwr.server import run_simulation as custom_run_simulation
 
 
