@@ -39,11 +39,11 @@ run-jupyter jupyter_args="":
 
 [group('client')]
 run-client:
-    uv run examples/basic/client_syft_event.py
+    uv run python -m examples.basic.client_syft_event
 
 [group('server')]
 run-server:
-    uv run examples/basic/server.py
+    uv run python -m examples.basic.server
 
 [group('test')]
 test:

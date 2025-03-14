@@ -139,7 +139,7 @@ class SyftDriver(Driver):
 
             msg_proto = ProtoMessage()
             msg_proto.ParseFromString(response.body)
-            logger.info(f"Response body's length: {len(response.body)}")
+            logger.info(f"Response.body size: {len(response.body)/(1024*1024)} MB")
             message = message_from_proto(msg_proto)
             messages.append(message)
             rpc_db.delete_future(future_id=msg_id, client=self._client)

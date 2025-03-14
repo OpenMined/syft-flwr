@@ -1,7 +1,6 @@
 import os
 import sys
 import threading
-import time
 
 import pytest
 from loguru import logger
@@ -34,7 +33,7 @@ def run_server_in_thread(driver, context, app):
 
 def test_syft_flwr_basic_integration():
     """Test the basic integration between Syft and Flower."""
-    # Start the client (this will run the box event handler but not block)
+    # Start the clients
     for i in range(NUM_CLIENTS):
         client_thread = threading.Thread(target=box.run_forever)
         client_thread.daemon = (
@@ -45,10 +44,8 @@ def test_syft_flwr_basic_integration():
     # Set up server
     run_id = 12345
     server_app = ServerApp(server_fn=server_fn)
-
     syft_driver = SyftDriver()
     syft_driver.set_run(run_id)
-
     context = Context(
         run_id=run_id,
         node_id=0,
@@ -56,15 +53,11 @@ def test_syft_flwr_basic_integration():
         state=RecordSet(),
         run_config=UserConfig({"num-server-rounds": 1}),  # Just 1 round for testing
     )
-
     # Start server in a separate thread
     server_thread = threading.Thread(
         target=run_server_in_thread, args=(syft_driver, context, server_app)
     )
     server_thread.start()
-
-    # Give server time to start
-    time.sleep(2)
 
     # Import and run the client in this thread
     try:

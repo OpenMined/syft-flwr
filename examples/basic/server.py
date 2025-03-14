@@ -5,6 +5,7 @@ from flwr.common.typing import UserConfig
 from flwr.server import ServerApp, ServerAppComponents, ServerConfig
 from flwr.server.run_serverapp import run as run_server
 from flwr.server.strategy import FedAvg
+from loguru import logger
 
 from syft_flwr.driver import SyftDriver
 
@@ -48,5 +49,6 @@ if __name__ == "__main__":
         driver=syft_driver,
         context=context,
         loaded_server_app=app,
-        server_app_dir="./examples/quickstart",
+        server_app_dir="./examples/basic",
     )
+    logger.info(f"Updated context: {updated_context}")

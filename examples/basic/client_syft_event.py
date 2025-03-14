@@ -7,9 +7,10 @@ from flwr.common.serde import message_from_proto, message_to_proto
 from flwr.common.typing import UserConfig
 from flwr.proto.message_pb2 import Message as ProtoMessage
 from loguru import logger
-from server import get_dummy_model
 from syft_event import SyftEvents
 from syft_event.types import Request
+
+from examples.basic.server import get_dummy_model
 
 box = SyftEvents("flwr")
 
