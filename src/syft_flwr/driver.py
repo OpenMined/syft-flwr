@@ -125,13 +125,11 @@ class SyftDriver(Driver):
 
     def pull_messages(self, message_ids):
         """Pull messages based on message IDs."""
-        logger.info(f"Pulling messages: {message_ids}")
         messages = []
         for msg_id in message_ids:
             future = rpc_db.get_future(future_id=msg_id, client=self._client)
             response = future.resolve()
             if response is None:
-                logger.info(f"Response is None for message ID: {msg_id}")
                 continue
 
             if not response.body:
@@ -167,16 +165,7 @@ class SyftDriver(Driver):
         while timeout is None or time.time() < end_time:
             res_msgs = self.pull_messages(msg_ids)
             ret.extend(res_msgs)
-            # TODO: QUICK HACK: In the flower code, they expect the reply_to_message
-            # to be present in the response message. This is not the case in our custom driver
-            # as the message id is generated after rpc.send
-            # this would be explored tmrw
-            # OLD Code:
-            # msg_ids.difference_update(
-            #     {msg.metadata.reply_to_message for msg in res_msgs} )
-            msg_ids = []
-
-            if len(msg_ids) == 0:
+            if len(ret) == len(msg_ids):
                 break
             # Sleep
             time.sleep(3)

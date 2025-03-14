@@ -21,7 +21,7 @@ class FlowerClient(NumPyClient):
         return [model], 1, {}
 
     def evaluate(self, parameters, config):
-        return float(1.2345), 1, {"accuracy": float(1.0)}
+        return float(0.0), 1, {"accuracy": float(1.0)}
 
 
 def client_fn(context: Context):
