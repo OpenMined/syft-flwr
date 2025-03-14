@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from flwr.client import ClientApp, NumPyClient
 from flwr.common import Context
 from flwr.common.message import Message as FlowerMessage
@@ -29,7 +27,7 @@ def client_fn(context: Context):
 
 
 @box.on_request("/messages")
-def handle_messages(request: Request) -> None:
+def handle_messages(request: Request) -> bytes:
     logger.info(f"Received request id: {request.id}, size: {len(request.body)} bytes")
     message: FlowerMessage = bytes_to_flower_message(request.body)
     run_id = 12345  # same as server

@@ -24,6 +24,8 @@ _nc := '\033[0m'
 alias rj := run-jupyter
 alias rc := run-client
 alias rs := run-server
+alias rsp := run-server-pytorch
+alias rcp := run-client-pytorch
 
 # ---------------------------------------------------------------------------------------------------------------------
 
@@ -41,9 +43,17 @@ run-jupyter jupyter_args="":
 run-client:
     uv run python -m examples.basic.client_syft_event
 
+[group('client')]
+run-client-pytorch:
+    uv run python -m examples.quickstart-pytorch-syft.pytorch.client_app
+
 [group('server')]
 run-server:
     uv run python -m examples.basic.server
+
+[group('server')]
+run-server-pytorch:
+    uv run python -m examples.quickstart-pytorch-syft.pytorch.server_app
 
 [group('test')]
 test:
