@@ -31,7 +31,7 @@ def client_fn(context: Context):
 @box.on_request("/messages")
 def handle_messages(request: Request) -> None:
     logger.info(f"Received request id: {request.id}, size: {len(request.body)} bytes")
-    message = bytes_to_flower_message(request.body)
+    message: FlowerMessage = bytes_to_flower_message(request.body)
     run_id = 12345  # same as server
     context = Context(
         run_id=run_id,

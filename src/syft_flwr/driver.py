@@ -1,9 +1,9 @@
 import time
 from typing import Iterable, cast
 
-from flwr.common import DEFAULT_TTL, Message, Metadata, RecordSet
+from flwr.common import DEFAULT_TTL, Metadata, RecordSet
 from flwr.common.constant import SUPERLINK_NODE_ID
-from flwr.common.serde import ProtoMessage, message_from_proto, message_to_proto
+from flwr.common.message import Message as FlowerMessage
 from flwr.common.typing import Run
 from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
 from flwr.server.driver import Driver
@@ -11,6 +11,8 @@ from loguru import logger
 from syft_core import Client
 from syft_rpc import rpc, rpc_db
 from typing_extensions import Optional
+
+from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
 
 
 class SyftDriver(Driver):
@@ -68,7 +70,7 @@ class SyftDriver(Driver):
         dst_node_id: int,
         group_id: str,
         ttl: Optional[float] = None,
-    ) -> Message:
+    ) -> FlowerMessage:
         """Create a new message with specified parameters."""
         ttl_ = DEFAULT_TTL if ttl is None else ttl
 
@@ -83,7 +85,7 @@ class SyftDriver(Driver):
             message_type=message_type,
         )
 
-        return Message(metadata=metadata, content=content)
+        return FlowerMessage(metadata=metadata, content=content)
 
     def get_node_ids(self) -> list[int]:
         """Get node IDs of all connected nodes."""
@@ -101,7 +103,7 @@ class SyftDriver(Driver):
         # nodes = future.wait()
         # return [node.node_id for node in nodes]
 
-    def push_messages(self, messages: Iterable[Message]) -> Iterable[str]:
+    def push_messages(self, messages: Iterable[FlowerMessage]) -> Iterable[str]:
         """Push messages to specified node IDs."""
 
         # TODO: - replace with dest node id
@@ -113,11 +115,8 @@ class SyftDriver(Driver):
             # Check message
             self._check_message(msg)
 
-            # Convert to proto
-            msg_proto = message_to_proto(msg)
-            future = rpc.send(
-                url=url, body=msg_proto.SerializeToString(), client=self._client
-            )
+            msg_bytes = flower_message_to_bytes(msg)
+            future = rpc.send(url=url, body=msg_bytes, client=self._client)
             rpc_db.save_future(future=future, namespace="flwr", client=self._client)
             message_ids.append(future.id)
 
@@ -125,7 +124,7 @@ class SyftDriver(Driver):
 
     def pull_messages(self, message_ids):
         """Pull messages based on message IDs."""
-        messages = []
+        messages: list[FlowerMessage] = []
         for msg_id in message_ids:
             future = rpc_db.get_future(future_id=msg_id, client=self._client)
             response = future.resolve()
@@ -135,9 +134,7 @@ class SyftDriver(Driver):
             if not response.body:
                 raise ValueError(f"Empty response: {response}")
 
-            msg_proto = ProtoMessage()
-            msg_proto.ParseFromString(response.body)
-            message = message_from_proto(msg_proto)
+            message: FlowerMessage = bytes_to_flower_message(response.body)
             messages.append(message)
             rpc_db.delete_future(future_id=msg_id, client=self._client)
 
@@ -145,10 +142,10 @@ class SyftDriver(Driver):
 
     def send_and_receive(
         self,
-        messages: Iterable[Message],
+        messages: Iterable[FlowerMessage],
         *,
         timeout: Optional[float] = None,
-    ) -> Iterable[Message]:
+    ) -> Iterable[FlowerMessage]:
         """Push messages to specified node IDs and pull the reply messages.
 
         This method sends a list of messages to their destination node IDs and then
@@ -160,7 +157,7 @@ class SyftDriver(Driver):
 
         # Pull messages
         end_time = time.time() + (timeout if timeout is not None else 0.0)
-        ret: list[Message] = []
+        ret: list[FlowerMessage] = []
         while timeout is None or time.time() < end_time:
             res_msgs = self.pull_messages(msg_ids)
             ret.extend(res_msgs)
@@ -170,7 +167,7 @@ class SyftDriver(Driver):
             time.sleep(3)
         return ret
 
-    def _check_message(self, message: Message) -> None:
+    def _check_message(self, message: FlowerMessage) -> None:
         # Check if the message is valid
         if not (
             # Assume self._run being initialized
