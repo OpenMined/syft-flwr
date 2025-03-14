@@ -8,12 +8,6 @@ def run():
     NUM_CLIENTS = 3
     backend_config = {"client_resources": {"num_cpus": 1, "num_gpus": 0.0}}
 
-    # run_simulation(
-    #     server_app=server_app,
-    #     client_app=client_app,
-    #     num_supernodes=NUM_CLIENTS,
-    #     backend_config=backend_config,
-    # )
     custom_run_simulation(
         server_app=server_app,
         client_app=client_app,

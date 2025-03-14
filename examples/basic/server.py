@@ -31,7 +31,7 @@ def server_fn(context: Context):
 
 if __name__ == "__main__":
     # Create ServerApp
-    app = ServerApp(server_fn=server_fn)
+    server_app = ServerApp(server_fn=server_fn)
 
     run_id = 12345
     syft_driver = SyftDriver()
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     updated_context = run_server(
         driver=syft_driver,
         context=context,
-        loaded_server_app=app,
+        loaded_server_app=server_app,
         server_app_dir="./examples/basic",
     )
     logger.info(f"Updated context: {updated_context}")
