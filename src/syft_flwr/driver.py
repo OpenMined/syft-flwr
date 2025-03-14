@@ -139,6 +139,7 @@ class SyftDriver(Driver):
 
             msg_proto = ProtoMessage()
             msg_proto.ParseFromString(response.body)
+            logger.info(f"Response body's length: {len(response.body)}")
             message = message_from_proto(msg_proto)
             messages.append(message)
             rpc_db.delete_future(future_id=msg_id, client=self._client)
@@ -174,8 +175,7 @@ class SyftDriver(Driver):
             # msg_ids.difference_update(
             #     {msg.metadata.reply_to_message for msg in res_msgs} )
             msg_ids = []
-            
-            
+
             if len(msg_ids) == 0:
                 break
             # Sleep
