@@ -1,9 +1,9 @@
 """pytorch: A Flower / PyTorch app."""
 
 import torch
-
 from flwr.client import ClientApp, NumPyClient
 from flwr.common import Context
+
 from pytorch.task import Net, get_weights, load_data, set_weights, test, train
 
 

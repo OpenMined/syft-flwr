@@ -104,7 +104,7 @@ class SyftDriver(Driver):
     def push_messages(self, messages: Iterable[Message]) -> Iterable[str]:
         """Push messages to specified node IDs."""
 
-        # todo - replace with dest node id
+        # TODO: - replace with dest node id
         url = rpc.make_url(self._client.email, app_name="flwr", endpoint="messages")
 
         # Construct Messages
@@ -137,7 +137,6 @@ class SyftDriver(Driver):
 
             msg_proto = ProtoMessage()
             msg_proto.ParseFromString(response.body)
-            logger.info(f"Response.body size: {len(response.body)/(1024*1024)} MB")
             message = message_from_proto(msg_proto)
             messages.append(message)
             rpc_db.delete_future(future_id=msg_id, client=self._client)
