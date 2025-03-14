@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from flwr.client import ClientApp, NumPyClient
 from flwr.common import Context
+from flwr.common.message import Message as FlowerMessage
 from flwr.common.record import RecordSet
-from flwr.common.serde import message_from_proto, message_to_proto
 from flwr.common.typing import UserConfig
-from flwr.proto.message_pb2 import Message as ProtoMessage
 from loguru import logger
 from syft_event import SyftEvents
 from syft_event.types import Request
 
 from examples.basic.server import get_dummy_model
+from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
 
 box = SyftEvents("flwr")
 
@@ -31,9 +31,7 @@ def client_fn(context: Context):
 @box.on_request("/messages")
 def handle_messages(request: Request) -> None:
     logger.info(f"Received request id: {request.id}, size: {len(request.body)} bytes")
-    message_pb = ProtoMessage()
-    message_pb.ParseFromString(request.body)
-    message = message_from_proto(message_pb)
+    message = bytes_to_flower_message(request.body)
     run_id = 12345  # same as server
     context = Context(
         run_id=run_id,
@@ -43,10 +41,9 @@ def handle_messages(request: Request) -> None:
         run_config=UserConfig(),
     )
     client_app = ClientApp(client_fn=client_fn)
-    reply_message = client_app(message=message, context=context)
+    reply_message: FlowerMessage = client_app(message=message, context=context)
     logger.info(f"Reply message type: {type(reply_message)}")
-    msg_proto = message_to_proto(reply_message)
-    res_bytes = msg_proto.SerializeToString()
+    res_bytes: bytes = flower_message_to_bytes(reply_message)
     logger.info(f"Reply message size: {len(res_bytes)/2**20} MB")
     return res_bytes
 
