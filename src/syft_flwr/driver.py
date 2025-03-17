@@ -42,12 +42,11 @@ class SyftDriver(Driver):
         self.client_map = self._construct_client_map(self.fl_clients)
 
     def _construct_client_map(self, fl_clients: list[str]) -> dict:
-        """Construct a two way map of client email to node ID and vice versa."""
+        """Construct a map from node ID to client."""
         client_map = {}
         for fl_client in fl_clients:
             node_id = string_to_hash_int(fl_client)
             client_map[node_id] = fl_client
-            client_map[fl_client] = node_id
         return client_map
         
 
@@ -109,7 +108,7 @@ class SyftDriver(Driver):
     def get_node_ids(self) -> list[int]:
         """Get node IDs of all connected nodes."""
         # it is map from fl_clients to node id
-        return [ self.client_map[client] for client in self.fl_clients]
+        return list(self.client_map.keys())
 
 
 
