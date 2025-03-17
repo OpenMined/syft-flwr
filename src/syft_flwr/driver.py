@@ -30,7 +30,7 @@ class SyftDriver(Driver):
         datasites: list[str] = [],
         client: Client = None,
     ) -> None:
-        logger.info("Initializing SyftDriver")
+        # logger.info("Initializing SyftDriver")
         self._client = Client.load() if client is None else client
         self._run: Optional[Run] = None
         self.node = Node(node_id=SUPERLINK_NODE_ID)
@@ -39,11 +39,7 @@ class SyftDriver(Driver):
 
     def _construct_client_map(self, fl_clients: list[str]) -> dict:
         """Construct a map from node ID to client."""
-        client_map = {}
-        for fl_client in fl_clients:
-            node_id = string_to_hash_int(fl_client)
-            client_map[node_id] = fl_client
-        return client_map
+        return {string_to_hash_int(fl_client): fl_client for fl_client in fl_clients}
 
     def set_run(self, run_id: int) -> None:
         # Convert to Flower Run object
@@ -105,18 +101,6 @@ class SyftDriver(Driver):
         # it is map from fl_clients to node id
         return list(self.client_map.keys())
 
-        # TODO: modify the method to retrive node IDs from all the clients
-        # maybe using rpc.broadcast?
-        # url = rpc.make_url(self._client.email, app_name="flwr", endpoint="get_nodes")
-        # future = rpc.send(
-        #     url=url,
-        #     body={"run_id": cast(Run, self._run).run_id},
-        #     client=self._client,
-        # )
-
-        # nodes = future.wait()
-        # return [node.node_id for node in nodes]
-
     def push_messages(self, messages: Iterable[FlowerMessage]) -> Iterable[str]:
         """Push messages to specified node IDs."""
         # Construct Messages
@@ -128,7 +112,6 @@ class SyftDriver(Driver):
 
             # Check message
             self._check_message(msg)
-
             msg_bytes = flower_message_to_bytes(msg)
             future = rpc.send(url=url, body=msg_bytes, client=self._client)
             rpc_db.save_future(future=future, namespace="flwr", client=self._client)
@@ -138,18 +121,21 @@ class SyftDriver(Driver):
 
     def pull_messages(self, message_ids):
         """Pull messages based on message IDs."""
-        messages: list[FlowerMessage] = []
+        messages = {}
+
         for msg_id in message_ids:
             future = rpc_db.get_future(future_id=msg_id, client=self._client)
             response = future.resolve()
             if response is None:
                 continue
 
+            response.raise_for_status()
+
             if not response.body:
                 raise ValueError(f"Empty response: {response}")
 
             message: FlowerMessage = bytes_to_flower_message(response.body)
-            messages.append(message)
+            messages[msg_id] = message
             rpc_db.delete_future(future_id=msg_id, client=self._client)
 
         return messages
@@ -171,14 +157,13 @@ class SyftDriver(Driver):
 
         # Pull messages
         end_time = time.time() + (timeout if timeout is not None else 0.0)
-        ret: list[FlowerMessage] = []
+        ret = {}
         while timeout is None or time.time() < end_time:
             res_msgs = self.pull_messages(msg_ids)
-            ret.extend(res_msgs)
+            print("send_and_receive", len(res_msgs), len(msg_ids))
+            ret.update(res_msgs)
             if len(ret) == len(msg_ids):
                 break
-            logger.info(f"Pending Messages: {len(msg_ids) - len(ret)}/{len(msg_ids)}")
-            # Sleep
             time.sleep(3)
         return ret
 
@@ -194,20 +179,3 @@ class SyftDriver(Driver):
         ):
             raise ValueError(f"Invalid message: {message}")
 
-
-if __name__ == "__main__":
-    client = Client.load()
-    logger.info(
-        f"Running SyftBox client: {client.email}. SyftBox Folder: {client.workspace.data_dir}"
-    )
-
-    driver = SyftDriver(client=client)
-    run_id = 2
-    driver.set_run(run_id)
-
-    create_message = driver.create_message(
-        content=RecordSet(), message_type="test", dst_node_id=0, group_id="test"
-    )
-
-    message_ids = driver.push_messages([create_message])
-    driver.pull_messages(message_ids)
