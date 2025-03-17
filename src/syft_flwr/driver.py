@@ -39,11 +39,7 @@ class SyftDriver(Driver):
 
     def _construct_client_map(self, fl_clients: list[str]) -> dict:
         """Construct a map from node ID to client."""
-        client_map = {}
-        for fl_client in fl_clients:
-            node_id = string_to_hash_int(fl_client)
-            client_map[node_id] = fl_client
-        return client_map
+        return {string_to_hash_int(fl_client): fl_client for fl_client in fl_clients}
 
     def set_run(self, run_id: int) -> None:
         # Convert to Flower Run object
@@ -104,18 +100,6 @@ class SyftDriver(Driver):
         """Get node IDs of all connected nodes."""
         # it is map from fl_clients to node id
         return list(self.client_map.keys())
-
-        # TODO: modify the method to retrive node IDs from all the clients
-        # maybe using rpc.broadcast?
-        # url = rpc.make_url(self._client.email, app_name="flwr", endpoint="get_nodes")
-        # future = rpc.send(
-        #     url=url,
-        #     body={"run_id": cast(Run, self._run).run_id},
-        #     client=self._client,
-        # )
-
-        # nodes = future.wait()
-        # return [node.node_id for node in nodes]
 
     def push_messages(self, messages: Iterable[FlowerMessage]) -> Iterable[str]:
         """Push messages to specified node IDs."""
@@ -195,20 +179,3 @@ class SyftDriver(Driver):
         ):
             raise ValueError(f"Invalid message: {message}")
 
-
-if __name__ == "__main__":
-    client = Client.load()
-    logger.info(
-        f"Running SyftBox client: {client.email}. SyftBox Folder: {client.workspace.data_dir}"
-    )
-
-    driver = SyftDriver(client=client)
-    run_id = 2
-    driver.set_run(run_id)
-
-    create_message = driver.create_message(
-        content=RecordSet(), message_type="test", dst_node_id=0, group_id="test"
-    )
-
-    message_ids = driver.push_messages([create_message])
-    driver.pull_messages(message_ids)
