@@ -13,7 +13,7 @@ from syft_flwr.utils import create_empty_context
 
 from .task import Net, get_weights, load_data, set_weights, test, train
 
-box = SyftEvents("flwr")
+box = SyftEvents("flwr-torch")
 
 
 # Define Flower Client and client_fn
@@ -34,6 +34,7 @@ class FlowerClient(NumPyClient):
             self.local_epochs,
             self.device,
         )
+        logger.info(f"Client's train loss: {train_loss}")
         return (
             get_weights(self.net),
             len(self.trainloader.dataset),
@@ -43,6 +44,7 @@ class FlowerClient(NumPyClient):
     def evaluate(self, parameters, config):
         set_weights(self.net, parameters)
         loss, accuracy = test(self.net, self.valloader, self.device)
+        logger.info(f"Client's evaluate loss: {loss}, accuracy: {accuracy}")
         return loss, len(self.valloader.dataset), {"accuracy": accuracy}
 
 

@@ -38,7 +38,7 @@ if __name__ == "__main__":
     server_app = ServerApp(server_fn=server_fn)
 
     run_id = 2
-    syft_driver = SyftDriver()
+    syft_driver = SyftDriver(app_name="flwr-torch")
     syft_driver.set_run(run_id)
     context = create_empty_context(run_id=run_id)
 

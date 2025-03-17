@@ -26,9 +26,15 @@ class SyftDriver(Driver):
         Sleep duration between calls to `pull_messages`.
     """
 
-    def __init__(self, pull_interval: float = 0.1, client: Client = None) -> None:
+    def __init__(
+        self,
+        app_name: str = "flwr",
+        pull_interval: float = 0.1,
+        client: Client = None,
+    ) -> None:
         logger.info("Initializing SyftDriver")
         self._client = Client.load() if client is None else client
+        self.app_name = app_name
         self._run: Optional[Run] = None
         self.node = Node(node_id=SUPERLINK_NODE_ID)
 
@@ -107,7 +113,9 @@ class SyftDriver(Driver):
         """Push messages to specified node IDs."""
 
         # TODO: - replace with dest node id
-        url = rpc.make_url(self._client.email, app_name="flwr", endpoint="messages")
+        url = rpc.make_url(
+            self._client.email, app_name=self.app_name, endpoint="messages"
+        )
 
         # Construct Messages
         message_ids = []
@@ -117,7 +125,9 @@ class SyftDriver(Driver):
 
             msg_bytes = flower_message_to_bytes(msg)
             future = rpc.send(url=url, body=msg_bytes, client=self._client)
-            rpc_db.save_future(future=future, namespace="flwr", client=self._client)
+            rpc_db.save_future(
+                future=future, namespace=self.app_name, client=self._client
+            )
             message_ids.append(future.id)
 
         return message_ids
@@ -186,7 +196,7 @@ if __name__ == "__main__":
         f"Running SyftBox client: {client.email}. SyftBox Folder: {client.workspace.data_dir}"
     )
 
-    driver = SyftDriver(client=client)
+    driver = SyftDriver(app_name="flwr-torch", client=client)
     run_id = 2
     driver.set_run(run_id)
 
