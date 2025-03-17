@@ -11,7 +11,7 @@ from syft_flwr.driver import SyftDriver
 
 
 def get_dummy_model():
-    return np.random.rand(1000, 1000)
+    return np.random.rand(10, 10)
 
 
 def server_fn(context: Context):
@@ -34,7 +34,9 @@ if __name__ == "__main__":
     server_app = ServerApp(server_fn=server_fn)
 
     run_id = 12345
-    syft_driver = SyftDriver()
+    participants = ["rasswanth@openmined.org", "khoa@openmined.org"]
+
+    syft_driver = SyftDriver(datasites=participants)
     syft_driver.set_run(run_id)
 
     context = Context(
