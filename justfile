@@ -24,6 +24,8 @@ _nc := '\033[0m'
 alias rj := run-jupyter
 alias rc := run-client
 alias rs := run-server
+alias rsq := run-server-quickstart
+alias rcq := run-client-quickstart
 
 # ---------------------------------------------------------------------------------------------------------------------
 
@@ -41,9 +43,15 @@ run-jupyter jupyter_args="":
 run-client:
     uv run python -m examples.basic.client_syft_event
 
+run-client-quickstart:
+    uv run python -m examples.quickstart.run_with_syftbox --client
+
 [group('server')]
 run-server:
     uv run python -m examples.basic.server
+
+run-server-quickstart:
+    uv run python -m examples.quickstart.run_with_syftbox --server
 
 [group('test')]
 test:
