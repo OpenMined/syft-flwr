@@ -30,7 +30,7 @@ class SyftDriver(Driver):
         datasites: list[str] = [],
         client: Client = None,
     ) -> None:
-        logger.info("Initializing SyftDriver")
+        # logger.info("Initializing SyftDriver")
         self._client = Client.load() if client is None else client
         self._run: Optional[Run] = None
         self.node = Node(node_id=SUPERLINK_NODE_ID)
@@ -128,7 +128,6 @@ class SyftDriver(Driver):
 
             # Check message
             self._check_message(msg)
-
             msg_bytes = flower_message_to_bytes(msg)
             future = rpc.send(url=url, body=msg_bytes, client=self._client)
             rpc_db.save_future(future=future, namespace="flwr", client=self._client)
@@ -138,18 +137,21 @@ class SyftDriver(Driver):
 
     def pull_messages(self, message_ids):
         """Pull messages based on message IDs."""
-        messages: list[FlowerMessage] = []
+        messages = {}
+
         for msg_id in message_ids:
             future = rpc_db.get_future(future_id=msg_id, client=self._client)
             response = future.resolve()
             if response is None:
                 continue
 
+            response.raise_for_status()
+
             if not response.body:
                 raise ValueError(f"Empty response: {response}")
 
             message: FlowerMessage = bytes_to_flower_message(response.body)
-            messages.append(message)
+            messages[msg_id] = message
             rpc_db.delete_future(future_id=msg_id, client=self._client)
 
         return messages
@@ -171,14 +173,13 @@ class SyftDriver(Driver):
 
         # Pull messages
         end_time = time.time() + (timeout if timeout is not None else 0.0)
-        ret: list[FlowerMessage] = []
+        ret = {}
         while timeout is None or time.time() < end_time:
             res_msgs = self.pull_messages(msg_ids)
-            ret.extend(res_msgs)
+            print("send_and_receive", len(res_msgs), len(msg_ids))
+            ret.update(res_msgs)
             if len(ret) == len(msg_ids):
                 break
-            logger.info(f"Pending Messages: {len(msg_ids) - len(ret)}/{len(msg_ids)}")
-            # Sleep
             time.sleep(3)
         return ret
 
