@@ -2477,7 +2477,7 @@ dev = [
 requires-dist = [
     { name = "flwr", extras = ["simulation"], specifier = ">=1.15.2" },
     { name = "loguru", specifier = ">=0.7.3" },
-    { name = "syft-core", specifier = ">=0.1.0" },
+    { name = "syft-core", git = "https://github.com/OpenMined/syft-extras.git?subdirectory=packages%2Fsyft-core&rev=main" },
     { name = "syft-event", git = "https://github.com/OpenMined/syft-extras.git?subdirectory=packages%2Fsyft-event&rev=main" },
     { name = "syft-rpc", git = "https://github.com/OpenMined/syft-extras.git?subdirectory=packages%2Fsyft-rpc&rev=main" },
 ]

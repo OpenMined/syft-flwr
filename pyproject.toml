@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "flwr[simulation]>=1.15.2",
-    "syft-core>=0.1.0",
+    "syft-core",
     "syft-rpc",
     "syft-event",
     "loguru>=0.7.3",
@@ -21,6 +21,7 @@ dev-dependencies = [
 ]
 
 [tool.uv.sources]
+syft-core = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-core", rev = "main" }
 syft-event = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-event", rev = "main" }
 syft-rpc = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-rpc", rev = "main" }
 
