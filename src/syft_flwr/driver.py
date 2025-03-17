@@ -1,3 +1,4 @@
+import hashlib
 import time
 from typing import Iterable, cast
 
@@ -15,22 +16,34 @@ from typing_extensions import Optional
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
 
 
+def string_to_hash_int(input_string: str) -> int:
+    """Convert a string to a hash integer."""
+    hash_object = hashlib.sha256(input_string.encode("utf-8"))
+    hash_hex = hash_object.hexdigest()
+    hash_int = int(hash_hex, 16) % (2**32)
+    return hash_int
+
+
 class SyftDriver(Driver):
-    """`SyftDriver` class provides an interface to the ServerAppIo API.
-
-    Parameters
-    ----------
-    state_factory : StateFactory
-        A StateFactory embedding a state that this driver can interface with.
-    pull_interval : float (default=0.1)
-        Sleep duration between calls to `pull_messages`.
-    """
-
-    def __init__(self, pull_interval: float = 0.1, client: Client = None) -> None:
+    def __init__(
+        self,
+        datasites: list[str] = [],
+        client: Client = None,
+    ) -> None:
         logger.info("Initializing SyftDriver")
         self._client = Client.load() if client is None else client
         self._run: Optional[Run] = None
         self.node = Node(node_id=SUPERLINK_NODE_ID)
+        self.datasites = datasites
+        self.client_map = self._construct_client_map(self.datasites)
+
+    def _construct_client_map(self, fl_clients: list[str]) -> dict:
+        """Construct a map from node ID to client."""
+        client_map = {}
+        for fl_client in fl_clients:
+            node_id = string_to_hash_int(fl_client)
+            client_map[node_id] = fl_client
+        return client_map
 
     def set_run(self, run_id: int) -> None:
         # Convert to Flower Run object
@@ -89,7 +102,8 @@ class SyftDriver(Driver):
 
     def get_node_ids(self) -> list[int]:
         """Get node IDs of all connected nodes."""
-        return [7, 8, 9]
+        # it is map from fl_clients to node id
+        return list(self.client_map.keys())
 
         # TODO: modify the method to retrive node IDs from all the clients
         # maybe using rpc.broadcast?
@@ -105,13 +119,13 @@ class SyftDriver(Driver):
 
     def push_messages(self, messages: Iterable[FlowerMessage]) -> Iterable[str]:
         """Push messages to specified node IDs."""
-
-        # TODO: - replace with dest node id
-        url = rpc.make_url(self._client.email, app_name="flwr", endpoint="messages")
-
         # Construct Messages
         message_ids = []
         for msg in messages:
+            # RPC URl
+            dest_datasite = self.client_map[msg.metadata.dst_node_id]
+            url = rpc.make_url(dest_datasite, app_name="flwr", endpoint="messages")
+
             # Check message
             self._check_message(msg)
 
@@ -163,6 +177,7 @@ class SyftDriver(Driver):
             ret.extend(res_msgs)
             if len(ret) == len(msg_ids):
                 break
+            logger.info(f"Pending Messages: {len(msg_ids) - len(ret)}/{len(msg_ids)}")
             # Sleep
             time.sleep(3)
         return ret
