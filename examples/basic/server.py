@@ -36,7 +36,7 @@ if __name__ == "__main__":
     run_id = 12345
     participants = ["rasswanth@openmined.org", "khoa@openmined.org"]
 
-    syft_driver = SyftDriver(fl_clients=participants)
+    syft_driver = SyftDriver(datasites=participants)
     syft_driver.set_run(run_id)
 
     context = Context(
@@ -46,7 +46,6 @@ if __name__ == "__main__":
         state=RecordSet(),
         run_config=UserConfig(),
     )
-
 
     updated_context = run_server(
         driver=syft_driver,
