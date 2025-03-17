@@ -49,7 +49,6 @@ from flwr.server.superlink.linkstate.utils import generate_rand_int_from_bytes
 from flwr.simulation.ray_transport.utils import (
     enable_tf_gpu_growth as enable_gpu_growth,
 )
-from .driver import SyftDriver
 
 
 def _replace_keys(d: Any, match: str, target: str) -> Any:
