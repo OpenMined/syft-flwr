@@ -6,14 +6,14 @@ from flwr.common.message import Message
 from flwr.common.typing import Run
 from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
 from flwr.server.driver import Driver
-from loguru import logger
 from syft_core import Client
 from syft_rpc import rpc, rpc_db
 from typing_extensions import Optional
 
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
-from .utils import string_to_hash_int
+
 from .constant import AGGREGATOR_NODE_ID
+from .utils import string_to_hash_int
 
 
 class SyftDriver(Driver):
@@ -37,7 +37,7 @@ class SyftDriver(Driver):
         # Convert to Flower Run object
         self._run = Run.create_empty(run_id)
 
-        # TODO: In Grpc driver case the superlink is the one which sets up the run id, 
+        # TODO: In Grpc driver case the superlink is the one which sets up the run id,
         # do we need to do the same here, where the run id is set from an external context.
 
     @property
@@ -152,4 +152,3 @@ class SyftDriver(Driver):
             and message.metadata.ttl > 0
         ):
             raise ValueError(f"Invalid message: {message}")
-
