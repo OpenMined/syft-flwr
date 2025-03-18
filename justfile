@@ -40,12 +40,12 @@ run-jupyter jupyter_args="":
 # sb_conf_path: path to the SyftBox Config file
 [group('client')]
 run-client sb_conf_path="":
-    uv run python -m examples.basic.syftbox.client_syft_event --sb_conf_path "{{ sb_conf_path }}"
+    uv run python -m examples.basic.client_syft --sb_conf_path "{{ sb_conf_path }}"
 
 # sb_conf_path: path to the SyftBox Config file
 [group('server')]
 run-server sb_conf_path="":
-    uv run python -m examples.basic.syftbox.server --sb_conf_path "{{ sb_conf_path }}"
+    uv run python -m examples.basic.server_syft --sb_conf_path "{{ sb_conf_path }}"
 
 [group('test')]
 test:

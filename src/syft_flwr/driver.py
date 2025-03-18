@@ -138,7 +138,7 @@ class SyftDriver(Driver):
             if len(msg_ids) == 0:
                 break
             time.sleep(3)
-        return ret
+        return ret.values()
 
     def _check_message(self, message: Message) -> None:
         # Check if the message is valid
