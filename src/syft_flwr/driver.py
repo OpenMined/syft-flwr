@@ -37,27 +37,8 @@ class SyftDriver(Driver):
         # Convert to Flower Run object
         self._run = Run.create_empty(run_id)
 
-        # todo rpc this
-        # url = rpc.make_url(
-        #     datasite=self._client.email,
-        #     app_name="flwr",
-        #     endpoint="get_run",
-        # )
-        # path = url.to_local_path(self._client.datasites)
-        # run_file = path / f"run_{run_id}.json"
-
-        # if not run_file.exists():
-        #     # Create a new run file
-        #     run_file.parent.mkdir(parents=True, exist_ok=True)
-        #     run_obj = Run.create_empty(run_id=run_id)
-        #     run_data = asdict(run_obj)
-        #     run_file.write_text(json.dumps(run_data))
-
-        # # Load run data
-        # run_data = Run(**json.loads(run_file.read_text()))
-
-        # if run_data["run_id"] != run_id:
-        #     raise RuntimeError(f"Cannot find the run with ID: {run_id}")
+        # TODO: In Grpc driver case the superlink is the one which sets up the run id, 
+        # do we need to do the same here, where the run id is set from an external context.
 
     @property
     def run(self) -> Run:
