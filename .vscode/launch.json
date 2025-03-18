@@ -8,7 +8,7 @@
       "name": "Debug serverapp",
       "type": "debugpy",
       "request": "launch",
-      "program": "examples/basic/server.py",
+      "program": "examples/basic/server_syft.py",
       "console": "integratedTerminal",
       "justMyCode": false
     },

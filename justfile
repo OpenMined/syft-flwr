@@ -39,16 +39,18 @@ run-jupyter jupyter_args="":
     uv run --frozen --with "jupyterlab" \
         jupyter lab {{ jupyter_args }}
 
+# sb_conf_path: path to the SyftBox Config file
 [group('client')]
-run-client:
-    uv run python -m examples.basic.client_syft_event
+run-client sb_conf_path="":
+    uv run python -m examples.basic.client_syft --sb_conf_path "{{ sb_conf_path }}"
 
 run-client-quickstart:
     uv run python -m examples.quickstart.run_with_syftbox --client
 
+# sb_conf_path: path to the SyftBox Config file
 [group('server')]
-run-server:
-    uv run python -m examples.basic.server
+run-server sb_conf_path="":
+    uv run python -m examples.basic.server_syft --sb_conf_path "{{ sb_conf_path }}"
 
 run-server-quickstart:
     uv run python -m examples.quickstart.run_with_syftbox --server

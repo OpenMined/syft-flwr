@@ -1,27 +1,19 @@
-import hashlib
 import time
 from typing import Iterable, cast
 
 from flwr.common import DEFAULT_TTL, Metadata, RecordSet
-from flwr.common.constant import SUPERLINK_NODE_ID
-from flwr.common.message import Message as FlowerMessage
+from flwr.common.message import Message
 from flwr.common.typing import Run
 from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
 from flwr.server.driver import Driver
-from loguru import logger
 from syft_core import Client
 from syft_rpc import rpc, rpc_db
 from typing_extensions import Optional
 
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
 
-
-def string_to_hash_int(input_string: str) -> int:
-    """Convert a string to a hash integer."""
-    hash_object = hashlib.sha256(input_string.encode("utf-8"))
-    hash_hex = hash_object.hexdigest()
-    hash_int = int(hash_hex, 16) % (2**32)
-    return hash_int
+from .constant import AGGREGATOR_NODE_ID
+from .utils import string_to_hash_int
 
 
 class SyftDriver(Driver):
@@ -33,43 +25,20 @@ class SyftDriver(Driver):
         # logger.info("Initializing SyftDriver")
         self._client = Client.load() if client is None else client
         self._run: Optional[Run] = None
-        self.node = Node(node_id=SUPERLINK_NODE_ID)
+        self.node = Node(node_id=AGGREGATOR_NODE_ID)
         self.datasites = datasites
         self.client_map = self._construct_client_map(self.datasites)
 
-    def _construct_client_map(self, fl_clients: list[str]) -> dict:
+    def _construct_client_map(self, datasites: list[str]) -> dict:
         """Construct a map from node ID to client."""
-        client_map = {}
-        for fl_client in fl_clients:
-            node_id = string_to_hash_int(fl_client)
-            client_map[node_id] = fl_client
-        return client_map
+        return {string_to_hash_int(datasite): datasite for datasite in datasites}
 
     def set_run(self, run_id: int) -> None:
         # Convert to Flower Run object
         self._run = Run.create_empty(run_id)
 
-        # todo rpc this
-        # url = rpc.make_url(
-        #     datasite=self._client.email,
-        #     app_name="flwr",
-        #     endpoint="get_run",
-        # )
-        # path = url.to_local_path(self._client.datasites)
-        # run_file = path / f"run_{run_id}.json"
-
-        # if not run_file.exists():
-        #     # Create a new run file
-        #     run_file.parent.mkdir(parents=True, exist_ok=True)
-        #     run_obj = Run.create_empty(run_id=run_id)
-        #     run_data = asdict(run_obj)
-        #     run_file.write_text(json.dumps(run_data))
-
-        # # Load run data
-        # run_data = Run(**json.loads(run_file.read_text()))
-
-        # if run_data["run_id"] != run_id:
-        #     raise RuntimeError(f"Cannot find the run with ID: {run_id}")
+        # TODO: In Grpc driver case the superlink is the one which sets up the run id,
+        # do we need to do the same here, where the run id is set from an external context.
 
     @property
     def run(self) -> Run:
@@ -83,7 +52,7 @@ class SyftDriver(Driver):
         dst_node_id: int,
         group_id: str,
         ttl: Optional[float] = None,
-    ) -> FlowerMessage:
+    ) -> Message:
         """Create a new message with specified parameters."""
         ttl_ = DEFAULT_TTL if ttl is None else ttl
 
@@ -98,26 +67,14 @@ class SyftDriver(Driver):
             message_type=message_type,
         )
 
-        return FlowerMessage(metadata=metadata, content=content)
+        return Message(metadata=metadata, content=content)
 
     def get_node_ids(self) -> list[int]:
         """Get node IDs of all connected nodes."""
-        # it is map from fl_clients to node id
+        # it is map from datasites to node id
         return list(self.client_map.keys())
 
-        # TODO: modify the method to retrive node IDs from all the clients
-        # maybe using rpc.broadcast?
-        # url = rpc.make_url(self._client.email, app_name="flwr", endpoint="get_nodes")
-        # future = rpc.send(
-        #     url=url,
-        #     body={"run_id": cast(Run, self._run).run_id},
-        #     client=self._client,
-        # )
-
-        # nodes = future.wait()
-        # return [node.node_id for node in nodes]
-
-    def push_messages(self, messages: Iterable[FlowerMessage]) -> Iterable[str]:
+    def push_messages(self, messages: Iterable[Message]) -> Iterable[str]:
         """Push messages to specified node IDs."""
         # Construct Messages
         message_ids = []
@@ -150,7 +107,7 @@ class SyftDriver(Driver):
             if not response.body:
                 raise ValueError(f"Empty response: {response}")
 
-            message: FlowerMessage = bytes_to_flower_message(response.body)
+            message: Message = bytes_to_flower_message(response.body)
             messages[msg_id] = message
             rpc_db.delete_future(future_id=msg_id, client=self._client)
 
@@ -158,10 +115,10 @@ class SyftDriver(Driver):
 
     def send_and_receive(
         self,
-        messages: Iterable[FlowerMessage],
+        messages: Iterable[Message],
         *,
         timeout: Optional[float] = None,
-    ) -> Iterable[FlowerMessage]:
+    ) -> Iterable[Message]:
         """Push messages to specified node IDs and pull the reply messages.
 
         This method sends a list of messages to their destination node IDs and then
@@ -176,14 +133,14 @@ class SyftDriver(Driver):
         ret = {}
         while timeout is None or time.time() < end_time:
             res_msgs = self.pull_messages(msg_ids)
-            print("send_and_receive", len(res_msgs), len(msg_ids))
             ret.update(res_msgs)
-            if len(ret) == len(msg_ids):
+            msg_ids.difference_update(res_msgs.keys())
+            if len(msg_ids) == 0:
                 break
             time.sleep(3)
-        return ret
+        return ret.values()
 
-    def _check_message(self, message: FlowerMessage) -> None:
+    def _check_message(self, message: Message) -> None:
         # Check if the message is valid
         if not (
             # Assume self._run being initialized
@@ -194,21 +151,3 @@ class SyftDriver(Driver):
             and message.metadata.ttl > 0
         ):
             raise ValueError(f"Invalid message: {message}")
-
-
-if __name__ == "__main__":
-    client = Client.load()
-    logger.info(
-        f"Running SyftBox client: {client.email}. SyftBox Folder: {client.workspace.data_dir}"
-    )
-
-    driver = SyftDriver(client=client)
-    run_id = 2
-    driver.set_run(run_id)
-
-    create_message = driver.create_message(
-        content=RecordSet(), message_type="test", dst_node_id=0, group_id="test"
-    )
-
-    message_ids = driver.push_messages([create_message])
-    driver.pull_messages(message_ids)
