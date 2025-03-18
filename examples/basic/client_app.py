@@ -2,7 +2,6 @@
 
 from flwr.client import ClientApp, NumPyClient
 from flwr.common import Context
-
 from task import get_dummy_model
 
 

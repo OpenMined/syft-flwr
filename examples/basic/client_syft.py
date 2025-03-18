@@ -24,17 +24,17 @@ if __name__ == "__main__":
         default=None,
     )
     sb_conf_path = parser.parse_args().sb_conf_path
-    
 
     sb_client = Client.load(sb_conf_path)
     logger.info(f"Started SyftBox Flower Client on: {sb_client.email}")
 
     box = SyftEvents("flwr", client=sb_client)
 
-
     @box.on_request("/messages")
     def handle_messages(request: Request) -> None:
-        logger.info(f"Received request id: {request.id}, size: {len(request.body)} bytes")
+        logger.info(
+            f"Received request id: {request.id}, size: {len(request.body)} bytes"
+        )
         message: Message = bytes_to_flower_message(request.body)
         run_id = 12345  # same as server
         context = Context(

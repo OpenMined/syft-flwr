@@ -6,9 +6,9 @@ from flwr.common.record import RecordSet
 from flwr.common.typing import UserConfig
 from flwr.server.run_serverapp import run as run_server
 from loguru import logger
+from server_app import app as server_app
 from syft_core import Client
 
-from server_app import app as server_app
 from syft_flwr.driver import SyftDriver
 
 if __name__ == "__main__":
