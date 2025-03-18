@@ -1,10 +1,8 @@
-import hashlib
 import time
 from typing import Iterable, cast
 
 from flwr.common import DEFAULT_TTL, Metadata, RecordSet
-from flwr.common.constant import SUPERLINK_NODE_ID
-from flwr.common.message import Message as FlowerMessage
+from flwr.common.message import Message
 from flwr.common.typing import Run
 from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
 from flwr.server.driver import Driver
@@ -14,14 +12,8 @@ from syft_rpc import rpc, rpc_db
 from typing_extensions import Optional
 
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
-
-
-def string_to_hash_int(input_string: str) -> int:
-    """Convert a string to a hash integer."""
-    hash_object = hashlib.sha256(input_string.encode("utf-8"))
-    hash_hex = hash_object.hexdigest()
-    hash_int = int(hash_hex, 16) % (2**32)
-    return hash_int
+from .utils import string_to_hash_int
+from .constant import AGGREGATOR_NODE_ID
 
 
 class SyftDriver(Driver):
@@ -33,13 +25,13 @@ class SyftDriver(Driver):
         # logger.info("Initializing SyftDriver")
         self._client = Client.load() if client is None else client
         self._run: Optional[Run] = None
-        self.node = Node(node_id=SUPERLINK_NODE_ID)
+        self.node = Node(node_id=AGGREGATOR_NODE_ID)
         self.datasites = datasites
         self.client_map = self._construct_client_map(self.datasites)
 
-    def _construct_client_map(self, fl_clients: list[str]) -> dict:
+    def _construct_client_map(self, datasites: list[str]) -> dict:
         """Construct a map from node ID to client."""
-        return {string_to_hash_int(fl_client): fl_client for fl_client in fl_clients}
+        return {string_to_hash_int(datasite): datasite for datasite in datasites}
 
     def set_run(self, run_id: int) -> None:
         # Convert to Flower Run object
@@ -79,7 +71,7 @@ class SyftDriver(Driver):
         dst_node_id: int,
         group_id: str,
         ttl: Optional[float] = None,
-    ) -> FlowerMessage:
+    ) -> Message:
         """Create a new message with specified parameters."""
         ttl_ = DEFAULT_TTL if ttl is None else ttl
 
@@ -94,14 +86,14 @@ class SyftDriver(Driver):
             message_type=message_type,
         )
 
-        return FlowerMessage(metadata=metadata, content=content)
+        return Message(metadata=metadata, content=content)
 
     def get_node_ids(self) -> list[int]:
         """Get node IDs of all connected nodes."""
-        # it is map from fl_clients to node id
+        # it is map from datasites to node id
         return list(self.client_map.keys())
 
-    def push_messages(self, messages: Iterable[FlowerMessage]) -> Iterable[str]:
+    def push_messages(self, messages: Iterable[Message]) -> Iterable[str]:
         """Push messages to specified node IDs."""
         # Construct Messages
         message_ids = []
@@ -134,7 +126,7 @@ class SyftDriver(Driver):
             if not response.body:
                 raise ValueError(f"Empty response: {response}")
 
-            message: FlowerMessage = bytes_to_flower_message(response.body)
+            message: Message = bytes_to_flower_message(response.body)
             messages[msg_id] = message
             rpc_db.delete_future(future_id=msg_id, client=self._client)
 
@@ -142,10 +134,10 @@ class SyftDriver(Driver):
 
     def send_and_receive(
         self,
-        messages: Iterable[FlowerMessage],
+        messages: Iterable[Message],
         *,
         timeout: Optional[float] = None,
-    ) -> Iterable[FlowerMessage]:
+    ) -> Iterable[Message]:
         """Push messages to specified node IDs and pull the reply messages.
 
         This method sends a list of messages to their destination node IDs and then
@@ -167,7 +159,7 @@ class SyftDriver(Driver):
             time.sleep(3)
         return ret
 
-    def _check_message(self, message: FlowerMessage) -> None:
+    def _check_message(self, message: Message) -> None:
         # Check if the message is valid
         if not (
             # Assume self._run being initialized
