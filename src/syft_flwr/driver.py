@@ -154,7 +154,8 @@ class SyftDriver(Driver):
             res_msgs = self.pull_messages(msg_ids)
             print("send_and_receive", len(res_msgs), len(msg_ids))
             ret.update(res_msgs)
-            if len(ret) == len(msg_ids):
+            msg_ids.difference_update(res_msgs.keys())
+            if len(msg_ids) == 0:
                 break
             time.sleep(3)
         return ret
