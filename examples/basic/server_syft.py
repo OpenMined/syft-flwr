@@ -8,7 +8,7 @@ from flwr.server.run_serverapp import run as run_server
 from loguru import logger
 from syft_core import Client
 
-from server_app import app as server_app
+from .server_app import app as server_app
 from syft_flwr.driver import SyftDriver
 
 if __name__ == "__main__":
@@ -21,7 +21,6 @@ if __name__ == "__main__":
         default="",
     )
     sb_conf_path = parser.parse_args().sb_conf_path
-    sb_conf_path = "~/openmined/syft/.clients/a@openmined.org/config.json"
 
     sb_client = Client.load(sb_conf_path)
     logger.info(f"Started SyftBox Flower Server on: {sb_client.email}")

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from client_app import app as client_app
+from .client_app import app as client_app
 from flwr.common import Context
 from flwr.common.message import Message
 from flwr.common.record import RecordSet
