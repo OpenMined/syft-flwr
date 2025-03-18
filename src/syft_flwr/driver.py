@@ -133,7 +133,6 @@ class SyftDriver(Driver):
         ret = {}
         while timeout is None or time.time() < end_time:
             res_msgs = self.pull_messages(msg_ids)
-            print("send_and_receive", len(res_msgs), len(msg_ids))
             ret.update(res_msgs)
             msg_ids.difference_update(res_msgs.keys())
             if len(msg_ids) == 0:

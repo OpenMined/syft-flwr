@@ -30,24 +30,25 @@ if __name__ == "__main__":
     logger.info(f"Started SyftBox Flower Client on: {sb_client.email}")
 
     box = SyftEvents("flwr", client=sb_client)
+
+
+    @box.on_request("/messages")
+    def handle_messages(request: Request) -> None:
+        logger.info(f"Received request id: {request.id}, size: {len(request.body)} bytes")
+        message: Message = bytes_to_flower_message(request.body)
+        run_id = 12345  # same as server
+        context = Context(
+            run_id=run_id,
+            node_id=0,
+            node_config=UserConfig(),
+            state=RecordSet(),
+            run_config=UserConfig(),
+        )
+
+        reply_message: Message = client_app(message=message, context=context)
+        logger.info(f"Reply message type: {type(reply_message)}")
+        res_bytes: bytes = flower_message_to_bytes(reply_message)
+        logger.info(f"Reply message size: {len(res_bytes)/2**20} MB")
+        return res_bytes
+
     box.run_forever()
-
-
-@box.on_request("/messages")
-def handle_messages(request: Request) -> None:
-    logger.info(f"Received request id: {request.id}, size: {len(request.body)} bytes")
-    message: Message = bytes_to_flower_message(request.body)
-    run_id = 12345  # same as server
-    context = Context(
-        run_id=run_id,
-        node_id=0,
-        node_config=UserConfig(),
-        state=RecordSet(),
-        run_config=UserConfig(),
-    )
-
-    reply_message: Message = client_app(message=message, context=context)
-    logger.info(f"Reply message type: {type(reply_message)}")
-    res_bytes: bytes = flower_message_to_bytes(reply_message)
-    logger.info(f"Reply message size: {len(res_bytes)/2**20} MB")
-    return res_bytes

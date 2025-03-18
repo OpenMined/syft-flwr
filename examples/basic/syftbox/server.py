@@ -26,7 +26,7 @@ if __name__ == "__main__":
     logger.info(f"Started SyftBox Flower Server on: {sb_client.email}")
 
     run_id = 12345
-    participants = ["rasswanth@openmined.org", "khoa@openmined.org"]
+    participants = ["b@openmined.org", "c@openmined.org"]
 
     syft_driver = SyftDriver(client=sb_client, datasites=participants)
     syft_driver.set_run(run_id)
