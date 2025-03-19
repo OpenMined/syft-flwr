@@ -37,7 +37,7 @@ def syftbox_flwr_client(client_app: ClientApp, sb_client: Client) -> None:
 
     box = SyftEvents("flwr", client=sb_client)
     logger.info(f"Started SyftBox Flower Client on: {box.client.email}")
-    context = create_context(run_id=RUN_ID, node_id=0)
+    context = create_context(run_id=RUN_ID, node_id=1)
 
     @box.on_request("/messages")
     def handle_messages(request: Request) -> None:
