@@ -4,7 +4,7 @@ from flwr.common import Context, ndarrays_to_parameters
 from flwr.server import ServerApp, ServerAppComponents, ServerConfig
 from flwr.server.strategy import FedAvg
 
-from task import get_dummy_model
+from examples.basic.task import get_dummy_model
 
 
 def server_fn(context: Context):
