@@ -3,6 +3,7 @@
 import torch
 from flwr.client import ClientApp, NumPyClient
 from flwr.common import Context
+from loguru import logger
 
 from pytorch.task import Net, get_weights, load_data, set_weights, test, train
 
@@ -34,6 +35,7 @@ class FlowerClient(NumPyClient):
     def evaluate(self, parameters, config):
         set_weights(self.net, parameters)
         loss, accuracy = test(self.net, self.valloader, self.device)
+        logger.info(f"Evaluate loss: {loss}, accuracy: {accuracy}")
         return loss, len(self.valloader.dataset), {"accuracy": accuracy}
 
 

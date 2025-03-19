@@ -18,13 +18,15 @@ def string_to_hash_int(input_string: str) -> int:
     return hash_int
 
 
-def create_context(run_id: int, node_id: int) -> Context:
+def create_context(
+    run_id: int, node_id: int, node_config: UserConfig, run_config: UserConfig
+) -> Context:
     return Context(
         run_id=run_id,
         node_id=node_id,
-        node_config=UserConfig(),
+        node_config=node_config,
         state=RecordSet(),
-        run_config=UserConfig(),
+        run_config=run_config,
     )
 
 

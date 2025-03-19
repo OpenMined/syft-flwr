@@ -3,9 +3,16 @@ import argparse
 from loguru import logger
 from syft_core import Client
 
+from syft_flwr.constant import RUN_ID
 from syft_flwr.flower_client import syftbox_flwr_client
 from syft_flwr.flower_server import syftbox_flwr_server
-from syft_flwr.utils import load_client_app, load_server_app, read_toml_file, to_path
+from syft_flwr.utils import (
+    create_context,
+    load_client_app,
+    load_server_app,
+    read_toml_file,
+    to_path,
+)
 
 
 def parse_arguments():
@@ -52,13 +59,23 @@ if __name__ == "__main__":
     syft_flower_conf = flower_conf["tool"]["syft_flwr"]
     logger.info(f"Flower Project Path: {flower_project_dir}")
 
+    # TODO: Install dependencies here?
+    dependencies = flower_conf["project"]["dependencies"]
+    logger.info(f"Extra dependencies needed: {dependencies}")
+
     # Extract the datasites and aggregator
     datasites = syft_flower_conf["datasites"]
     aggregator = syft_flower_conf["aggregator"]
     logger.info(f"Aggregator: {aggregator}")
     logger.info(f"Datasites: {datasites}")
 
-    # Load the SyftBox configuration
+    # Load the Flower app configuration
+    config = flower_conf["tool"]["flwr"]["app"]["config"]
+    context = create_context(
+        run_id=RUN_ID, node_id=0, node_config=config, run_config=config
+    )
+
+    # Load the SyftBox client
     sb_client = Client.load(sb_conf_path)
     sb_email = sb_client.email
     logger.info(f"Loading SyftBox Config Path: {sb_client.config_path}")
@@ -70,7 +87,7 @@ if __name__ == "__main__":
             )
         # Load the Server App
         server_app = load_server_app(flower_conf, flower_project_dir)
-        syftbox_flwr_server(server_app, datasites, sb_client)
+        syftbox_flwr_server(server_app, datasites, sb_client, context)
 
     if args.client:
         if sb_email not in datasites:
@@ -79,4 +96,4 @@ if __name__ == "__main__":
             )
         # Load the Client App
         client_app = load_client_app(flower_conf, flower_project_dir)
-        syftbox_flwr_client(client_app, sb_client)
+        syftbox_flwr_client(client_app, sb_client, context)
