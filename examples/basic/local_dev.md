@@ -1,7 +1,7 @@
-## Local Development
+# Local Development
 
 
-To run the basic example locally
+## To run the basic example locally
 
 ### Navigate to SyftBox Repo
 
@@ -33,7 +33,7 @@ just rc c
 
 ### Navigate to Flower Repo
 
-Run
+#### Run
 
 1. Start Aggregator app
 ```sh
@@ -48,4 +48,20 @@ just rc <syftbox_conf_path:<b@openmined.org>>
 3. Start Client of C:
 ```sh
 just rc  <syftbox_conf_path:<c@openmined.org>>
+```
+
+### Run with syftbox runners
+1. Start Aggregator app
+```sh
+just rss <syftbox_conf_path:<a@openmined.org>>
+```
+
+2. Start Client of B
+```sh
+just rcs <syftbox_conf_path:<b@openmined.org>>
+```
+
+3. Start Client of C:
+```sh
+just rcs  <syftbox_conf_path:<c@openmined.org>>
 ```

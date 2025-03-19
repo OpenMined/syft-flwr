@@ -24,8 +24,8 @@ _nc := '\033[0m'
 alias rj := run-jupyter
 alias rc := run-client
 alias rs := run-server
-alias rsq := run-server-quickstart
-alias rcq := run-client-quickstart
+alias rcs := run-client-with-syftbox
+alias rss := run-server-with-syftbox
 
 # ---------------------------------------------------------------------------------------------------------------------
 
@@ -44,16 +44,16 @@ run-jupyter jupyter_args="":
 run-client sb_conf_path="":
     uv run python -m examples.basic.client_syft --sb_conf_path "{{ sb_conf_path }}"
 
-run-client-quickstart:
-    uv run python -m examples.quickstart.run_with_syftbox --client
+run-client-with-syftbox sb_conf_path="":
+    uv run python -m examples.basic.run_with_syftbox --client --sb_conf_path "{{ sb_conf_path }}"
 
 # sb_conf_path: path to the SyftBox Config file
 [group('server')]
 run-server sb_conf_path="":
     uv run python -m examples.basic.server_syft --sb_conf_path "{{ sb_conf_path }}"
 
-run-server-quickstart:
-    uv run python -m examples.quickstart.run_with_syftbox --server
+run-server-with-syftbox sb_conf_path="":
+    uv run python -m examples.basic.run_with_syftbox --server --sb_conf_path "{{ sb_conf_path }}"
 
 [group('test')]
 test:
