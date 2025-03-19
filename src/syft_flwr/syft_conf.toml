@@ -1,5 +1,5 @@
 [flower]
-project_dir = "/Users/rasswanths/openmined/flwr/examples/quickstart/"
+project_dir = "~/openmined/flwr/examples/quickstart/"
 
 [config]
 datasites = ["b@openmined.org", "c@openmined.org" ]

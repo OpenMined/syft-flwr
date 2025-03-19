@@ -86,6 +86,9 @@ def load_app_from_path(path: str):
     module = __import__(module_path, fromlist=[variable_name])
     return getattr(module, variable_name)
 
+def to_path(path: str) -> Path:
+    return Path(path).expanduser().resolve()
+
 
 if __name__ == "__main__":
     # Parse command line arguments
@@ -101,16 +104,21 @@ if __name__ == "__main__":
         help="Path to the SyftBox configuration file",
         default="",
     )
+    parser.add_argument(
+        "--aggregator",
+        action="store_true",
+        help="Flag to enable aggregator mode",
+    )
 
     args = parser.parse_args()
-    # flower_conf_path = args.flower_conf_path
+    # syft_flower_conf_path = args.flower_conf_path
     syft_flower_conf_path = (
-        "/Users/rasswanths/openmined/flwr/src/syft_flwr/syft_conf.toml"
+        "./syft_conf.toml"
     )
-    # sb_conf_path = args.sb_conf_path
-    sb_conf_path = (
-        "/Users/rasswanths/openmined/syft/.clients/b@openmined.org/config.json"
-    )
+    sb_conf_path = args.sb_conf_path
+    # sb_conf_path = (
+    #     "~/openmined/syft/.clients/b@openmined.org/config.json"
+    # )
 
     # Load the Flower configuration
     syft_flower_conf = read_toml_file(syft_flower_conf_path)
@@ -129,19 +137,24 @@ if __name__ == "__main__":
         raise ValueError(
             f"SyftBox client: {sb_email} not in Flower Config Datasites: {datasites}"
         )
+    
 
-    flower_project_dir = Path(syft_flower_conf["flower"]["project_dir"])
+    flower_project_dir = to_path(syft_flower_conf["flower"]["project_dir"])
     logger.info(f"Flower Project Path: {flower_project_dir}")
     flower_conf = read_toml_file(flower_project_dir / "pyproject.toml")
 
-    if sb_email == aggregator:
+    if args.aggregator and sb_email == aggregator:
         # Load the Server App
 
         server_app_path = flower_conf["tool"]["flwr"]["app"]["components"]["serverapp"]
         server_app = load_app(server_app_path, LoadServerAppError, flower_project_dir)
-        print(server_app)
-    else:
+        syftbox_flwr_server(server_app, datasites, sb_client)
+    elif sb_email in datasites:
         # Load the Client App
         client_app_path = flower_conf["tool"]["flwr"]["app"]["components"]["clientapp"]
         client_app = load_app(client_app_path, LoadClientAppError, flower_project_dir)
-        print(client_app)
+        syftbox_flwr_client(client_app, sb_client)
+    else:
+        logger.warning("Skipped Running Flower Server/Client")
+        logger.warning("Ensure that the SyftBox Config belongs to a datasite or aggregator")
+        logger.warning("When running as aggregator, pass the --aggregator flag")
