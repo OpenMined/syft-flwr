@@ -1,5 +1,7 @@
 import hashlib
+from pathlib import Path
 
+import tomllib  # TODO: replace with tomli, as it is not supported older python versions.
 from flwr.common import Context
 from flwr.common.record import RecordSet
 from flwr.common.typing import UserConfig
@@ -21,3 +23,15 @@ def create_context(run_id: int, node_id: int) -> Context:
         state=RecordSet(),
         run_config=UserConfig(),
     )
+
+
+def read_toml_file(file_path):
+    """Read a TOML file and return the data."""
+    file_path = to_path(file_path)
+    with open(file_path, "rb") as file:
+        data = tomllib.load(file)
+    return data
+
+
+def to_path(path: str) -> Path:
+    return Path(path).expanduser().resolve()

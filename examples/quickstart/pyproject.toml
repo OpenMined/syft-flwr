@@ -30,3 +30,7 @@ default = "local-simulation"
 
 [tool.flwr.federations.local-simulation]
 options.num-supernodes = 10
+
+[tool.syft_flwr]
+datasites = ["b@openmined.org", "c@openmined.org" ]
+aggregator = "rasswanth@openmined.org"

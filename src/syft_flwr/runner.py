@@ -1,53 +1,76 @@
-from flwr.client import ClientApp
-from flwr.common import Context
-from flwr.common.message import Message
-from flwr.server import ServerApp
-from flwr.server.run_serverapp import run as run_server
+import argparse
+
+from flwr.client.client_app import LoadClientAppError
+from flwr.common.object_ref import load_app
+from flwr.server.server_app import LoadServerAppError
 from loguru import logger
 from syft_core import Client
-from syft_event import SyftEvents
-from syft_event.types import Request
 
-from syft_flwr.constant import RUN_ID
-from syft_flwr.driver import SyftDriver
-from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
-from syft_flwr.utils import create_context
+from syft_flwr.flower_client import syftbox_flwr_client
+from syft_flwr.flower_server import syftbox_flwr_server
+from syft_flwr.utils import read_toml_file, to_path
 
-
-def syftbox_flwr_server(
-    server_app: ServerApp, datasites: list[str], sb_client: Client
-) -> Context:
-    """Run the Flower ServerApp with SyftBox."""
-    syft_driver = SyftDriver(datasites=datasites, client=sb_client)
-    syft_driver.set_run(RUN_ID)
-    logger.info(f"Started SyftBox Flower Server on: {syft_driver._client.email}")
-    context = create_context(run_id=RUN_ID, node_id=0)
-    updated_context = run_server(
-        driver=syft_driver,
-        context=context,
-        loaded_server_app=server_app,
-        server_app_dir="",
+if __name__ == "__main__":
+    # Parse command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--flower-toml-path",
+        type=str,
+        help="Path to the Flower pyproject TOML file",
+        required=True,
     )
-    logger.info(f"Server completed with context: {updated_context}")
-    return updated_context
+    parser.add_argument(
+        "--sb-conf-path",
+        type=str,
+        help="Path to the SyftBox configuration file",
+        default="",
+    )
+    parser.add_argument(
+        "--aggregator",
+        action="store_true",
+        help="Flag to enable aggregator mode",
+    )
 
+    args = parser.parse_args()
 
-def syftbox_flwr_client(client_app: ClientApp, sb_client: Client) -> None:
-    """Run the Flower ClientApp with SyftBox."""
+    flower_conf_path = args.flower_toml_path
 
-    box = SyftEvents("flwr", client=sb_client)
-    logger.info(f"Started SyftBox Flower Client on: {box.client.email}")
-    context = create_context(run_id=RUN_ID, node_id=1)
+    sb_conf_path = args.sb_conf_path
 
-    @box.on_request("/messages")
-    def handle_messages(request: Request) -> None:
-        logger.info(
-            f"Received request id: {request.id}, size: {len(request.body)} bytes"
+    # Load the Flower configuration
+    flower_conf_path = to_path(flower_conf_path)
+    flower_project_dir = flower_conf_path.parent
+    flower_conf = read_toml_file(flower_conf_path)
+    syft_flower_conf = flower_conf["tool"]["syft_flwr"]
+    logger.info(f"Flower Project Path: {flower_project_dir}")
+
+    # Extract the datasites and aggregator
+    datasites = syft_flower_conf["datasites"]
+    aggregator = syft_flower_conf["aggregator"]
+    logger.info(f"Aggregator: {aggregator}")
+    logger.info(f"Datasites: {datasites}")
+
+    # Load the SyftBox configuration
+    sb_client = Client.load(sb_conf_path)
+    sb_email = sb_client.email
+    logger.info(f"Loading SyftBox Config Path: {sb_client.config_path}")
+
+    if sb_email not in datasites + [aggregator]:
+        raise ValueError(
+            f"SyftBox client: {sb_email} not in Flower Config Datasites: {datasites}"
         )
-        message: Message = bytes_to_flower_message(request.body)
-        reply_message: Message = client_app(message=message, context=context)
-        res_bytes: bytes = flower_message_to_bytes(reply_message)
-        logger.info(f"Reply message size: {len(res_bytes)/2**20} MB")
-        return res_bytes
 
-    box.run_forever()
+    if args.aggregator and sb_email == aggregator:
+        # Load the Server App
+
+        server_app_path = flower_conf["tool"]["flwr"]["app"]["components"]["serverapp"]
+        server_app = load_app(server_app_path, LoadServerAppError, flower_project_dir)
+        syftbox_flwr_server(server_app, datasites, sb_client)
+    elif sb_email in datasites:
+        # Load the Client App
+        client_app_path = flower_conf["tool"]["flwr"]["app"]["components"]["clientapp"]
+        client_app = load_app(client_app_path, LoadClientAppError, flower_project_dir)
+        syftbox_flwr_client(client_app, sb_client)
+    else:
+        logger.warning("Skipped Running Flower Server/Client")
+        logger.warning("When running as aggregator, pass the --aggregator flag")
