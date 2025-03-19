@@ -26,6 +26,8 @@ alias rc := run-client
 alias rs := run-server
 alias rcs := run-client-with-syftbox
 alias rss := run-server-with-syftbox
+alias rcp := run-client-with-syftbox-pytorch
+alias rsp := run-server-with-syftbox-pytorch
 
 # ---------------------------------------------------------------------------------------------------------------------
 
@@ -47,6 +49,9 @@ run-client sb_conf_path="":
 run-client-with-syftbox sb_conf_path="":
     uv run python -m examples.basic.run_with_syftbox --client --sb_conf_path "{{ sb_conf_path }}"
 
+run-client-with-syftbox-pytorch sb_conf_path="":
+    uv run python -m examples.quickstart_pytorch.run_with_syftbox --client --sb_conf_path "{{ sb_conf_path }}"
+
 # sb_conf_path: path to the SyftBox Config file
 [group('server')]
 run-server sb_conf_path="":
@@ -54,6 +59,9 @@ run-server sb_conf_path="":
 
 run-server-with-syftbox sb_conf_path="":
     uv run python -m examples.basic.run_with_syftbox --server --sb_conf_path "{{ sb_conf_path }}"
+
+run-server-with-syftbox-pytorch sb_conf_path="":
+    uv run python -m examples.quickstart_pytorch.run_with_syftbox --server --sb_conf_path "{{ sb_conf_path }}"
 
 [group('test')]
 test:

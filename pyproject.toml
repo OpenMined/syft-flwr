@@ -21,6 +21,13 @@ dev-dependencies = [
     "pre-commit>=4.0.1",
 ]
 
+[project.optional-dependencies]
+torch = [
+    "flwr-datasets[vision]>=0.5.0",
+    "torch==2.5.1",
+    "torchvision==0.20.1",
+]
+
 [tool.uv.sources]
 syft-core = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-core", rev = "main" }
 syft-event = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-event", rev = "main" }

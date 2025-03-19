@@ -3,8 +3,16 @@
 import torch
 from flwr.client import ClientApp, NumPyClient
 from flwr.common import Context
+from loguru import logger
 
-from pytorch.task import Net, get_weights, load_data, set_weights, test, train
+from examples.quickstart_pytorch.pytorch.task import (
+    Net,
+    get_weights,
+    load_data,
+    set_weights,
+    test,
+    train,
+)
 
 
 # Define Flower Client and client_fn
@@ -34,16 +42,22 @@ class FlowerClient(NumPyClient):
     def evaluate(self, parameters, config):
         set_weights(self.net, parameters)
         loss, accuracy = test(self.net, self.valloader, self.device)
+        logger.info(f"Client Evaluation loss: {loss}, accuracy: {accuracy}")
         return loss, len(self.valloader.dataset), {"accuracy": accuracy}
 
 
 def client_fn(context: Context):
     # Load model and data
     net = Net()
-    partition_id = context.node_config["partition-id"]
-    num_partitions = context.node_config["num-partitions"]
+    # partition_id = context.node_config["partition-id"]
+    # num_partitions = context.node_config["num-partitions"]
+    # TODO: fix this hardcoded values
+    partition_id = 0
+    num_partitions = 1
     trainloader, valloader = load_data(partition_id, num_partitions)
-    local_epochs = context.run_config["local-epochs"]
+    # local_epochs = context.run_config["local-epochs"]
+    # TODO: fix this hardcoded values
+    local_epochs = 1
 
     # Return Client instance
     return FlowerClient(net, trainloader, valloader, local_epochs).to_client()
