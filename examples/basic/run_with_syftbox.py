@@ -3,8 +3,8 @@ from pathlib import Path
 
 from syft_core import Client
 
-from examples.basic.client_app import ClientApp, client_fn
-from examples.basic.server_app import ServerApp, server_fn
+from examples.basic.client_app import app as client_app
+from examples.basic.server_app import app as server_app
 from syft_flwr.runner import syftbox_flwr_client, syftbox_flwr_server
 
 
@@ -47,7 +47,6 @@ if __name__ == "__main__":
     sb_client = get_syftbox_client(args.sb_conf_path)
 
     if args.server:
-        server_app = ServerApp(server_fn=server_fn)
         syftbox_flwr_server(
             server_app,
             datasites=["b@openmined.org", "c@openmined.org"],
@@ -55,5 +54,4 @@ if __name__ == "__main__":
         )
 
     if args.client:
-        client_app = ClientApp(client_fn=client_fn)
         syftbox_flwr_client(client_app, sb_client)
