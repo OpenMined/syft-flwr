@@ -46,7 +46,7 @@ run-client sb_conf_path="":
 
 [group('client')]
 run-client-with-syftbox flower-toml-path="" sb-conf-path="":
-    uv run python -m src.syft_flwr.runner --flower-toml-path "{{ flower-toml-path }}" --sb-conf-path "{{ sb-conf-path }}"
+    uv run python -m src.syft_flwr.runner --flower-toml-path "{{ flower-toml-path }}" --sb-conf-path "{{ sb-conf-path }}" --client
 
 # sb_conf_path: path to the SyftBox Config file
 [group('server')]

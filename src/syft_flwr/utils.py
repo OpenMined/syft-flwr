@@ -2,13 +2,12 @@ import hashlib
 from pathlib import Path
 
 import tomllib  # TODO: replace with tomli, as it is not supported older python versions.
+from flwr.client.client_app import LoadClientAppError
 from flwr.common import Context
+from flwr.common.object_ref import load_app
 from flwr.common.record import RecordSet
 from flwr.common.typing import UserConfig
-from flwr.common.object_ref import load_app
-from flwr.client.client_app import LoadClientAppError
 from flwr.server.server_app import LoadServerAppError
-
 
 
 def string_to_hash_int(input_string: str) -> int:
@@ -41,17 +40,15 @@ def to_path(path: str) -> Path:
     return Path(path).expanduser().resolve()
 
 
-
-
-
 def load_server_app(flower_conf, flower_project_dir):
     """Load the Flower server app."""
-    
-    return  load_app(
-            flower_conf["tool"]["flwr"]["app"]["components"]["serverapp"],
-            LoadServerAppError,
-            flower_project_dir,
-        )
+
+    return load_app(
+        flower_conf["tool"]["flwr"]["app"]["components"]["serverapp"],
+        LoadServerAppError,
+        flower_project_dir,
+    )
+
 
 def load_client_app(flower_conf, flower_project_dir):
     """Load the Flower client app."""
