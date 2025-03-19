@@ -44,16 +44,18 @@ run-jupyter jupyter_args="":
 run-client sb_conf_path="":
     uv run python -m examples.basic.client_syft --sb_conf_path "{{ sb_conf_path }}"
 
-run-client-with-syftbox sb_conf_path="":
-    uv run python -m examples.basic.run_with_syftbox --client --sb_conf_path "{{ sb_conf_path }}"
+[group('client')]
+run-client-with-syftbox flower-toml-path="" sb-conf-path="":
+    uv run python -m src.syft_flwr.runner --flower-toml-path "{{ flower-toml-path }}" --sb-conf-path "{{ sb-conf-path }}"
 
 # sb_conf_path: path to the SyftBox Config file
 [group('server')]
 run-server sb_conf_path="":
     uv run python -m examples.basic.server_syft --sb_conf_path "{{ sb_conf_path }}"
 
-run-server-with-syftbox sb_conf_path="":
-    uv run python -m examples.basic.run_with_syftbox --server --sb_conf_path "{{ sb_conf_path }}"
+[group('server')]
+run-server-with-syftbox flower-toml-path="" sb-conf-path="":
+    uv run python -m src.syft_flwr.runner --flower-toml-path "{{ flower-toml-path }}" --sb-conf-path "{{ sb-conf-path }}" --aggregator
 
 [group('test')]
 test:
