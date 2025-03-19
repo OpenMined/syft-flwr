@@ -10,7 +10,8 @@ from syft_flwr.flower_client import syftbox_flwr_client
 from syft_flwr.flower_server import syftbox_flwr_server
 from syft_flwr.utils import read_toml_file, to_path
 
-if __name__ == "__main__":
+
+def parse_arguments():
     # Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -30,11 +31,13 @@ if __name__ == "__main__":
         action="store_true",
         help="Flag to enable aggregator mode",
     )
+    return parser.parse_args()
 
-    args = parser.parse_args()
+
+if __name__ == "__main__":
+    args = parse_arguments()
 
     flower_conf_path = args.flower_toml_path
-
     sb_conf_path = args.sb_conf_path
 
     # Load the Flower configuration
