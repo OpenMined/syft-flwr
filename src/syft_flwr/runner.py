@@ -5,8 +5,7 @@ from syft_core import Client
 
 from syft_flwr.flower_client import syftbox_flwr_client
 from syft_flwr.flower_server import syftbox_flwr_server
-from syft_flwr.utils import read_toml_file, to_path
-from syft_flwr.utils import load_server_app, load_client_app
+from syft_flwr.utils import load_client_app, load_server_app, read_toml_file, to_path
 
 
 def parse_arguments():
@@ -34,9 +33,8 @@ def parse_arguments():
         action="store_true",
         help="Flag to enable client mode",
     )
-    
+
     return parser.parse_args()
-    
 
 
 if __name__ == "__main__":
