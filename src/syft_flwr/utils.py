@@ -1,5 +1,9 @@
 import hashlib
 
+from flwr.common import Context
+from flwr.common.record import RecordSet
+from flwr.common.typing import UserConfig
+
 
 def string_to_hash_int(input_string: str) -> int:
     """Convert a string to a hash integer."""
@@ -7,3 +11,13 @@ def string_to_hash_int(input_string: str) -> int:
     hash_hex = hash_object.hexdigest()
     hash_int = int(hash_hex, 16) % (2**32)
     return hash_int
+
+
+def create_context(run_id: int, node_id: int) -> Context:
+    return Context(
+        run_id=run_id,
+        node_id=node_id,
+        node_config=UserConfig(),
+        state=RecordSet(),
+        run_config=UserConfig(),
+    )

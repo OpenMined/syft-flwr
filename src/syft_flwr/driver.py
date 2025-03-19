@@ -10,10 +10,9 @@ from syft_core import Client
 from syft_rpc import rpc, rpc_db
 from typing_extensions import Optional
 
+from syft_flwr.constant import AGGREGATOR_NODE_ID
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
-
-from .constant import AGGREGATOR_NODE_ID
-from .utils import string_to_hash_int
+from syft_flwr.utils import string_to_hash_int
 
 
 class SyftDriver(Driver):
@@ -22,7 +21,6 @@ class SyftDriver(Driver):
         datasites: list[str] = [],
         client: Client = None,
     ) -> None:
-        # logger.info("Initializing SyftDriver")
         self._client = Client.load() if client is None else client
         self._run: Optional[Run] = None
         self.node = Node(node_id=AGGREGATOR_NODE_ID)
