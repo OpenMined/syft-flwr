@@ -28,9 +28,15 @@ clientapp = "pytorch.client_app:app"
 num-server-rounds = 3
 fraction-fit = 0.5
 local-epochs = 1
+partition-id = 0
+num-partitions = 1
 
 [tool.flwr.federations]
 default = "local-simulation"
 
 [tool.flwr.federations.local-simulation]
 options.num-supernodes = 10
+
+[tool.syft_flwr]
+datasites = ["b@openmined.org", "c@openmined.org" ]
+aggregator = "a@openmined.org"
