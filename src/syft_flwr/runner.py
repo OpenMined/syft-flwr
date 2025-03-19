@@ -86,6 +86,7 @@ def load_app_from_path(path: str):
     module = __import__(module_path, fromlist=[variable_name])
     return getattr(module, variable_name)
 
+
 def to_path(path: str) -> Path:
     return Path(path).expanduser().resolve()
 
@@ -112,9 +113,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     # syft_flower_conf_path = args.flower_conf_path
-    syft_flower_conf_path = (
-        "./syft_conf.toml"
-    )
+    syft_flower_conf_path = "./syft_conf.toml"
     sb_conf_path = args.sb_conf_path
     # sb_conf_path = (
     #     "~/openmined/syft/.clients/b@openmined.org/config.json"
@@ -137,7 +136,6 @@ if __name__ == "__main__":
         raise ValueError(
             f"SyftBox client: {sb_email} not in Flower Config Datasites: {datasites}"
         )
-    
 
     flower_project_dir = to_path(syft_flower_conf["flower"]["project_dir"])
     logger.info(f"Flower Project Path: {flower_project_dir}")
@@ -156,5 +154,4 @@ if __name__ == "__main__":
         syftbox_flwr_client(client_app, sb_client)
     else:
         logger.warning("Skipped Running Flower Server/Client")
-        logger.warning("Ensure that the SyftBox Config belongs to a datasite or aggregator")
         logger.warning("When running as aggregator, pass the --aggregator flag")
