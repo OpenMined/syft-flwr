@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 
-from client_app import app as client_app
 from flwr.common import Context
 from flwr.common.message import Message
 from flwr.common.record import RecordSet
@@ -12,6 +11,7 @@ from syft_core import Client
 from syft_event import SyftEvents
 from syft_event.types import Request
 
+from examples.basic.client_app import app as client_app
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
 
 if __name__ == "__main__":

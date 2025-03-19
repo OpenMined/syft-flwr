@@ -3,7 +3,7 @@
 
 To run the basic example locally
 
-Navigate to SyftBox Repo
+### Navigate to SyftBox Repo
 
 Run
 
@@ -31,7 +31,7 @@ just rc c
 ```
 
 
-Navigate to Flower Repo
+### Navigate to Flower Repo
 
 Run
 
