@@ -32,5 +32,5 @@ default = "local-simulation"
 options.num-supernodes = 10
 
 [tool.syft_flwr]
-datasites = ["b@openmined.org", "c@openmined.org" ]
-aggregator = "rasswanth@openmined.org"
+datasites = ["khoa@openmined.org", "rasswanth@openmined.org" ]
+aggregator = "khoa@openmined.org"
