@@ -9,10 +9,10 @@ from syft_event.types import Request
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
 
 
-def syftbox_flwr_client(client_app: ClientApp, sb_client: Client, context: Context):
+def syftbox_flwr_client(client_app: ClientApp, context: Context):
     """Run the Flower ClientApp with SyftBox."""
 
-    box = SyftEvents("flwr", client=sb_client)
+    box = SyftEvents("flwr")
     logger.info(f"Started SyftBox Flower Client on: {box.client.email}")
 
     @box.on_request("/messages")
