@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional
 from pathlib import Path
 
+import tomllib
 from flwr.common.config import validate_config
 
-import tomllib
 
 def load(file_path: str):
     """Read a TOML file and return the data."""
@@ -30,4 +29,3 @@ def load_and_validate(path: Path, check_module: bool = True):
         return (None, errors, warnings)
 
     return (config, errors, warnings)
-

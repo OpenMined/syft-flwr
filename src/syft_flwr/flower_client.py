@@ -2,7 +2,6 @@ from flwr.client import ClientApp
 from flwr.common import Context
 from flwr.common.message import Message
 from loguru import logger
-from syft_core import Client
 from syft_event import SyftEvents
 from syft_event.types import Request
 
