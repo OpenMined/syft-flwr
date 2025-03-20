@@ -33,8 +33,9 @@ def syftbox_run_flwr_client(flower_project_dir):
     syftbox_flwr_client(client_app, context)
 
 
-def syftbox_run_flwr_server(flower_project_dir, datasites):
+def syftbox_run_flwr_server(flower_project_dir):
     pyproject_conf = load_and_validate(flower_project_dir)
+    datasites = pyproject_conf["tool"]["syft_flwr"]["datasites"]
     server_ref = pyproject_conf["tool"]["flwr"]["app"]["components"]["serverapp"]
 
     context = Context(
