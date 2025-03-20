@@ -44,18 +44,12 @@ def parse_arguments():
     return parser.parse_args()
 
 
-if __name__ == "__main__":
-    args = parse_arguments()
-
-    flower_conf_path = args.flower_toml_path
-    sb_conf_path = args.sb_conf_path
-    if args.aggregator == args.client:
-        raise ValueError("Either --aggregator or --client flag must be set")
-
+def flower_configs(flower_conf_path):
     # Load the Flower configuration
     flower_conf_path = to_path(flower_conf_path)
     flower_project_dir = flower_conf_path.parent
     flower_conf = read_toml_file(flower_conf_path)
+
     syft_flower_conf = flower_conf["tool"]["syft_flwr"]
     logger.info(f"Flower Project Path: {flower_project_dir}")
 
@@ -70,30 +64,57 @@ if __name__ == "__main__":
     logger.info(f"Datasites: {datasites}")
 
     # Load the Flower app configuration
-    config = flower_conf["tool"]["flwr"]["app"]["config"]
-    context = create_context(
-        run_id=RUN_ID, node_id=0, node_config=config, run_config=config
-    )
+    flower_app_config = flower_conf["tool"]["flwr"]["app"]["config"]
+
+    return {
+        "flower_project_dir": flower_project_dir,
+        "flower_conf": flower_conf,
+        "syft_flower_conf": syft_flower_conf,
+        "flower_app_config": flower_app_config,
+    }
+
+
+if __name__ == "__main__":
+    args = parse_arguments()
+
+    flower_conf_path = args.flower_toml_path
+    sb_conf_path = args.sb_conf_path
+    if args.aggregator == args.client:
+        raise ValueError("Either --aggregator or --client flag must be set")
 
     # Load the SyftBox client
     sb_client = Client.load(sb_conf_path)
     sb_email = sb_client.email
     logger.info(f"Loading SyftBox Config Path: {sb_client.config_path}")
 
+    # Load the Flower and Syft-FLWR configurations
+    configs = flower_configs(flower_conf_path)
+    syft_flower_conf = configs["syft_flower_conf"]
+    datasites = syft_flower_conf["datasites"]
+    flower_context = create_context(
+        run_id=RUN_ID,
+        node_id=0,
+        node_config=configs["flower_app_config"],
+        run_config=configs["flower_app_config"],
+    )
+
     if args.aggregator:
-        if sb_email != aggregator:
+        aggregator_email = syft_flower_conf["aggregator"]
+        if sb_email != aggregator_email:
             raise ValueError(
-                f"SyftBox email: {sb_email} not same as aggregator: {aggregator} email in Flower configuration"
+                f"SyftBox email: {sb_email} not same as aggregator: {aggregator_email} email in Flower configuration"
             )
-        # Load the Server App
-        server_app = load_server_app(flower_conf, flower_project_dir)
-        syftbox_flwr_server(server_app, datasites, sb_client, context)
+        server_app = load_server_app(
+            configs["flower_conf"], configs["flower_project_dir"]
+        )
+        syftbox_flwr_server(server_app, datasites, sb_client, flower_context)
 
     if args.client:
         if sb_email not in datasites:
             raise ValueError(
                 f"SyftBox email: {sb_email} not found in datasites: {datasites} in Flower configuration"
             )
-        # Load the Client App
-        client_app = load_client_app(flower_conf, flower_project_dir)
-        syftbox_flwr_client(client_app, sb_client, context)
+        client_app = load_client_app(
+            configs["flower_conf"], configs["flower_project_dir"]
+        )
+        syftbox_flwr_client(client_app, sb_client, flower_context)
