@@ -29,6 +29,6 @@ def parse_arguments():
 if __name__ == "__main__":
     args = parse_arguments()
     if args.server:
-        syftbox_run_flwr_server(Path(args.flower_project_dir) / "pyproject.toml")
+        syftbox_run_flwr_server(Path(args.flower_project_dir))
     if args.client:
-        syftbox_run_flwr_client(Path(args.flower_project_dir) / "pyproject.toml")
+        syftbox_run_flwr_client(Path(args.flower_project_dir))
