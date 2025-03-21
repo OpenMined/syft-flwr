@@ -3,10 +3,7 @@ from pathlib import Path
 
 import tomllib  # TODO: replace with tomli, as it is not supported older python versions.
 from flwr.client.client_app import LoadClientAppError
-from flwr.common import Context
 from flwr.common.object_ref import load_app
-from flwr.common.record import RecordSet
-from flwr.common.typing import UserConfig
 from flwr.server.server_app import LoadServerAppError
 
 
@@ -16,18 +13,6 @@ def string_to_hash_int(input_string: str) -> int:
     hash_hex = hash_object.hexdigest()
     hash_int = int(hash_hex, 16) % (2**32)
     return hash_int
-
-
-def create_context(
-    run_id: int, node_id: int, node_config: UserConfig, run_config: UserConfig
-) -> Context:
-    return Context(
-        run_id=run_id,
-        node_id=node_id,
-        node_config=node_config,
-        state=RecordSet(),
-        run_config=run_config,
-    )
 
 
 def read_toml_file(file_path):
