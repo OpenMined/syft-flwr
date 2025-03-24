@@ -58,7 +58,9 @@ else:
         f.write(main_py_content)
 
 
-def _update_pyproject_toml(flwr_project_dir: Union[str, Path]) -> None:
+def _update_pyproject_toml(
+    flwr_project_dir: Union[str, Path], aggregator: str, datasites: list[str]
+) -> None:
     """Update the `pyproject.toml` file to the syft-flwr project"""
     flwr_project_dir = Path(flwr_project_dir)
     pyproject_conf = load_config(flwr_project_dir, check_module=False)
@@ -78,8 +80,8 @@ def _update_pyproject_toml(flwr_project_dir: Union[str, Path]) -> None:
     # Append the syft_flwr section at the end of the file
     with open(flwr_project_dir / "pyproject.toml", "a") as f:
         f.write("\n[tool.syft_flwr]\n")
-        f.write('datasites = ["b@openmined.org", "c@openmined.org"]\n')
-        f.write('aggregator = "a@openmined.org"\n')
+        f.write(f"datasites = {datasites}\n")
+        f.write(f'aggregator = "{aggregator}"\n')
 
     rprint(
         "[green]Updated pyproject.toml with syft_flwr template configuration. Please check and change according to your needs.[/green]"
