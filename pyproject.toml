@@ -9,9 +9,10 @@ dependencies = [
     "syft-core",
     "syft-rpc",
     "syft-event",
+    "syft-rds",
     "loguru>=0.7.3",
     "safetensors>=0.5.0",
-    "typer>=0.11.1",
+    "typer>=0.12.5",
     "toml>=0.10.0",
 ]
 
@@ -28,6 +29,7 @@ dev-dependencies = [
 syft-core = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-core", rev = "main" }
 syft-event = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-event", rev = "main" }
 syft-rpc = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-rpc", rev = "main" }
+syft-rds = { git = "https://github.com/OpenMined/rds.git", subdirectory = "syft-rds", rev = "main" }
 
 [build-system]
 requires = ["hatchling"]
