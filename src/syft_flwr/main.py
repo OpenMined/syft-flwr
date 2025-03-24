@@ -1,8 +1,6 @@
 import typer
 
 from syft_flwr import __version__
-from syft_flwr.cli.client import app as client_app
-from syft_flwr.cli.server import app as server_app
 
 app = typer.Typer(
     name="syft-flwr",
@@ -21,10 +19,6 @@ app = typer.Typer(
 def version() -> None:
     """Print version"""
     print(f"Welcome to syft_flwr version {__version__}")
-
-
-app.add_typer(server_app, name="server")
-app.add_typer(client_app, name="client")
 
 
 def main() -> None:
