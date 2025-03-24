@@ -27,6 +27,7 @@ def parse_arguments():
 
 
 if __name__ == "__main__":
+    # TODO: replace this with typer cli
     args = parse_arguments()
     if args.server:
         syftbox_run_flwr_server(Path(args.flower_project_dir))
