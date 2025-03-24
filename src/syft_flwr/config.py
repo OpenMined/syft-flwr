@@ -17,7 +17,7 @@ def load(file_path: str) -> dict:
 
 def load_config(path: Union[str, Path], check_module: bool = True) -> dict:
     path = Path(path)
-    config_path = Path(path) / "pyproject.toml"
+    config_path = path / "pyproject.toml"
     if not config_path.exists():
         raise ValueError(
             "Project configuration could not be loaded. "

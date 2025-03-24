@@ -2539,6 +2539,7 @@ dependencies = [
     { name = "syft-core" },
     { name = "syft-event" },
     { name = "syft-rpc" },
+    { name = "toml" },
     { name = "typer" },
 ]
 
@@ -2560,6 +2561,7 @@ requires-dist = [
     { name = "syft-core", git = "https://github.com/OpenMined/syft-extras.git?subdirectory=packages%2Fsyft-core&rev=main" },
     { name = "syft-event", git = "https://github.com/OpenMined/syft-extras.git?subdirectory=packages%2Fsyft-event&rev=main" },
     { name = "syft-rpc", git = "https://github.com/OpenMined/syft-extras.git?subdirectory=packages%2Fsyft-rpc&rev=main" },
+    { name = "toml", specifier = ">=0.10.0" },
     { name = "typer", specifier = ">=0.11.1" },
 ]
 
@@ -2580,6 +2582,15 @@ dependencies = [
     { name = "pydantic" },
     { name = "syft-core" },
     { name = "typing-extensions" },
+]
+
+[[package]]
+name = "toml"
+version = "0.10.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/be/ba/1f744cdc819428fc6b5084ec34d9b30660f6f9daaf70eead706e3203ec3c/toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f", size = 22253 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/44/6f/7120676b6d73228c96e17f1f794d8ab046fc910d781c8d151120c3f1569e/toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b", size = 16588 },
 ]
 
 [[package]]

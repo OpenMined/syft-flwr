@@ -6,3 +6,7 @@
 # |_______/        |__|     |__|         |__|        |__|     |_______|    \__/  \__/     | _| `._____|
 
 __version__ = "0.1.0"
+
+from .main import bootstrap
+
+__all__ = ["bootstrap"]
