@@ -28,8 +28,11 @@ def version() -> None:
 
 @app.command(rich_help_panel="Setup Commands")
 def bootstrap(
-    path: Annotated[
-        str, typer.Argument(help="Absolute path to the flwr project to bootstrap")
+    path: Annotated[str, typer.Argument(help="Path to the flwr project to bootstrap")],
+    aggregator: Annotated[str, typer.Option(help="Aggregator")] = "a@openmined.org",
+    datasites: Annotated[list[str], typer.Option(help="List of datasites")] = [
+        "b@openmined.org",
+        "c@openmined.org",
     ],
 ) -> None:
     """Bootstrap a new syft-flwr project from the flwr project at the given path"""
@@ -46,8 +49,15 @@ def bootstrap(
         raise typer.Exit(code=1)
 
     rprint(f"[green]Bootstrapping syft-flwr project from '{flwr_project_dir}'[/green]")
-    _copy_main_py(flwr_project_dir)
-    _update_pyproject_toml(flwr_project_dir)
+
+    try:
+        _copy_main_py(flwr_project_dir)
+        _update_pyproject_toml(flwr_project_dir, aggregator, datasites)
+    except Exception as e:
+        # remove the main.py file
+        (flwr_project_dir / "main.py").unlink()
+        rprint(f"[red]Error: {e}[/red]")
+        raise typer.Exit(code=1)
 
 
 def main() -> None:
