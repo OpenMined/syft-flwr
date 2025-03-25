@@ -29,7 +29,7 @@ dev-dependencies = [
 syft-core = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-core", rev = "main" }
 syft-event = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-event", rev = "main" }
 syft-rpc = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-rpc", rev = "main" }
-syft-rds = { git = "https://github.com/OpenMined/rds.git", subdirectory = "syft-rds", rev = "main" }
+syft-rds = { git = "https://github.com/OpenMined/rds.git", subdirectory = "syft-rds", rev = "khoa/remove_syftbox_dep" }  # TODO: change to main after the branch is merged
 
 [build-system]
 requires = ["hatchling"]

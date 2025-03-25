@@ -23,7 +23,7 @@ app = typer.Typer(
 @app.command(rich_help_panel="General Options")
 def version() -> None:
     """Print syft-flwr version"""
-    print(f"Welcome to syft_flwr version {__version__}")
+    rprint(f"[green]{__version__}[/green]")
 
 
 @app.command(rich_help_panel="Setup Commands")
