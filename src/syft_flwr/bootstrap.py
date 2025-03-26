@@ -1,9 +1,10 @@
-import re
 from pathlib import Path
 
 from typing_extensions import List, Union
 
+from syft_flwr import __version__
 from syft_flwr.config import load_flwr_pyproject, write_pyproject
+from syft_flwr.utils import is_valid_datasite
 
 __all__ = ["bootstrap"]
 
@@ -39,6 +40,15 @@ def __update_pyproject_toml(
     pyproject_conf["tool"]["flwr"]["app"]["config"]["num-partitions"] = 1
     # TODO end
 
+    # add syft_flwr as a dependency
+    if "dependencies" not in pyproject_conf["project"]:
+        pyproject_conf["project"]["dependencies"] = []
+
+    deps: list = pyproject_conf["project"]["dependencies"]
+    deps = [dep for dep in deps if not dep.startswith("syft_flwr")]
+    deps.append(f"syft_flwr=={__version__}")
+    pyproject_conf["project"]["dependencies"] = deps
+
     # always override the datasites and aggregator
     pyproject_conf["tool"]["syft_flwr"] = {}
     pyproject_conf["tool"]["syft_flwr"]["datasites"] = datasites
@@ -47,11 +57,18 @@ def __update_pyproject_toml(
     write_pyproject(flwr_pyproject, pyproject_conf)
 
 
-EMAIL_REGX = r"^[^@]+@[^@]+\.[^@]+$"
+def __validate_flwr_project_dir(flwr_project_dir: Union[str, Path]) -> Path:
+    flwr_pyproject = flwr_project_dir / "pyproject.toml"
+    flwr_main_py = flwr_project_dir / "main.py"
 
+    if flwr_main_py.exists():
+        raise FileExistsError(f"File '{flwr_main_py}' already exists")
 
-def is_valid_datasite(datasite: str) -> bool:
-    return re.match(EMAIL_REGX, datasite)
+    if not flwr_project_dir.exists():
+        raise FileNotFoundError(f"Directory '{flwr_project_dir}' not found")
+
+    if not flwr_pyproject.exists():
+        raise FileNotFoundError(f"File '{flwr_pyproject}' not found")
 
 
 def bootstrap(
@@ -59,8 +76,6 @@ def bootstrap(
 ) -> None:
     """Bootstrap a new syft-flwr project from the flwr project at the given path"""
     flwr_project_dir = Path(flwr_project_dir)
-    if not flwr_project_dir.exists():
-        raise FileNotFoundError(f"Directory '{flwr_project_dir}' not found")
 
     if not is_valid_datasite(aggregator):
         raise ValueError(f"'{aggregator}' is not a valid datasite")
@@ -72,5 +87,6 @@ def bootstrap(
         if not is_valid_datasite(ds):
             raise ValueError(f"{ds} is not a valid datasite")
 
+    __validate_flwr_project_dir(flwr_project_dir)
     __update_pyproject_toml(flwr_project_dir, aggregator, datasites)
     __copy_main_py(flwr_project_dir)
