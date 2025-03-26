@@ -8,17 +8,18 @@ version = "1.0.0"
 description = ""
 license = "Apache-2.0"
 dependencies = [
-    "flwr[simulation]>=1.16.0",
+    "flwr[simulation]==1.15.2",
     "flwr-datasets[vision]>=0.5.0",
     "torch==2.5.1",
     "torchvision==0.20.1",
+    "syft_flwr",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["."]
 
 [tool.flwr.app]
-publisher = "ds@openmined.org"
+publisher = "openmined"
 
 [tool.flwr.app.components]
 serverapp = "med_mnist.server_app:app"
@@ -28,15 +29,12 @@ clientapp = "med_mnist.client_app:app"
 num-server-rounds = 3
 fraction-fit = 0.5
 local-epochs = 1
-partition-id = 0
-num-partitions = 1
 
 [tool.flwr.federations]
 default = "local-simulation"
 
-[tool.flwr.federations.local-simulation]
-options.num-supernodes = 10
+[tool.flwr.federations.local-simulation.options]
+num-supernodes = 3
 
-[tool.syft_flwr]
-datasites = ["b@openmined.org", "c@openmined.org" ]
-aggregator = "a@openmined.org"
+[tool.uv.sources]
+syft-flwr = { path = "../../", editable = true }

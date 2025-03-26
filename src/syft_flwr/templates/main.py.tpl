@@ -6,8 +6,8 @@ from syft_core import Client
 from syft_flwr.config import load_flwr_pyproject
 from syft_flwr.run import syftbox_run_flwr_client, syftbox_run_flwr_server
 
-DATA_DIR = os.environ["DATA_DIR"]
-OUTPUT_DIR = os.environ["OUTPUT_DIR"]
+DATA_DIR = os.getenv("DATA_DIR")
+OUTPUT_DIR = os.getenv("OUTPUT_DIR")
 
 
 flower_project_dir = Path(__file__).parent.absolute()
