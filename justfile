@@ -28,6 +28,32 @@ alias rj := run-jupyter
 @default:
     just --list
 
+
+dump-config email:
+    #!/bin/bash
+    mkdir -p .config
+    CONFIG_NAME={{email}}.json
+    jq '.email = "{{email}}"' ~/.syftbox/config.json > .config/$CONFIG_NAME
+    echo $(realpath .config/$CONFIG_NAME)
+
+run-server project email:
+    #!/bin/bash
+    export SYFTBOX_CLIENT_CONFIG_PATH=$(just dump-config {{email}})
+    echo $SYFTBOX_CLIENT_CONFIG_PATH
+
+    cd examples/{{project}}
+    uv sync
+    uv run main.py
+
+run-client project email:
+    #!/bin/bash
+    export SYFTBOX_CLIENT_CONFIG_PATH=$(just dump-config {{email}})
+    echo $SYFTBOX_CLIENT_CONFIG_PATH
+
+    cd examples/{{project}}
+    uv sync
+    uv run main.py
+
 [group('utils')]
 run-jupyter jupyter_args="":
     # uv sync

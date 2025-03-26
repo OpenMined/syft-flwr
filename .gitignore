@@ -175,3 +175,4 @@ weights/
 checkpoints/
 
 .DS_Store
+.config
