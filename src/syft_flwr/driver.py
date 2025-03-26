@@ -1,4 +1,3 @@
-import hashlib
 import time
 from typing import Iterable, cast
 
@@ -12,6 +11,7 @@ from syft_rpc import rpc, rpc_db
 from typing_extensions import Optional
 
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
+from syft_flwr.utils import str_to_int
 
 # this is what superlink super node do
 AGGREGATOR_NODE_ID = 1
@@ -27,20 +27,14 @@ class SyftDriver(Driver):
         self._run: Optional[Run] = None
         self.node = Node(node_id=AGGREGATOR_NODE_ID)
         self.datasites = datasites
-        self.client_map = self._construct_client_map(self.datasites)
-
-    def _construct_client_map(self, datasites: list[str]) -> dict:
-        """Construct a map from node ID to client."""
-        return {
-            SyftDriver.string_to_hash_int(datasite): datasite for datasite in datasites
-        }
+        self.client_map = {str_to_int(ds): ds for ds in self.datasites}
 
     def set_run(self, run_id: int) -> None:
-        # Convert to Flower Run object
-        self._run = Run.create_empty(run_id)
-
         # TODO: In Grpc driver case the superlink is the one which sets up the run id,
         # do we need to do the same here, where the run id is set from an external context.
+
+        # Convert to Flower Run object
+        self._run = Run.create_empty(run_id)
 
     @property
     def run(self) -> Run:
@@ -153,11 +147,3 @@ class SyftDriver(Driver):
             and message.metadata.ttl > 0
         ):
             raise ValueError(f"Invalid message: {message}")
-
-    @staticmethod
-    def string_to_hash_int(input_string: str) -> int:
-        """Convert a string to a hash integer."""
-        hash_object = hashlib.sha256(input_string.encode("utf-8"))
-        hash_hex = hash_object.hexdigest()
-        hash_int = int(hash_hex, 16) % (2**32)
-        return hash_int

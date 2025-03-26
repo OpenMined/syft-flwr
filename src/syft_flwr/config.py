@@ -8,19 +8,23 @@ from flwr.common.config import validate_config
 from loguru import logger
 
 
-def load_pyproject(path: str):
+def load_toml(path: str):
     with open(path, "rb") as fp:
         return tomli.load(fp)
 
 
-def write_pyproject(path: str, pyproject_conf: dict):
+def write_toml(path: str, val: dict):
     with open(path, "wb") as fp:
-        tomli_w.dump(pyproject_conf, fp)
+        tomli_w.dump(val, fp)
 
 
 def load_flwr_pyproject(path: Path, check_module: bool = True) -> dict:
     """Load the flower's pyproject.toml file and validate it."""
-    pyproject = load_pyproject(path)
+
+    if path.name != "pyproject.toml":
+        path = path / "pyproject.toml"
+
+    pyproject = load_toml(path)
     is_valid, errors, warnings = validate_config(pyproject, check_module, path.parent)
 
     if not is_valid:

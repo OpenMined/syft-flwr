@@ -3,7 +3,7 @@ from pathlib import Path
 from typing_extensions import List, Union
 
 from syft_flwr import __version__
-from syft_flwr.config import load_flwr_pyproject, write_pyproject
+from syft_flwr.config import load_flwr_pyproject, write_toml
 from syft_flwr.utils import is_valid_datasite
 
 __all__ = ["bootstrap"]
@@ -54,7 +54,7 @@ def __update_pyproject_toml(
     pyproject_conf["tool"]["syft_flwr"]["datasites"] = datasites
     pyproject_conf["tool"]["syft_flwr"]["aggregator"] = aggregator
 
-    write_pyproject(flwr_pyproject, pyproject_conf)
+    write_toml(flwr_pyproject, pyproject_conf)
 
 
 def __validate_flwr_project_dir(flwr_project_dir: Union[str, Path]) -> Path:
