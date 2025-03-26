@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "flwr[simulation]>=1.15.2",
+    "flwr[simulation]==1.15.2",
     "syft-core",
     "syft-rpc",
     "syft-event",
