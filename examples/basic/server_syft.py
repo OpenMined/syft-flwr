@@ -9,7 +9,7 @@ from loguru import logger
 from syft_core import Client
 
 from examples.basic.server_app import app as server_app
-from syft_flwr.driver import SyftDriver
+from syft_flwr.grid import SyftGrid
 
 if __name__ == "__main__":
     # Get the config from the command line
@@ -31,8 +31,8 @@ if __name__ == "__main__":
     run_id = 12345
     participants = ["b@openmined.org", "c@openmined.org"]
 
-    syft_driver = SyftDriver(client=sb_client, datasites=participants)
-    syft_driver.set_run(run_id)
+    syft_grid = SyftGrid(client=sb_client, datasites=participants)
+    syft_grid.set_run(run_id)
 
     context = Context(
         run_id=run_id,
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     )
 
     updated_context = run_server(
-        driver=syft_driver,
+        grid=syft_grid,
         context=context,
         loaded_server_app=server_app,
         server_app_dir="./examples/basic",

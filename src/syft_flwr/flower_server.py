@@ -4,17 +4,17 @@ from flwr.server.run_serverapp import run as run_server
 from loguru import logger
 
 from syft_flwr.constant import RUN_ID
-from syft_flwr.driver import SyftDriver
+from syft_flwr.grid import SyftGrid
 
 
 def syftbox_flwr_server(server_app: ServerApp, context: Context, datasites: list[str]):
     """Run the Flower ServerApp with SyftBox."""
-    syft_driver = SyftDriver(datasites=datasites)
-    syft_driver.set_run(RUN_ID)
-    logger.info(f"Started SyftBox Flower Server on: {syft_driver._client.email}")
+    syft_grid = SyftGrid(datasites=datasites)
+    syft_grid.set_run(RUN_ID)
+    logger.info(f"Started SyftBox Flower Server on: {syft_grid._client.email}")
 
     updated_context = run_server(
-        driver=syft_driver,
+        grid=syft_grid,
         context=context,
         loaded_server_app=server_app,
         server_app_dir="",
