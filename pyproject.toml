@@ -5,31 +5,19 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "flwr[simulation]==1.15.2",
+    "flwr[simulation]>=1.15.2",
     "syft-core",
     "syft-rpc",
     "syft-event",
     "loguru>=0.7.3",
     "safetensors>=0.5.0",
-    "typing-extensions>=4.13.0",
-    "tomli>=2.2.1",
-    "tomli-w>=1.2.0",
 ]
-
-[project.scripts]
-syft_flwr = "syft_flwr.cli:main"
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.sdist]
-exclude = ["examples", "notebooks", "justfile"]
 
 [tool.uv]
 dev-dependencies = [
     "ipykernel>=6.29.5",
     "ipywidgets>=8.1.5",
+    "matplotlib>=3.9.4",
     "pytest>=8.3.4",
     "pre-commit>=4.0.1",
 ]
@@ -38,6 +26,10 @@ dev-dependencies = [
 syft-core = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-core", rev = "main" }
 syft-event = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-event", rev = "main" }
 syft-rpc = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-rpc", rev = "main" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/syft_flwr"]

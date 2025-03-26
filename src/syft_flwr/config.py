@@ -2,31 +2,30 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import tomli
-import tomli_w
+import tomllib
 from flwr.common.config import validate_config
-from loguru import logger
 
 
-def load_pyproject(path: str):
-    with open(path, "rb") as fp:
-        return tomli.load(fp)
+def load(file_path: str):
+    """Read a TOML file and return the data."""
+    with open(file_path, "rb") as fp:
+        data = tomllib.load(fp)
+    return data
 
 
-def write_pyproject(path: str, pyproject_conf: dict):
-    with open(path, "wb") as fp:
-        tomli_w.dump(pyproject_conf, fp)
+def load_and_validate(path: Path, check_module: bool = True):
+    config = load(path)
 
+    if config is None:
+        errors = [
+            "Project configuration could not be loaded. "
+            "`pyproject.toml` does not exist."
+        ]
+        return (None, errors, [])
 
-def load_flwr_pyproject(path: Path, check_module: bool = True) -> dict:
-    """Load the flower's pyproject.toml file and validate it."""
-    pyproject = load_pyproject(path)
-    is_valid, errors, warnings = validate_config(pyproject, check_module, path.parent)
+    is_valid, errors, warnings = validate_config(config, check_module, path.parent)
 
     if not is_valid:
-        raise Exception(errors)
+        return (None, errors, warnings)
 
-    if warnings:
-        logger.warning(warnings)
-
-    return pyproject
+    return (config, errors, warnings)
