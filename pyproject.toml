@@ -11,13 +11,22 @@ dependencies = [
     "syft-event",
     "loguru>=0.7.3",
     "safetensors>=0.5.0",
+    "typing-extensions>=4.13.0",
+    "tomli>=2.2.1",
+    "tomli-w>=1.2.0",
 ]
+
+[project.scripts]
+syft_flwr = "syft_flwr.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.uv]
 dev-dependencies = [
     "ipykernel>=6.29.5",
     "ipywidgets>=8.1.5",
-    "matplotlib>=3.9.4",
     "pytest>=8.3.4",
     "pre-commit>=4.0.1",
 ]
@@ -26,10 +35,6 @@ dev-dependencies = [
 syft-core = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-core", rev = "main" }
 syft-event = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-event", rev = "main" }
 syft-rpc = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-rpc", rev = "main" }
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/syft_flwr"]
@@ -42,6 +47,3 @@ extend-select = ["I"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/__init__.py" = ["F401"]
-
-[project.scripts]
-syft_flwr = "syft_flwr.main:main"
