@@ -6,7 +6,7 @@ from flwr.common.object_ref import load_app
 from flwr.common.record import RecordSet
 from flwr.server.server_app import LoadServerAppError
 
-from syft_flwr.config import load_config
+from syft_flwr.config import load_flwr_pyproject
 from syft_flwr.flower_client import syftbox_flwr_client
 from syft_flwr.flower_server import syftbox_flwr_server
 
@@ -14,7 +14,7 @@ __all__ = ["syftbox_run_flwr_client", "syftbox_run_flwr_server"]
 
 
 def syftbox_run_flwr_client(flower_project_dir):
-    pyproject_conf = load_config(flower_project_dir)
+    pyproject_conf = load_flwr_pyproject(flower_project_dir)
     client_ref = pyproject_conf["tool"]["flwr"]["app"]["components"]["clientapp"]
 
     context = Context(
@@ -34,7 +34,7 @@ def syftbox_run_flwr_client(flower_project_dir):
 
 
 def syftbox_run_flwr_server(flower_project_dir):
-    pyproject_conf = load_config(flower_project_dir)
+    pyproject_conf = load_flwr_pyproject(flower_project_dir)
     datasites = pyproject_conf["tool"]["syft_flwr"]["datasites"]
     server_ref = pyproject_conf["tool"]["flwr"]["app"]["components"]["serverapp"]
 
