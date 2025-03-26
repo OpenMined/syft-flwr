@@ -1,3 +1,4 @@
+import hashlib
 import time
 from typing import Iterable, cast
 
@@ -10,9 +11,10 @@ from syft_core import Client
 from syft_rpc import rpc, rpc_db
 from typing_extensions import Optional
 
-from syft_flwr.constant import AGGREGATOR_NODE_ID
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
-from syft_flwr.utils import string_to_hash_int
+
+# this is what superlink super node do
+AGGREGATOR_NODE_ID = 1
 
 
 class SyftDriver(Driver):
@@ -29,7 +31,9 @@ class SyftDriver(Driver):
 
     def _construct_client_map(self, datasites: list[str]) -> dict:
         """Construct a map from node ID to client."""
-        return {string_to_hash_int(datasite): datasite for datasite in datasites}
+        return {
+            SyftDriver.string_to_hash_int(datasite): datasite for datasite in datasites
+        }
 
     def set_run(self, run_id: int) -> None:
         # Convert to Flower Run object
@@ -149,3 +153,11 @@ class SyftDriver(Driver):
             and message.metadata.ttl > 0
         ):
             raise ValueError(f"Invalid message: {message}")
+
+    @staticmethod
+    def string_to_hash_int(input_string: str) -> int:
+        """Convert a string to a hash integer."""
+        hash_object = hashlib.sha256(input_string.encode("utf-8"))
+        hash_hex = hash_object.hexdigest()
+        hash_int = int(hash_hex, 16) % (2**32)
+        return hash_int

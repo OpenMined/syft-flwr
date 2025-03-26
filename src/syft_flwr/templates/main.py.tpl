@@ -3,7 +3,7 @@ from pathlib import Path
 
 from syft_core import Client
 
-from syft_flwr.config import load_config
+from syft_flwr.config import load_flwr_pyproject
 from syft_flwr.run import syftbox_run_flwr_client, syftbox_run_flwr_server
 
 DATA_DIR = os.environ["DATA_DIR"]
@@ -12,7 +12,7 @@ OUTPUT_DIR = os.environ["OUTPUT_DIR"]
 
 flower_project_dir = Path(__file__).parent.absolute()
 client = Client.load()
-config = load_config(flower_project_dir)
+config = load_flwr_pyproject(flower_project_dir)
 
 is_client = client.email in config["tool"]["syft_flwr"]["datasites"]
 is_server = client.email in config["tool"]["syft_flwr"]["aggregator"]
