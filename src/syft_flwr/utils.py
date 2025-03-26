@@ -2,7 +2,7 @@ import hashlib
 from pathlib import Path
 from typing import Union
 
-import toml
+import tomli_w
 import typer
 from rich import print as rprint
 
@@ -74,7 +74,7 @@ def _update_pyproject_toml(
         del pyproject_conf["tool"]["syft_flwr"]
 
     with open(flwr_project_dir / "pyproject.toml", "w") as f:
-        toml_str = toml.dumps(pyproject_conf)
+        toml_str = tomli_w.dumps(pyproject_conf)
         f.write(toml_str)
 
     # Append the syft_flwr section at the end of the file
