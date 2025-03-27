@@ -20,7 +20,6 @@ def syftbox_flwr_client(client_app: ClientApp, context: Context):
             f"Received request id: {request.id}, size: {len(request.body)} bytes"
         )
         message: Message = bytes_to_flower_message(request.body)
-
         reply_message: Message = client_app(message=message, context=context)
         res_bytes: bytes = flower_message_to_bytes(reply_message)
         logger.info(f"Reply message size: {len(res_bytes)/2**20} MB")

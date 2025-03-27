@@ -9,6 +9,7 @@ dependencies = [
     "syft-core",
     "syft-rpc",
     "syft-event",
+    "syft-rds",
     "loguru>=0.7.3",
     "safetensors>=0.5.0",
     "typing-extensions>=4.13.0",
@@ -38,6 +39,7 @@ dev-dependencies = [
 syft-core = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-core", rev = "main" }
 syft-event = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-event", rev = "main" }
 syft-rpc = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-rpc", rev = "main" }
+syft-rds = { git = "https://github.com/OpenMined/rds.git", subdirectory = "syft-rds", rev = "main" }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/syft_flwr"]

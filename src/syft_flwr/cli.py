@@ -41,6 +41,7 @@ def bootstrap(
     aggregator: Annotated[str, AGGREGATOR_OPTS] = None,
     datasites: Annotated[List[str], DATASITES_OPTS] = None,
 ) -> None:
+    """Bootstrap a new syft_flwr project from a flwr project"""
     from syft_flwr.bootstrap import bootstrap
 
     aggregator, datasites = prompt_for_missing_args(aggregator, datasites)

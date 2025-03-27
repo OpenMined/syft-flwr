@@ -176,3 +176,9 @@ checkpoints/
 
 .DS_Store
 .config
+
+.sim/
+
+# Datasets
+**MedMNIST**
+examples/embedded-devices/datasets/
