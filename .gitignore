@@ -173,3 +173,6 @@ cython_debug/
 # ML model weights
 weights/
 checkpoints/
+
+.DS_Store
+.config
