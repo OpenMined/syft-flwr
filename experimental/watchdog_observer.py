@@ -57,7 +57,7 @@ def main(directory):
     
     try:
         while True:
-            check_system_limits()
+            # check_system_limits()
             time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()
