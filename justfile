@@ -102,13 +102,3 @@ reset-sim:
     #!/bin/bash
     rm -rf .sim
 
-# Ref: https://github.com/adap/flower/blob/main/examples/embedded-devices/README.md
-setup project:
-    #!/bin/bash
-    cd examples/{{project}}
-    uv sync
-    if [ ! -d "datasets" ]; then
-        uv run generate_dataset.py --num-supernodes=2
-    else
-        echo "${_yellow}datasets directory already exists, skipping dataset generation${_nc}"
-    fi

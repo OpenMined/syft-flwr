@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "flwr[simulation]==1.15.2",
+    "flwr-datasets[vision]>=0.5.0",
     "syft-core",
     "syft-rpc",
     "syft-event",
