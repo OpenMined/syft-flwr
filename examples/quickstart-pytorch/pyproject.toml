@@ -1,5 +1,7 @@
 [build-system]
-requires = ["hatchling"]
+requires = [
+    "hatchling",
+]
 build-backend = "hatchling.build"
 
 [project]
@@ -8,14 +10,17 @@ version = "1.0.0"
 description = ""
 license = "Apache-2.0"
 dependencies = [
-    "flwr[simulation]>=1.16.0",
+    "flwr[simulation]==1.15.2",
     "flwr-datasets[vision]>=0.5.0",
     "torch==2.5.1",
     "torchvision==0.20.1",
+    "syft_flwr==0.1.0",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["."]
+packages = [
+    ".",
+]
 
 [tool.flwr.app]
 publisher = "syft-flower"
@@ -34,9 +39,16 @@ num-partitions = 1
 [tool.flwr.federations]
 default = "local-simulation"
 
-[tool.flwr.federations.local-simulation]
-options.num-supernodes = 10
+[tool.flwr.federations.local-simulation.options]
+num-supernodes = 10
 
 [tool.syft_flwr]
-datasites = ["b@openmined.org", "c@openmined.org" ]
-aggregator = "a@openmined.org"
+datasites = [
+    "yash@openmined.org",
+    "rasswanth@openmined.org",
+]
+aggregator = "khoa@openmined.org"
+
+[tool.uv.sources.syft-flwr]
+path = "../../"
+editable = true

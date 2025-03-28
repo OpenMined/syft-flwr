@@ -181,4 +181,4 @@ checkpoints/
 
 # Datasets
 **MedMNIST**
-examples/embedded-devices/datasets/
+**/datasets/
