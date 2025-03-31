@@ -79,25 +79,6 @@ dump-sim-config email:
     EOF
     echo $(realpath .sim/.config/$CONFIG_NAME)
 
-run-sim-client project_path email data_dir:
-    #!/bin/bash
-    export SYFTBOX_CLIENT_CONFIG_PATH=$(just dump-sim-config {{email}})
-    echo $SYFTBOX_CLIENT_CONFIG_PATH
-    export DATA_DIR=$(realpath {{data_dir}})
-
-    cd {{project_path}}
-    uv sync
-    uv run main.py
-
-run-sim-server project_path email:
-    #!/bin/bash
-    export SYFTBOX_CLIENT_CONFIG_PATH=$(just dump-sim-config {{email}})
-    echo $SYFTBOX_CLIENT_CONFIG_PATH
-
-    cd {{project_path}}
-    uv sync --upgrade
-    uv run main.py
-
 reset-sim:
     #!/bin/bash
     rm -rf .sim
