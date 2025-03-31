@@ -3012,7 +3012,7 @@ wheels = [
 
 [[package]]
 name = "pydantic"
-version = "2.11.0"
+version = "2.11.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-types" },
@@ -3020,9 +3020,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/82/2a/4ba34614269b1e12a28b9fe54710983f5c3679f945797e86250c6269263f/pydantic-2.11.0.tar.gz", hash = "sha256:d6a287cd6037dee72f0597229256dfa246c4d61567a250e99f86b7b4626e2f41", size = 782184 }
+sdist = { url = "https://files.pythonhosted.org/packages/93/a3/698b87a4d4d303d7c5f62ea5fbf7a79cab236ccfbd0a17847b7f77f8163e/pydantic-2.11.1.tar.gz", hash = "sha256:442557d2910e75c991c39f4b4ab18963d57b9b55122c8b2a9cd176d8c29ce968", size = 782817 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/09/2c/3a0a1b022bb028e4cd455c69a17ceaad809bf6763c110d093efc0d8f67aa/pydantic-2.11.0-py3-none-any.whl", hash = "sha256:d52535bb7aba33c2af820eaefd866f3322daf39319d03374921cd17fbbdf28f9", size = 442591 },
+    { url = "https://files.pythonhosted.org/packages/cc/12/f9221a949f2419e2e23847303c002476c26fbcfd62dc7f3d25d0bec5ca99/pydantic-2.11.1-py3-none-any.whl", hash = "sha256:5b6c415eee9f8123a14d859be0c84363fec6b1feb6b688d6435801230b56e0b8", size = 442648 },
 ]
 
 [package.optional-dependencies]
@@ -3716,8 +3716,8 @@ wheels = [
 
 [[package]]
 name = "syft-core"
-version = "0.1.0"
-source = { git = "https://github.com/OpenMined/syft-extras.git?subdirectory=packages%2Fsyft-core&rev=main#b160a5710177a230934c9882c37709fa8f555843" }
+version = "0.2.2"
+source = { git = "https://github.com/OpenMined/syft-extras.git?subdirectory=packages%2Fsyft-core&rev=main#adaab508d1b36f3925c45607c44fc77c7a35b907" }
 dependencies = [
     { name = "pydantic", extra = ["email"] },
     { name = "pyyaml" },
@@ -3728,7 +3728,7 @@ dependencies = [
 [[package]]
 name = "syft-event"
 version = "0.1.0"
-source = { git = "https://github.com/OpenMined/syft-extras.git?subdirectory=packages%2Fsyft-event&rev=main#b160a5710177a230934c9882c37709fa8f555843" }
+source = { git = "https://github.com/OpenMined/syft-extras.git?subdirectory=packages%2Fsyft-event&rev=main#adaab508d1b36f3925c45607c44fc77c7a35b907" }
 dependencies = [
     { name = "loguru" },
     { name = "pathspec" },
@@ -3771,7 +3771,7 @@ requires-dist = [
     { name = "safetensors", specifier = ">=0.5.0" },
     { name = "syft-core", git = "https://github.com/OpenMined/syft-extras.git?subdirectory=packages%2Fsyft-core&rev=main" },
     { name = "syft-event", git = "https://github.com/OpenMined/syft-extras.git?subdirectory=packages%2Fsyft-event&rev=main" },
-    { name = "syft-rds", git = "https://github.com/OpenMined/rds.git?subdirectory=syft-rds&rev=main" },
+    { name = "syft-rds", git = "https://github.com/OpenMined/rds.git?subdirectory=syft-rds&rev=khoa%2Fjobs_folder_submission" },
     { name = "syft-rpc", git = "https://github.com/OpenMined/syft-extras.git?subdirectory=packages%2Fsyft-rpc&rev=main" },
     { name = "tomli", specifier = ">=2.2.1" },
     { name = "tomli-w", specifier = ">=1.2.0" },
@@ -3789,7 +3789,7 @@ dev = [
 [[package]]
 name = "syft-rds"
 version = "0.1.0"
-source = { git = "https://github.com/OpenMined/rds.git?subdirectory=syft-rds&rev=main#029f6e8dcdb2a3fca01879ff36309baa133cf9e2" }
+source = { git = "https://github.com/OpenMined/rds.git?subdirectory=syft-rds&rev=khoa%2Fjobs_folder_submission#6915b9f60e5d0102be42ad594d8311fc667a4ca7" }
 dependencies = [
     { name = "jupyter" },
     { name = "loguru" },
@@ -3807,7 +3807,7 @@ dependencies = [
 [[package]]
 name = "syft-rpc"
 version = "0.1.0"
-source = { git = "https://github.com/OpenMined/syft-extras.git?subdirectory=packages%2Fsyft-rpc&rev=main#b160a5710177a230934c9882c37709fa8f555843" }
+source = { git = "https://github.com/OpenMined/syft-extras.git?subdirectory=packages%2Fsyft-rpc&rev=main#adaab508d1b36f3925c45607c44fc77c7a35b907" }
 dependencies = [
     { name = "pydantic" },
     { name = "syft-core" },

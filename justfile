@@ -95,7 +95,7 @@ run-sim-server project_path email:
     echo $SYFTBOX_CLIENT_CONFIG_PATH
 
     cd {{project_path}}
-    uv sync
+    uv sync --upgrade
     uv run main.py
 
 reset-sim:

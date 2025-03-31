@@ -17,7 +17,7 @@ def syftbox_flwr_client(client_app: ClientApp, context: Context):
     @box.on_request("/messages")
     def handle_messages(request: Request) -> None:
         logger.info(
-            f"Received request id: {request.id}, size: {len(request.body)} bytes"
+            f"Received request id: {request.id}, size: {len(request.body) / 1024 / 1024} (MB)"
         )
         message: Message = bytes_to_flower_message(request.body)
         reply_message: Message = client_app(message=message, context=context)

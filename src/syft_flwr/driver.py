@@ -6,6 +6,7 @@ from flwr.common.message import Message
 from flwr.common.typing import Run
 from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
 from flwr.server.driver import Driver
+from loguru import logger
 from syft_core import Client
 from syft_rpc import rpc, rpc_db
 from typing_extensions import Optional
@@ -75,13 +76,15 @@ class SyftDriver(Driver):
         # Construct Messages
         message_ids = []
         for msg in messages:
-            # RPC URl
+            # RPC URL
             dest_datasite = self.client_map[msg.metadata.dst_node_id]
             url = rpc.make_url(dest_datasite, app_name="flwr", endpoint="messages")
-
             # Check message
             self._check_message(msg)
             msg_bytes = flower_message_to_bytes(msg)
+            logger.info(
+                f"Pushing message to {url} with size {len(msg_bytes) / 1024 / 1024} (Mb)"
+            )
             future = rpc.send(url=url, body=msg_bytes, client=self._client)
             rpc_db.save_future(future=future, namespace="flwr", client=self._client)
             message_ids.append(future.id)
