@@ -14,6 +14,7 @@ dependencies = [
     "typing-extensions>=4.13.0",
     "tomli>=2.2.1",
     "tomli-w>=1.2.0",
+    "syft-rds",
 ]
 
 [project.scripts]
@@ -38,6 +39,7 @@ dev-dependencies = [
 syft-core = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-core", rev = "main" }
 syft-event = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-event", rev = "main" }
 syft-rpc = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-rpc", rev = "main" }
+syft-rds = { git = "https://github.com/OpenMined/rds.git", subdirectory = "syft-rds", rev = "khoa/jobs_folder_submission" }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/syft_flwr"]
