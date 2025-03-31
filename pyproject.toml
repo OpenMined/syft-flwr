@@ -16,8 +16,7 @@ dependencies = [
     "typing-extensions>=4.13.0",
     "tomli>=2.2.1",
     "tomli-w>=1.2.0",
-    "torch==2.5.1",  # just to run the demo
-    "torchvision==0.20.1"  # just to run the demo
+    "syft-rds",
 ]
 
 [project.scripts]
