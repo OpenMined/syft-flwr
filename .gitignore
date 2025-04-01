@@ -176,3 +176,12 @@ checkpoints/
 
 .DS_Store
 .config
+
+.sim/
+
+# Datasets
+**MedMNIST**
+**/datasets/
+
+# Ruff cache
+.ruff_cache/

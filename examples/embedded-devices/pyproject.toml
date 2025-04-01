@@ -5,16 +5,22 @@ requires = [
 build-backend = "hatchling.build"
 
 [project]
-name = "pytorch"
+name = "embeddedexample"
 version = "1.0.0"
-description = ""
+description = "Federated AI with Embedded Devices using Flower"
 license = "Apache-2.0"
 dependencies = [
-    "flwr[simulation]==1.15.2",
+    "flwr>=1.15.2",
     "flwr-datasets[vision]>=0.5.0",
     "torch==2.5.1",
     "torchvision==0.20.1",
     "syft_flwr==0.1.0",
+]
+
+[tool.hatch.build]
+exclude = [
+    "datasets/*",
+    "_static/*",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -23,24 +29,27 @@ packages = [
 ]
 
 [tool.flwr.app]
-publisher = "syft-flower"
+publisher = "flwrlabs"
 
 [tool.flwr.app.components]
-serverapp = "pytorch.server_app:app"
-clientapp = "pytorch.client_app:app"
+serverapp = "embeddedexample.server_app:app"
+clientapp = "embeddedexample.client_app:app"
 
 [tool.flwr.app.config]
 num-server-rounds = 3
-fraction-fit = 0.5
+fraction-evaluate = 0.5
 local-epochs = 1
+learning-rate = 0.1
+batch-size = 32
 partition-id = 0
 num-partitions = 1
 
 [tool.flwr.federations]
-default = "local-simulation"
+default = "embedded-federation"
 
-[tool.flwr.federations.local-simulation.options]
-num-supernodes = 10
+[tool.flwr.federations.embedded-federation]
+address = "127.0.0.1:9093"
+insecure = true
 
 [tool.syft_flwr]
 datasites = [
