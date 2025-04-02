@@ -22,15 +22,37 @@ _nc := '\033[0m'
 # Aliases
 
 alias rj := run-jupyter
-alias rc := run-client
-alias rs := run-server
-alias rcs := run-client-with-syftbox
-alias rss := run-server-with-syftbox
 
 # ---------------------------------------------------------------------------------------------------------------------
 
 @default:
     just --list
+
+
+dump-config email:
+    #!/bin/bash
+    mkdir -p .config
+    CONFIG_NAME={{email}}.json
+    jq '.email = "{{email}}"' ~/.syftbox/config.json > .config/$CONFIG_NAME
+    echo $(realpath .config/$CONFIG_NAME)
+
+run-server project email:
+    #!/bin/bash
+    export SYFTBOX_CLIENT_CONFIG_PATH=$(just dump-config {{email}})
+    echo $SYFTBOX_CLIENT_CONFIG_PATH
+
+    cd examples/{{project}}
+    uv sync
+    uv run main.py
+
+run-client project email:
+    #!/bin/bash
+    export SYFTBOX_CLIENT_CONFIG_PATH=$(just dump-config {{email}})
+    echo $SYFTBOX_CLIENT_CONFIG_PATH
+
+    cd examples/{{project}}
+    uv sync
+    uv run main.py
 
 [group('utils')]
 run-jupyter jupyter_args="":
@@ -39,24 +61,25 @@ run-jupyter jupyter_args="":
     uv run --frozen --with "jupyterlab" \
         jupyter lab {{ jupyter_args }}
 
-# sb_conf_path: path to the SyftBox Config file
-[group('client')]
-run-client sb_conf_path="":
-    uv run python -m examples.basic.client_syft --sb_conf_path "{{ sb_conf_path }}"
+dump-sim-config email:
+    #!/bin/bash
+    mkdir -p .sim/.config
+    mkdir -p .sim/SyftBox
+    CONFIG_NAME={{email}}.json
+    cat > .sim/.config/$CONFIG_NAME <<EOF
+    {
+        "data_dir": "$(realpath .sim/SyftBox)",
+        "server_url": "https://syftbox.openmined.org/",
+        "client_url": "http://127.0.0.1:8080/",
+        "email": "{{email}}",
+        "token": "0",
+        "access_token": "",
+        "client_timeout": 5.0
+    }
+    EOF
+    echo $(realpath .sim/.config/$CONFIG_NAME)
 
-[group('client')]
-run-client-with-syftbox flower-toml-path="" sb-conf-path="":
-    uv run python -m src.syft_flwr.runner --flower-toml-path "{{ flower-toml-path }}" --sb-conf-path "{{ sb-conf-path }}" --client
+reset-sim:
+    #!/bin/bash
+    rm -rf .sim
 
-# sb_conf_path: path to the SyftBox Config file
-[group('server')]
-run-server sb_conf_path="":
-    uv run python -m examples.basic.server_syft --sb_conf_path "{{ sb_conf_path }}"
-
-[group('server')]
-run-server-with-syftbox flower-toml-path="" sb-conf-path="":
-    uv run python -m src.syft_flwr.runner --flower-toml-path "{{ flower-toml-path }}" --sb-conf-path "{{ sb-conf-path }}" --aggregator
-
-[group('test')]
-test:
-    uv run pytest tests/e2e/basic_test.py

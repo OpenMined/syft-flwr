@@ -6,13 +6,16 @@ from flwr.common.message import Message
 from flwr.common.typing import Run
 from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
 from flwr.server.grid import Grid
+from loguru import logger
 from syft_core import Client
 from syft_rpc import rpc, rpc_db
 from typing_extensions import Optional
 
-from syft_flwr.constant import AGGREGATOR_NODE_ID
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
-from syft_flwr.utils import string_to_hash_int
+from syft_flwr.utils import str_to_int
+
+# this is what superlink super node do
+AGGREGATOR_NODE_ID = 1
 
 
 class SyftGrid(Grid):
@@ -25,11 +28,7 @@ class SyftGrid(Grid):
         self._run: Optional[Run] = None
         self.node = Node(node_id=AGGREGATOR_NODE_ID)
         self.datasites = datasites
-        self.client_map = self._construct_client_map(self.datasites)
-
-    def _construct_client_map(self, datasites: list[str]) -> dict:
-        """Construct a map from node ID to client."""
-        return {string_to_hash_int(datasite): datasite for datasite in datasites}
+        self.client_map = {str_to_int(ds): ds for ds in self.datasites}
 
     def set_run(self, run_id: int) -> None:
         # Convert to Flower Run object
@@ -77,13 +76,15 @@ class SyftGrid(Grid):
         # Construct Messages
         message_ids = []
         for msg in messages:
-            # RPC URl
+            # RPC URL
             dest_datasite = self.client_map[msg.metadata.dst_node_id]
             url = rpc.make_url(dest_datasite, app_name="flwr", endpoint="messages")
-
             # Check message
             self._check_message(msg)
             msg_bytes = flower_message_to_bytes(msg)
+            logger.info(
+                f"Pushing message to {url} with size {len(msg_bytes) / 1024 / 1024} (Mb)"
+            )
             future = rpc.send(url=url, body=msg_bytes, client=self._client)
             rpc_db.save_future(future=future, namespace="flwr", client=self._client)
             message_ids.append(future.id)

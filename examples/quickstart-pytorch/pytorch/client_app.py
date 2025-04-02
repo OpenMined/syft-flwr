@@ -42,9 +42,15 @@ class FlowerClient(NumPyClient):
 def client_fn(context: Context):
     # Load model and data
     net = Net()
-    partition_id = context.node_config["partition-id"]
-    num_partitions = context.node_config["num-partitions"]
-    trainloader, valloader = load_data(partition_id, num_partitions)
+    from pytorch.task import load_syftbox_dataset
+    from syft_flwr.utils import run_syft_flwr
+
+    if not run_syft_flwr():
+        partition_id = context.node_config["partition-id"]
+        num_partitions = context.node_config["num-partitions"]
+        trainloader, valloader = load_data(partition_id, num_partitions)
+    else:
+        trainloader, valloader = load_syftbox_dataset()
     local_epochs = context.run_config["local-epochs"]
 
     # Return Client instance
