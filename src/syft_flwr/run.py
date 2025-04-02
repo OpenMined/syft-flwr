@@ -3,7 +3,7 @@ from uuid import uuid4
 from flwr.client.client_app import LoadClientAppError
 from flwr.common import Context
 from flwr.common.object_ref import load_app
-from flwr.common.record import RecordSet
+from flwr.common.record import RecordDict
 from flwr.server.server_app import LoadServerAppError
 
 from syft_flwr.config import load_flwr_pyproject
@@ -21,7 +21,7 @@ def syftbox_run_flwr_client(flower_project_dir):
         run_id=uuid4().int,
         node_id=uuid4().int,
         node_config=pyproject_conf["tool"]["flwr"]["app"]["config"],
-        state=RecordSet(),
+        state=RecordDict(),
         run_config=pyproject_conf["tool"]["flwr"]["app"]["config"],
     )
     client_app = load_app(
@@ -42,7 +42,7 @@ def syftbox_run_flwr_server(flower_project_dir):
         run_id=uuid4().int,
         node_id=uuid4().int,
         node_config=pyproject_conf["tool"]["flwr"]["app"]["config"],
-        state=RecordSet(),
+        state=RecordDict(),
         run_config=pyproject_conf["tool"]["flwr"]["app"]["config"],
     )
     server_app = load_app(

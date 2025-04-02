@@ -16,7 +16,7 @@ def syftbox_flwr_server(server_app: ServerApp, context: Context, datasites: list
     logger.info(f"Started SyftBox Flower Server on: {syft_driver._client.email}")
 
     updated_context = run_server(
-        driver=syft_driver,
+        syft_driver,
         context=context,
         loaded_server_app=server_app,
         server_app_dir="",

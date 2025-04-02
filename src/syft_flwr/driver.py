@@ -1,11 +1,11 @@
 import time
 from typing import Iterable, cast
 
-from flwr.common import DEFAULT_TTL, Metadata, RecordSet
+from flwr.common import DEFAULT_TTL, Metadata, RecordDict
 from flwr.common.message import Message
 from flwr.common.typing import Run
 from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
-from flwr.server.driver import Driver
+from flwr.server.grid import Driver
 from loguru import logger
 from syft_core import Client
 from syft_rpc import rpc, rpc_db
@@ -44,7 +44,7 @@ class SyftDriver(Driver):
 
     def create_message(
         self,
-        content: RecordSet,
+        content: RecordDict,
         message_type: str,
         dst_node_id: int,
         group_id: str,
