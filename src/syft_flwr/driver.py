@@ -1,7 +1,7 @@
 import time
 from typing import Iterable, cast
 
-from flwr.common import DEFAULT_TTL, Metadata, RecordDict
+from flwr.common import RecordDict
 from flwr.common.message import Message
 from flwr.common.typing import Run
 from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
@@ -51,20 +51,7 @@ class SyftDriver(Driver):
         ttl: Optional[float] = None,
     ) -> Message:
         """Create a new message with specified parameters."""
-        ttl_ = DEFAULT_TTL if ttl is None else ttl
-
-        metadata = Metadata(
-            run_id=cast(Run, self._run).run_id,
-            message_id="",  # Will be set when saving to file
-            src_node_id=self.node.node_id,
-            dst_node_id=dst_node_id,
-            reply_to_message="",
-            group_id=group_id,
-            ttl=ttl_,
-            message_type=message_type,
-        )
-
-        return Message(metadata=metadata, content=content)
+        return Message(content, dst_node_id, message_type, ttl=ttl, group_id=group_id)
 
     def get_node_ids(self) -> list[int]:
         """Get node IDs of all connected nodes."""
@@ -74,16 +61,19 @@ class SyftDriver(Driver):
     def push_messages(self, messages: Iterable[Message]) -> Iterable[str]:
         """Push messages to specified node IDs."""
         # Construct Messages
+        run_id = cast(Run, self._run).run_id
         message_ids = []
         for msg in messages:
             # RPC URL
+            msg.metadata.__dict__["_run_id"] = run_id
+            msg.metadata.__dict__["_src_node_id"] = self.node.node_id
             dest_datasite = self.client_map[msg.metadata.dst_node_id]
             url = rpc.make_url(dest_datasite, app_name="flwr", endpoint="messages")
             # Check message
             self._check_message(msg)
             msg_bytes = flower_message_to_bytes(msg)
-            logger.info(
-                f"Pushing message to {url} with size {len(msg_bytes) / 1024 / 1024} (Mb)"
+            logger.debug(
+                f"Pushing message to {url} with metadata {msg.metadata}; size {len(msg_bytes) / 1024 / 1024} (Mb)"
             )
             future = rpc.send(url=url, body=msg_bytes, client=self._client)
             rpc_db.save_future(future=future, namespace="flwr", client=self._client)
@@ -107,6 +97,9 @@ class SyftDriver(Driver):
                 raise ValueError(f"Empty response: {response}")
 
             message: Message = bytes_to_flower_message(response.body)
+            logger.debug(
+                f"Pulled message with metadata: {message.metadata}, size: {len(response.body) / 1024 / 1024} (Mb)"
+            )
             messages[msg_id] = message
             rpc_db.delete_future(future_id=msg_id, client=self._client)
 
@@ -146,7 +139,8 @@ class SyftDriver(Driver):
             message.metadata.run_id == cast(Run, self._run).run_id
             and message.metadata.src_node_id == self.node.node_id
             and message.metadata.message_id == ""
-            and message.metadata.reply_to_message == ""
+            and message.metadata.reply_to_message_id == ""
             and message.metadata.ttl > 0
         ):
+            logger.debug(f"Invalid message with metadata: {message.metadata}")
             raise ValueError(f"Invalid message: {message}")
