@@ -35,6 +35,8 @@ dev-dependencies = [
     "ipywidgets>=8.1.5",
     "pytest>=8.3.4",
     "pre-commit>=4.0.1",
+    "torch==2.5.1",
+    "torchvision==0.20.1"
 ]
 
 [tool.uv.sources]
