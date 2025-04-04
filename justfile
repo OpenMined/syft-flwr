@@ -28,6 +28,15 @@ alias rj := run-jupyter
 @default:
     just --list
 
+[group('utils')]
+run-jupyter jupyter_args="":
+    # uv sync
+
+    uv run --frozen --with "jupyterlab" \
+        jupyter lab {{ jupyter_args }}
+
+
+# ---------------------------------------------------------------------------------------------------------------------
 
 dump-config email:
     #!/bin/bash
@@ -53,13 +62,6 @@ run-client project email:
     cd examples/{{project}}
     uv sync
     uv run main.py
-
-[group('utils')]
-run-jupyter jupyter_args="":
-    # uv sync
-
-    uv run --frozen --with "jupyterlab" \
-        jupyter lab {{ jupyter_args }}
 
 dump-sim-config email:
     #!/bin/bash
