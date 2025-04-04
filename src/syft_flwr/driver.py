@@ -64,18 +64,22 @@ class SyftDriver(Driver):
         run_id = cast(Run, self._run).run_id
         message_ids = []
         for msg in messages:
-            # RPC URL
+            # Set metadata
             msg.metadata.__dict__["_run_id"] = run_id
             msg.metadata.__dict__["_src_node_id"] = self.node.node_id
+            # RPC URL
             dest_datasite = self.client_map[msg.metadata.dst_node_id]
             url = rpc.make_url(dest_datasite, app_name="flwr", endpoint="messages")
             # Check message
             self._check_message(msg)
+            # Serialize message
             msg_bytes = flower_message_to_bytes(msg)
             logger.debug(
                 f"Pushing message to {url} with metadata {msg.metadata}; size {len(msg_bytes) / 1024 / 1024} (Mb)"
             )
+            # Send message
             future = rpc.send(url=url, body=msg_bytes, client=self._client)
+            # Save future
             rpc_db.save_future(future=future, namespace="flwr", client=self._client)
             message_ids.append(future.id)
 
@@ -135,7 +139,6 @@ class SyftDriver(Driver):
     def _check_message(self, message: Message) -> None:
         # Check if the message is valid
         if not (
-            # Assume self._run being initialized
             message.metadata.run_id == cast(Run, self._run).run_id
             and message.metadata.src_node_id == self.node.node_id
             and message.metadata.message_id == ""
