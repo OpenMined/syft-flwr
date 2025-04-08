@@ -4,12 +4,11 @@
 def load_syftbox_dataset() -> tuple[DataLoader, DataLoader]:
     from syft_flwr.utils import get_syftbox_dataset_path
 
-    batch_size = 32
     data_dir = get_syftbox_dataset_path()
-    return load_data_from_disk(data_dir, batch_size)
+    return load_data_from_disk(data_dir)
 
 
-def load_data_from_disk(path: str, batch_size: int):
+def load_data_from_disk(path: str, batch_size: int = 32):
     from datasets import load_from_disk
 
     partition_train_test = load_from_disk(path)
@@ -28,7 +27,6 @@ def load_data_from_disk(path: str, batch_size: int):
     testloader = DataLoader(partition_train_test["test"], batch_size=batch_size)
     return trainloader, testloader
 """
-
 
 # Step 2: client_app.py
 # Client App Load Data
@@ -58,6 +56,3 @@ strategy = FedAvgWithModelSaving(
     initial_parameters=parameters,
 )
 """
-
-
-

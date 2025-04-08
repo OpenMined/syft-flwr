@@ -33,7 +33,7 @@ run-jupyter jupyter_args="":
     # uv sync
 
     uv run --frozen --with "jupyterlab" \
-        jupyter lab {{ jupyter_args }}
+        jupyter lab {{ jupyter_args }} --ContentsManager.allow_hidden=True
 
 
 # ---------------------------------------------------------------------------------------------------------------------
