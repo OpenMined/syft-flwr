@@ -55,7 +55,7 @@ def save_dataset_to_disk(
     for partition_id in range(num_partitions):
         partition = fds.load_partition(partition_id)
         partition_train_test = partition.train_test_split(
-            test_size=0.1, train_size=0.1, seed=42
+            test_size=0.01, train_size=0.01, seed=42
         )
         file_path = f"{save_dataset_dir}/{dataset_name}_part_{partition_id + 1}"
         partition_train_test.save_to_disk(file_path)
