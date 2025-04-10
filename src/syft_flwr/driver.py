@@ -82,10 +82,10 @@ class SyftDriver(Driver):
             # Check message
             self._check_message(msg)
             msg_bytes = flower_message_to_bytes(msg)
-            logger.info(
-                f"Pushing message to {url} with size {len(msg_bytes) / 1024 / 1024} (Mb)"
-            )
             future = rpc.send(url=url, body=msg_bytes, client=self._client)
+            logger.debug(
+                f"Pushed message to {url} with metadata {msg.metadata}; size {len(msg_bytes) / 1024 / 1024} (Mb)"
+            )
             rpc_db.save_future(future=future, namespace="flwr", client=self._client)
             message_ids.append(future.id)
 
@@ -107,6 +107,9 @@ class SyftDriver(Driver):
                 raise ValueError(f"Empty response: {response}")
 
             message: Message = bytes_to_flower_message(response.body)
+            logger.debug(
+                f"Pulled message from {response.url} with metadata: {message.metadata}, size: {len(response.body) / 1024 / 1024} (Mb)"
+            )
             messages[msg_id] = message
             rpc_db.delete_future(future_id=msg_id, client=self._client)
 
