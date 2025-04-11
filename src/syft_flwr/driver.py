@@ -161,5 +161,4 @@ class SyftDriver(Driver):
             if len(msg_ids) == 0:
                 break
             time.sleep(3)
-        logger.debug("Done send_and_receive. Advancing to the next round")
         return ret.values()
