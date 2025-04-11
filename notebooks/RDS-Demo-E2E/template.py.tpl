@@ -1,6 +1,5 @@
 # Step 1: task.py
 # Client APP load data functions
-# You can add these 2 functions anywhere in the task.py file
 """
 def load_syftbox_dataset() -> tuple[DataLoader, DataLoader]:
     from syft_flwr.utils import get_syftbox_dataset_path
@@ -31,8 +30,6 @@ def load_data_from_disk(path: str, batch_size: int = 32):
 
 # Step 2: client_app.py
 # Client App Load Data
-# Please put the replace the line 43-45 of  client_app.py
-# with the following code
 """
 from quickstart_pytorch.task import load_syftbox_dataset
 from syft_flwr.utils import run_syft_flwr
@@ -45,9 +42,7 @@ else:
     trainloader, valloader = load_syftbox_dataset()
 """
 
-# Step 3: server_app.py (Optional)
-# We use this to save the model weights of each round for the data scientist
-# Please replace the server_app.py's FedAvg with the following code
+# Step 3: server_app.py
 """
 from pathlib import Path
 from syft_flwr.strategy import FedAvgWithModelSaving

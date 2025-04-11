@@ -12,10 +12,9 @@ dependencies = [
     "typing-extensions>=4.13.0",
     "tomli>=2.2.1",
     "tomli-w>=1.2.0",
-    "packaging>=23.1",
     "syft-core",
-    "syft-rpc",
     "syft-event",
+    "syft-rpc",
     "syft-rds",
 ]
 
@@ -35,15 +34,13 @@ dev-dependencies = [
     "ipywidgets>=8.1.5",
     "pytest>=8.3.4",
     "pre-commit>=4.0.1",
-    "torch==2.5.1",
-    "torchvision==0.20.1"
 ]
 
 [tool.uv.sources]
 syft-core = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-core", rev = "main" }
 syft-event = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-event", rev = "main" }
 syft-rpc = { git = "https://github.com/OpenMined/syft-extras.git", subdirectory = "packages/syft-rpc", rev = "main" }
-syft-rds = { git = "https://github.com/OpenMined/rds.git", subdirectory = "syft-rds", rev = "khoa/jobs_folder_submission" }
+syft-rds = { git = "https://github.com/OpenMined/rds.git", subdirectory = "syft-rds", rev = "main" }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/syft_flwr"]
