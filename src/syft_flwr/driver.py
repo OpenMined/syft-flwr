@@ -1,16 +1,20 @@
 import time
 from typing import Iterable, cast
 
-from flwr.common import DEFAULT_TTL, Metadata, RecordSet
 from flwr.common.message import Message
 from flwr.common.typing import Run
 from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
-from flwr.server.driver import Driver
 from loguru import logger
 from syft_core import Client
 from syft_rpc import rpc, rpc_db
 from typing_extensions import Optional
 
+from syft_flwr.flwr_compatibility import (
+    Driver,
+    RecordDict,
+    check_reply_to_field,
+    create_flwr_message,
+)
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
 from syft_flwr.utils import str_to_int
 
@@ -29,6 +33,9 @@ class SyftDriver(Driver):
         self.node = Node(node_id=AGGREGATOR_NODE_ID)
         self.datasites = datasites
         self.client_map = {str_to_int(ds): ds for ds in self.datasites}
+        logger.debug(
+            f"Init SyftDriver for {self._client.email} with datasites: {self.datasites}"
+        )
 
     def set_run(self, run_id: int) -> None:
         # TODO: In Grpc driver case the superlink is the one which sets up the run id,
@@ -42,29 +49,36 @@ class SyftDriver(Driver):
         """Run ID."""
         return Run(**vars(cast(Run, self._run)))
 
+    def _check_message(self, message: Message) -> None:
+        # Check if the message is valid
+        if not (
+            message.metadata.run_id == cast(Run, self._run).run_id
+            and message.metadata.src_node_id == self.node.node_id
+            and message.metadata.message_id == ""
+            and check_reply_to_field(message.metadata)
+            and message.metadata.ttl > 0
+        ):
+            logger.debug(f"Invalid message with metadata: {message.metadata}")
+            raise ValueError(f"Invalid message: {message}")
+
     def create_message(
         self,
-        content: RecordSet,
+        content: RecordDict,
         message_type: str,
         dst_node_id: int,
         group_id: str,
         ttl: Optional[float] = None,
     ) -> Message:
         """Create a new message with specified parameters."""
-        ttl_ = DEFAULT_TTL if ttl is None else ttl
-
-        metadata = Metadata(
-            run_id=cast(Run, self._run).run_id,
-            message_id="",  # Will be set when saving to file
-            src_node_id=self.node.node_id,
-            dst_node_id=dst_node_id,
-            reply_to_message="",
-            group_id=group_id,
-            ttl=ttl_,
-            message_type=message_type,
+        return create_flwr_message(
+            content,
+            message_type,
+            dst_node_id,
+            group_id,
+            ttl,
+            cast(Run, self._run).run_id,
+            self.node.node_id,
         )
-
-        return Message(metadata=metadata, content=content)
 
     def get_node_ids(self) -> list[int]:
         """Get node IDs of all connected nodes."""
@@ -74,18 +88,25 @@ class SyftDriver(Driver):
     def push_messages(self, messages: Iterable[Message]) -> Iterable[str]:
         """Push messages to specified node IDs."""
         # Construct Messages
+        run_id = cast(Run, self._run).run_id
         message_ids = []
         for msg in messages:
+            # Set metadata
+            msg.metadata.__dict__["_run_id"] = run_id
+            msg.metadata.__dict__["_src_node_id"] = self.node.node_id
             # RPC URL
             dest_datasite = self.client_map[msg.metadata.dst_node_id]
             url = rpc.make_url(dest_datasite, app_name="flwr", endpoint="messages")
             # Check message
             self._check_message(msg)
+            # Serialize message
             msg_bytes = flower_message_to_bytes(msg)
+            # Send message
             future = rpc.send(url=url, body=msg_bytes, client=self._client)
             logger.debug(
                 f"Pushed message to {url} with metadata {msg.metadata}; size {len(msg_bytes) / 1024 / 1024} (Mb)"
             )
+            # Save future
             rpc_db.save_future(future=future, namespace="flwr", client=self._client)
             message_ids.append(future.id)
 
@@ -141,15 +162,3 @@ class SyftDriver(Driver):
                 break
             time.sleep(3)
         return ret.values()
-
-    def _check_message(self, message: Message) -> None:
-        # Check if the message is valid
-        if not (
-            # Assume self._run being initialized
-            message.metadata.run_id == cast(Run, self._run).run_id
-            and message.metadata.src_node_id == self.node.node_id
-            and message.metadata.message_id == ""
-            and message.metadata.reply_to_message == ""
-            and message.metadata.ttl > 0
-        ):
-            raise ValueError(f"Invalid message: {message}")
