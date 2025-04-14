@@ -4,7 +4,7 @@ import typer
 from rich import print as rprint
 from typing_extensions import Annotated, List, Tuple
 
-from syft_flwr.run import run as run_syft_flwr
+from syft_flwr.run import run as run_syft_flwr_simulation
 
 app = typer.Typer(
     name="syft_flwr",
@@ -83,7 +83,7 @@ def run(
     """Run a syft_flwr project in simulation mode over mock data"""
     try:
         project_dir = project_dir.absolute()
-        run_syft_flwr(project_dir)
+        run_syft_flwr_simulation(project_dir)
         rprint(f"[green]Run project at '{project_dir}'[/green]")
     except Exception as e:
         rprint(f"[red]Error[/red]: {e}")
