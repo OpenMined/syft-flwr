@@ -4,6 +4,8 @@ import typer
 from rich import print as rprint
 from typing_extensions import Annotated, List, Tuple
 
+from syft_flwr.run import run as run_syft_flwr
+
 app = typer.Typer(
     name="syft_flwr",
     no_args_is_help=True,
@@ -35,6 +37,22 @@ DATASITES_OPTS = typer.Option(
 )
 
 
+def prompt_for_missing_args(
+    aggregator: str, datasites: List[str]
+) -> Tuple[Path, str, List[str]]:
+    if not aggregator:
+        aggregator = typer.prompt(
+            "Enter the datasite email of the Aggregator (Flower Server)"
+        )
+    if not datasites:
+        datasites = typer.prompt(
+            "Enter a comma-separated email of datasites of the Flower Clients"
+        )
+        datasites = datasites.split(",")
+
+    return aggregator, datasites
+
+
 @app.command()
 def bootstrap(
     project_dir: Annotated[Path, PROJECT_DIR_OPTS],
@@ -58,20 +76,18 @@ def bootstrap(
         raise typer.Exit(1)
 
 
-def prompt_for_missing_args(
-    aggregator: str, datasites: List[str]
-) -> Tuple[Path, str, List[str]]:
-    if not aggregator:
-        aggregator = typer.prompt(
-            "Enter the datasite email of the Aggregator (Flower Server)"
-        )
-    if not datasites:
-        datasites = typer.prompt(
-            "Enter a comma-separated email of datasites of the Flower Clients"
-        )
-        datasites = datasites.split(",")
-
-    return aggregator, datasites
+@app.command()
+def run(
+    project_dir: Annotated[Path, PROJECT_DIR_OPTS],
+) -> None:
+    """Run a syft_flwr project in simulation mode over mock data"""
+    try:
+        project_dir = project_dir.absolute()
+        run_syft_flwr(project_dir)
+        rprint(f"[green]Run project at '{project_dir}'[/green]")
+    except Exception as e:
+        rprint(f"[red]Error[/red]: {e}")
+        raise typer.Exit(1)
 
 
 def main() -> None:
