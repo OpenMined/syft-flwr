@@ -102,7 +102,10 @@ async def __run_main_py(
     dataset_path: Union[str, Path] | None = None,
 ) -> int:
     """Run the `main.py` file for a given client"""
-    logger.debug(f"Running `{main_py_path}` for `{client_email}`")
+    log_file = log_dir / f"{client_email}.log"
+    logger.debug(
+        f"Running `{main_py_path}` for `{client_email}` with log file {log_file}"
+    )
 
     # setting up env variables
     env = os.environ.copy()
@@ -111,8 +114,7 @@ async def __run_main_py(
 
     # running the main.py file asynchronously in a subprocess
     try:
-        with open(log_dir / f"{client_email}.log", "w") as log_file:
-            logger.debug(f"Log file: {log_file}")
+        with open(log_file, "w") as log_file:
             process = await asyncio.create_subprocess_exec(
                 "python",
                 str(main_py_path),
@@ -122,7 +124,7 @@ async def __run_main_py(
                 env=env,
             )
             return_code = await process.wait()
-            logger.debug(f"Return code for `{client_email}` is {return_code}")
+            logger.debug(f"`{client_email}` returns code {return_code}")
             return return_code
     except Exception as e:
         logger.error(f"Error running `{main_py_path}` for `{client_email}`: {e}")
@@ -172,8 +174,6 @@ async def __run_simulated_flwr_project(
             )
         )
 
-    await asyncio.gather(*client_tasks, return_exceptions=True)
-
     ds_return_code = await ds_task
     logger.info(f"DS client {ds_client.email} returned with code {ds_return_code}")
 
@@ -182,6 +182,8 @@ async def __run_simulated_flwr_project(
     for task in client_tasks:
         if not task.done():
             task.cancel()
+
+    await asyncio.gather(*client_tasks, return_exceptions=True)
 
 
 def __validate_project_dir(project_dir: Union[str, Path]) -> None:
@@ -236,3 +238,4 @@ def run(
             project_dir, do_clients, ds_client, mock_dataset_paths
         )
     )
+    logger.success("Simulation completed successfully ✅")
