@@ -18,6 +18,7 @@ from syft_flwr.config import load_flwr_pyproject
 from syft_flwr.flower_client import syftbox_flwr_client
 from syft_flwr.flower_server import syftbox_flwr_server
 from syft_flwr.flwr_compatibility import RecordDict
+from syft_flwr.utils import validate_bootstraped_project
 
 __all__ = ["syftbox_run_flwr_client", "syftbox_run_flwr_server", "run"]
 
@@ -63,7 +64,7 @@ def syftbox_run_flwr_server(flower_project_dir: Path) -> None:
     syftbox_flwr_server(server_app, context, datasites)
 
 
-def __reset_db(key):
+def __reset_mock_clients_db(key):
     root_path = Path(tempfile.gettempdir(), key)
 
     if root_path.exists():
@@ -79,8 +80,9 @@ def __reset_db(key):
 def __setup_mock_rds_clients(
     project_dir: Path, aggregator: str, datasites: list[str]
 ) -> tuple[list[RDSClient], RDSClient]:
+    """Setup mock RDS clients for the given project directory"""
     key = project_dir.name
-    __reset_db(key)
+    __reset_mock_clients_db(key)
 
     ds_stack = setup_rds_server(email=aggregator, key=key)
     ds_client = ds_stack.init_session(host=aggregator)
@@ -103,9 +105,6 @@ async def __run_main_py(
 ) -> int:
     """Run the `main.py` file for a given client"""
     log_file = log_dir / f"{client_email}.log"
-    logger.debug(
-        f"Running `{main_py_path}` for `{client_email}` with log file {log_file}"
-    )
 
     # setting up env variables
     env = os.environ.copy()
@@ -124,7 +123,9 @@ async def __run_main_py(
                 env=env,
             )
             return_code = await process.wait()
-            logger.debug(f"`{client_email}` returns code {return_code}")
+            logger.debug(
+                f"`{client_email}` returns code {return_code} for running `{main_py_path}`"
+            )
             return return_code
     except Exception as e:
         logger.error(f"Error running `{main_py_path}` for `{client_email}`: {e}")
@@ -141,6 +142,7 @@ async def __run_simulated_flwr_project(
     main_py_path = project_dir / "main.py"
     log_dir = project_dir / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Log directory: {log_dir}")
 
     logger.info(
         f"Running DS client {ds_client.email} with config path {ds_client._syftbox_client.config_path}"
@@ -186,30 +188,6 @@ async def __run_simulated_flwr_project(
     await asyncio.gather(*client_tasks, return_exceptions=True)
 
 
-def __validate_project_dir(project_dir: Union[str, Path]) -> None:
-    """Validate the provided `syft_flwr` project directory"""
-    project_dir = Path(project_dir).expanduser().resolve()
-    if not project_dir.exists():
-        raise FileNotFoundError(f"Project directory {project_dir} does not exist")
-
-    if not project_dir.is_dir():
-        raise NotADirectoryError(f"Project directory {project_dir} is not a directory")
-
-    if not (project_dir / "main.py").exists():
-        raise FileNotFoundError(f"main.py not found at {project_dir}")
-
-    if not (project_dir / "pyproject.toml").exists():
-        raise FileNotFoundError(f"pyproject.toml not found at {project_dir}")
-
-
-def __get_datasites_and_aggregator(project_dir: Path) -> tuple[list[str], str]:
-    """Get the datasites and aggregator emails from the `pyproject.toml` file"""
-    pyproject_conf = load_flwr_pyproject(project_dir)
-    datasites = pyproject_conf["tool"]["syft_flwr"]["datasites"]
-    aggregator = pyproject_conf["tool"]["syft_flwr"]["aggregator"]
-    return datasites, aggregator
-
-
 def __resolve_mock_dataset_path(
     mock_dataset_paths: list[Path], client_email: str
 ) -> Path:
@@ -230,8 +208,12 @@ def run(
     nest_asyncio.apply()  # allow asyncio to run in Jupyter notebooks
 
     project_dir = Path(project_dir).expanduser().resolve()
-    __validate_project_dir(project_dir)
-    datasites, aggregator = __get_datasites_and_aggregator(project_dir)
+    validate_bootstraped_project(project_dir)
+
+    pyproject_conf = load_flwr_pyproject(project_dir)
+    datasites = pyproject_conf["tool"]["syft_flwr"]["datasites"]
+    aggregator = pyproject_conf["tool"]["syft_flwr"]["aggregator"]
+
     do_clients, ds_client = __setup_mock_rds_clients(project_dir, aggregator, datasites)
     asyncio.run(
         __run_simulated_flwr_project(

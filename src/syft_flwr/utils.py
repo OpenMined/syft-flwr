@@ -3,6 +3,8 @@ import re
 import zlib
 from pathlib import Path
 
+from typing_extensions import Union
+
 EMAIL_REGEX = r"^[^@]+@[^@]+\.[^@]+$"
 
 
@@ -26,8 +28,28 @@ def get_syftbox_dataset_path() -> Path:
 
 
 def run_syft_flwr() -> bool:
+    """Util function to check if we are running with syft_flwr or plain flwr
+    Currently only checks the `DATA_DIR` environment variable.
+    """
     try:
         get_syftbox_dataset_path()
         return True
     except FileNotFoundError:
         return False
+
+
+def validate_bootstraped_project(project_dir: Union[str, Path]) -> None:
+    """Validate a bootstraped `syft_flwr` project directory"""
+    project_dir = Path(project_dir).expanduser().resolve()
+
+    if not project_dir.exists():
+        raise FileNotFoundError(f"Project directory {project_dir} does not exist")
+
+    if not project_dir.is_dir():
+        raise NotADirectoryError(f"Project directory {project_dir} is not a directory")
+
+    if not (project_dir / "main.py").exists():
+        raise FileNotFoundError(f"main.py not found at {project_dir}")
+
+    if not (project_dir / "pyproject.toml").exists():
+        raise FileNotFoundError(f"pyproject.toml not found at {project_dir}")
