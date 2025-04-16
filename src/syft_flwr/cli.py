@@ -35,6 +35,11 @@ DATASITES_OPTS = typer.Option(
     "--datasites",
     help="Datasites addresses",
 )
+MOCK_DATASET_PATHS_OPTS = typer.Option(
+    "-m",
+    "--mock-dataset-paths",
+    help="Mock dataset paths",
+)
 
 
 def prompt_for_missing_args(
@@ -51,6 +56,14 @@ def prompt_for_missing_args(
         datasites = datasites.split(",")
 
     return aggregator, datasites
+
+
+def prompt_for_missing_mock_paths(mock_dataset_paths: List[str]) -> List[str]:
+    if not mock_dataset_paths:
+        mock_paths = typer.prompt("Enter comma-separated paths to mock datasets")
+        mock_dataset_paths = mock_paths.split(",")
+
+    return mock_dataset_paths
 
 
 @app.command()
@@ -79,12 +92,17 @@ def bootstrap(
 @app.command()
 def run(
     project_dir: Annotated[Path, PROJECT_DIR_OPTS],
+    mock_dataset_paths: Annotated[List[str], MOCK_DATASET_PATHS_OPTS] = None,
 ) -> None:
     """Run a syft_flwr project in simulation mode over mock data"""
     try:
-        project_dir = project_dir.absolute()
-        run_syft_flwr_simulation(project_dir)
-        rprint(f"[green]Run project at '{project_dir}'[/green]")
+        mock_dataset_paths: list[str] = prompt_for_missing_mock_paths(
+            mock_dataset_paths
+        )
+        project_dir = Path(project_dir).expanduser().resolve()
+        rprint(f"[cyan]Running syft_flwr project at '{project_dir}'[/cyan]")
+        rprint(f"[cyan]Mock dataset paths: {mock_dataset_paths}[/cyan]")
+        run_syft_flwr_simulation(project_dir, mock_dataset_paths)
     except Exception as e:
         rprint(f"[red]Error[/red]: {e}")
         raise typer.Exit(1)

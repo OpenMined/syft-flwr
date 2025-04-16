@@ -18,7 +18,6 @@ from syft_flwr.config import load_flwr_pyproject
 from syft_flwr.flower_client import syftbox_flwr_client
 from syft_flwr.flower_server import syftbox_flwr_server
 from syft_flwr.flwr_compatibility import RecordDict
-from syft_flwr.utils import validate_bootstraped_project
 
 __all__ = ["syftbox_run_flwr_client", "syftbox_run_flwr_server", "run"]
 
@@ -145,7 +144,7 @@ async def __run_simulated_flwr_project(
     logger.info(f"Log directory: {log_dir}")
 
     logger.info(
-        f"Running DS client {ds_client.email} with config path {ds_client._syftbox_client.config_path}"
+        f"Running DS client '{ds_client.email}' with config path {ds_client._syftbox_client.config_path}"
     )
     ds_task: asyncio.Task = asyncio.create_task(
         __run_main_py(
@@ -158,11 +157,11 @@ async def __run_simulated_flwr_project(
 
     client_tasks: list[asyncio.Task] = []
     for client in do_clients:
-        mock_dataset_path = __resolve_mock_dataset_path(
+        mock_dataset_path = __get_client_mock_dataset_path(
             mock_dataset_paths, client.email
         )
         logger.info(
-            f"Running DO client {client.email} with config path {client._syftbox_client.config_path} on mock dataset {mock_dataset_path}"
+            f"Running DO client '{client.email}' with config path {client._syftbox_client.config_path} on mock dataset {mock_dataset_path}"
         )
         client_tasks.append(
             asyncio.create_task(
@@ -177,10 +176,10 @@ async def __run_simulated_flwr_project(
         )
 
     ds_return_code = await ds_task
-    logger.info(f"DS client {ds_client.email} returned with code {ds_return_code}")
+    logger.info(f"DS client '{ds_client.email}' returned with code {ds_return_code}")
 
     # cancel all client tasks if DS client returns
-    logger.info("Cancelling DO client tasks as DS client returned")
+    logger.debug("Cancelling DO client tasks as DS client returned")
     for task in client_tasks:
         if not task.done():
             task.cancel()
@@ -188,15 +187,41 @@ async def __run_simulated_flwr_project(
     await asyncio.gather(*client_tasks, return_exceptions=True)
 
 
-def __resolve_mock_dataset_path(
+def __get_client_mock_dataset_path(
     mock_dataset_paths: list[Path], client_email: str
 ) -> Path:
     """Resolve the mock dataset path for the given dataset name"""
     for path in mock_dataset_paths:
         if client_email in str(path):
-            logger.debug(f"Mock dataset path found for {client_email} at {path}")
+            logger.debug(f"Mock dataset path found for '{client_email}' at {path}")
             return path
-    raise ValueError(f"Mock dataset path not found for {client_email}")
+    raise ValueError(f"Mock dataset path not found for '{client_email}'")
+
+
+def __validate_bootstraped_project(project_dir: Path) -> None:
+    """Validate a bootstraped `syft_flwr` project directory"""
+    if not project_dir.exists():
+        raise FileNotFoundError(f"Project directory {project_dir} does not exist")
+
+    if not project_dir.is_dir():
+        raise NotADirectoryError(f"Project directory {project_dir} is not a directory")
+
+    if not (project_dir / "main.py").exists():
+        raise FileNotFoundError(f"main.py not found at {project_dir}")
+
+    if not (project_dir / "pyproject.toml").exists():
+        raise FileNotFoundError(f"pyproject.toml not found at {project_dir}")
+
+
+def __validate_mock_dataset_paths(mock_dataset_paths: list[str]) -> list[Path]:
+    """Validate the mock dataset paths"""
+    resolved_paths = []
+    for path in mock_dataset_paths:
+        path = Path(path).expanduser().resolve()
+        if not path.exists():
+            raise ValueError(f"Mock dataset path {path} does not exist")
+        resolved_paths.append(path)
+    return resolved_paths
 
 
 def run(
@@ -208,7 +233,8 @@ def run(
     nest_asyncio.apply()  # allow asyncio to run in Jupyter notebooks
 
     project_dir = Path(project_dir).expanduser().resolve()
-    validate_bootstraped_project(project_dir)
+    __validate_bootstraped_project(project_dir)
+    mock_dataset_paths = __validate_mock_dataset_paths(mock_dataset_paths)
 
     pyproject_conf = load_flwr_pyproject(project_dir)
     datasites = pyproject_conf["tool"]["syft_flwr"]["datasites"]
