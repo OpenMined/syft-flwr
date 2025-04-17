@@ -148,10 +148,12 @@ async def __run_simulated_flwr_project(
 ) -> bool:
     """Run all clients and server concurrently"""
     run_success = True
-    main_py_path = project_dir / "main.py"
+
     log_dir = project_dir / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
-    logger.info(f"Log directory: {log_dir}")
+    logger.debug(f"📝 Log directory: {log_dir}")
+
+    main_py_path = project_dir / "main.py"
 
     logger.info(
         f"Running DS client '{ds_client.email}' with config path {ds_client._syftbox_client.config_path}"

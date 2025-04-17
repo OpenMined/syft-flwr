@@ -1,6 +1,7 @@
 import flwr
 from flwr.common import Metadata
-from flwr.common.message import Message
+from flwr.common.message import Error, Message
+from loguru import logger
 from packaging.version import Version
 from typing_extensions import Optional
 
@@ -30,15 +31,28 @@ def check_reply_to_field(metadata: Metadata):
 
 def create_flwr_message(
     content: RecordDict,
+    reply_to: Message,
     message_type: str,
+    src_node_id: int,
     dst_node_id: int,
     group_id: str,
     run_id: int,
-    src_node_id: int,
     ttl: Optional[float] = None,
+    error: Optional[Error] = None,
 ) -> Message:
+    logger.debug(f"Running with flwr version {flwr.__version__}")
+
     if flwr_later_than_1_17():
-        return Message(content, dst_node_id, message_type, ttl=ttl, group_id=group_id)
+        if error is not None:
+            return Message(reply_to=reply_to, error=error)
+        return Message(
+            content=content,
+            reply_to=reply_to,
+            dst_node_id=dst_node_id,
+            message_type=message_type,
+            ttl=ttl,
+            group_id=group_id,
+        )
     else:
         from flwr.common import DEFAULT_TTL
 
@@ -53,4 +67,7 @@ def create_flwr_message(
             ttl=ttl_,
             message_type=message_type,
         )
-        return Message(metadata=metadata, content=content)
+        if error is not None:
+            return Message(metadata=metadata, error=error)
+        else:
+            return Message(metadata=metadata, content=content)
