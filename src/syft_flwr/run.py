@@ -2,6 +2,7 @@ import asyncio
 import os
 import shutil
 import tempfile
+import warnings
 from pathlib import Path
 from uuid import uuid4
 
@@ -20,6 +21,10 @@ from syft_flwr.flower_server import syftbox_flwr_server
 from syft_flwr.flwr_compatibility import RecordDict
 
 __all__ = ["syftbox_run_flwr_client", "syftbox_run_flwr_server", "run"]
+
+
+# Suppress Pydantic deprecation warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="pydantic")
 
 
 def syftbox_run_flwr_client(flower_project_dir: Path) -> None:
@@ -103,7 +108,7 @@ async def __run_main_py(
     dataset_path: Union[str, Path] | None = None,
 ) -> int:
     """Run the `main.py` file for a given client"""
-    log_file = log_dir / f"{client_email}.log"
+    log_file_path = log_dir / f"{client_email}.log"
 
     # setting up env variables
     env = os.environ.copy()
@@ -112,19 +117,23 @@ async def __run_main_py(
 
     # running the main.py file asynchronously in a subprocess
     try:
-        with open(log_file, "w") as log_file:
+        with open(log_file_path, "w") as f:
             process = await asyncio.create_subprocess_exec(
                 "python",
                 str(main_py_path),
                 "-s",
-                stdout=log_file,
-                stderr=log_file,
+                stdout=f,
+                stderr=f,
                 env=env,
             )
             return_code = await process.wait()
             logger.debug(
                 f"`{client_email}` returns code {return_code} for running `{main_py_path}`"
             )
+            if return_code != 0:
+                logger.error(
+                    f"Error in `{client_email}` execution. Please see the log at: {log_file_path}"
+                )
             return return_code
     except Exception as e:
         logger.error(f"Error running `{main_py_path}` for `{client_email}`: {e}")
@@ -136,8 +145,9 @@ async def __run_simulated_flwr_project(
     do_clients: list[RDSClient],
     ds_client: RDSClient,
     mock_dataset_paths: list[Union[str, Path]],
-) -> None:
+) -> bool:
     """Run all clients and server concurrently"""
+    run_success = True
     main_py_path = project_dir / "main.py"
     log_dir = project_dir / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -176,6 +186,11 @@ async def __run_simulated_flwr_project(
         )
 
     ds_return_code = await ds_task
+    if ds_return_code != 0:
+        logger.error(
+            f"DS client '{ds_client.email}' failed with return code {ds_return_code}. See log at: {log_dir / f'{ds_client.email}.log'}"
+        )
+        run_success = False
     logger.info(f"DS client '{ds_client.email}' returned with code {ds_return_code}")
 
     # cancel all client tasks if DS client returns
@@ -185,6 +200,8 @@ async def __run_simulated_flwr_project(
             task.cancel()
 
     await asyncio.gather(*client_tasks, return_exceptions=True)
+
+    return run_success
 
 
 def __get_client_mock_dataset_path(
@@ -241,9 +258,12 @@ def run(
     aggregator = pyproject_conf["tool"]["syft_flwr"]["aggregator"]
 
     do_clients, ds_client = __setup_mock_rds_clients(project_dir, aggregator, datasites)
-    asyncio.run(
+    run_success = asyncio.run(
         __run_simulated_flwr_project(
             project_dir, do_clients, ds_client, mock_dataset_paths
         )
     )
-    logger.success("Simulation completed successfully ✅")
+    if run_success:
+        logger.success("Simulation completed successfully ✅")
+    else:
+        logger.error("Simulation failed ❌")
