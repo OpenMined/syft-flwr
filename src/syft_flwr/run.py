@@ -130,10 +130,6 @@ async def __run_main_py(
             logger.debug(
                 f"`{client_email}` returns code {return_code} for running `{main_py_path}`"
             )
-            if return_code != 0:
-                logger.error(
-                    f"Error in `{client_email}` execution. Please see the log at: {log_file_path}"
-                )
             return return_code
     except Exception as e:
         logger.error(f"Error running `{main_py_path}` for `{client_email}`: {e}")
@@ -189,11 +185,12 @@ async def __run_simulated_flwr_project(
 
     ds_return_code = await ds_task
     if ds_return_code != 0:
-        logger.error(
-            f"DS client '{ds_client.email}' failed with return code {ds_return_code}. See log at: {log_dir / f'{ds_client.email}.log'}"
-        )
         run_success = False
-    logger.info(f"DS client '{ds_client.email}' returned with code {ds_return_code}")
+
+    # log out ds client logs
+    with open(log_dir / f"{ds_client.email}.log", "r") as log_file:
+        log_content = log_file.read().strip()
+        logger.info(f"DS client '{ds_client.email}' logs:\n{log_content}")
 
     # cancel all client tasks if DS client returns
     logger.debug("Cancelling DO client tasks as DS client returned")
