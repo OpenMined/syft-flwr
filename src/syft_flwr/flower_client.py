@@ -37,7 +37,7 @@ def syftbox_flwr_client(client_app: ClientApp, context: Context):
             error_message = f"Client: '{client_email}'. Error: {str(e)}. Traceback: {error_traceback}"
             logger.error(error_message)
 
-            error_obj = Error(
+            error = Error(
                 code=ErrorCode.CLIENT_APP_RAISED_EXCEPTION, reason=f"{error_message}"
             )
 
@@ -49,7 +49,7 @@ def syftbox_flwr_client(client_app: ClientApp, context: Context):
                 dst_node_id=message.metadata.src_node_id,
                 group_id=message.metadata.group_id,
                 run_id=message.metadata.run_id,
-                error=error_obj,
+                error=error,
             )
             # Convert to bytes for transmission
             error_bytes: bytes = flower_message_to_bytes(error_reply)
