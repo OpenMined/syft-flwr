@@ -12,13 +12,13 @@ def flwr_later_than_1_17():
 # Version-dependent imports
 if flwr_later_than_1_17():
     from flwr.common.record import RecordDict
-    from flwr.server.grid import Driver
+    from flwr.server.grid import Grid
 else:
     from flwr.common.record import RecordSet as RecordDict
-    from flwr.server.driver import Driver
+    from flwr.server.driver import Driver as Grid
 
 
-__all__ = ["Driver", "RecordDict"]
+__all__ = ["Grid", "RecordDict"]
 
 
 def check_reply_to_field(metadata: Metadata) -> bool:

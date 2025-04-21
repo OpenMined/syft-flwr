@@ -10,7 +10,7 @@ from syft_rpc import rpc, rpc_db
 from typing_extensions import Optional
 
 from syft_flwr.flwr_compatibility import (
-    Driver,
+    Grid,
     RecordDict,
     check_reply_to_field,
     create_flwr_message,
@@ -22,7 +22,7 @@ from syft_flwr.utils import str_to_int
 AGGREGATOR_NODE_ID = 1
 
 
-class SyftDriver(Driver):
+class SyftGrid(Grid):
     def __init__(
         self,
         datasites: list[str] = [],
@@ -34,11 +34,11 @@ class SyftDriver(Driver):
         self.datasites = datasites
         self.client_map = {str_to_int(ds): ds for ds in self.datasites}
         logger.debug(
-            f"Init SyftDriver for {self._client.email} with datasites: {self.datasites}"
+            f"Init SyftGrid for {self._client.email} with datasites: {self.datasites}"
         )
 
     def set_run(self, run_id: int) -> None:
-        # TODO: In Grpc driver case the superlink is the one which sets up the run id,
+        # TODO: In GrpcGrid case, the superlink is the one which sets up the run id,
         # do we need to do the same here, where the run id is set from an external context.
 
         # Convert to Flower Run object
