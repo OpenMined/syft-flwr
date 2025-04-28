@@ -4,8 +4,6 @@ import typer
 from rich import print as rprint
 from typing_extensions import Annotated, List, Tuple
 
-from syft_flwr.run import run as run_syft_flwr_simulation
-
 app = typer.Typer(
     name="syft_flwr",
     no_args_is_help=True,
@@ -95,6 +93,8 @@ def run(
     mock_dataset_paths: Annotated[List[str], MOCK_DATASET_PATHS_OPTS] = None,
 ) -> None:
     """Run a syft_flwr project in simulation mode over mock data"""
+    from syft_flwr.run_simulation import run
+
     try:
         mock_dataset_paths: list[str] = prompt_for_missing_mock_paths(
             mock_dataset_paths
@@ -102,7 +102,7 @@ def run(
         project_dir = Path(project_dir).expanduser().resolve()
         rprint(f"[cyan]Running syft_flwr project at '{project_dir}'[/cyan]")
         rprint(f"[cyan]Mock dataset paths: {mock_dataset_paths}[/cyan]")
-        run_syft_flwr_simulation(project_dir, mock_dataset_paths)
+        run(project_dir, mock_dataset_paths)
     except Exception as e:
         rprint(f"[red]Error[/red]: {e}")
         raise typer.Exit(1)
