@@ -1,7 +1,5 @@
 import asyncio
 import os
-import shutil
-import tempfile
 import warnings
 from pathlib import Path
 from uuid import uuid4
@@ -12,7 +10,7 @@ from flwr.common.object_ref import load_app
 from flwr.server.server_app import LoadServerAppError
 from loguru import logger
 from syft_rds.client.rds_client import RDSClient
-from syft_rds.orchestra import setup_rds_server
+from syft_rds.orchestra import remove_rds_stack_dir, setup_rds_server
 from typing_extensions import Union
 
 from syft_flwr.config import load_flwr_pyproject
@@ -68,25 +66,12 @@ def syftbox_run_flwr_server(flower_project_dir: Path) -> None:
     syftbox_flwr_server(server_app, context, datasites)
 
 
-def __reset_mock_clients_db(key):
-    root_path = Path(tempfile.gettempdir(), key)
-
-    if root_path.exists():
-        try:
-            shutil.rmtree(root_path)
-            logger.debug(f"Successfully Reset Flwr DB ✅ at {root_path}")
-        except Exception as e:
-            logger.warning(f"Failed to reset directory {root_path}: {e}")
-    else:
-        logger.debug(f"Skipping Reset , as path does not exist at {root_path}")
-
-
-def __setup_mock_rds_clients(
+def _setup_mock_rds_clients(
     project_dir: Path, aggregator: str, datasites: list[str]
 ) -> tuple[list[RDSClient], RDSClient]:
     """Setup mock RDS clients for the given project directory"""
     key = project_dir.name
-    __reset_mock_clients_db(key)
+    remove_rds_stack_dir(key)
 
     ds_stack = setup_rds_server(email=aggregator, key=key)
     ds_client = ds_stack.init_session(host=aggregator)
@@ -100,7 +85,7 @@ def __setup_mock_rds_clients(
     return do_clients, ds_client
 
 
-async def __run_main_py(
+async def _run_main_py(
     main_py_path: Path,
     config_path: Path,
     client_email: str,
@@ -136,7 +121,7 @@ async def __run_main_py(
         return 1
 
 
-async def __run_simulated_flwr_project(
+async def _run_simulated_flwr_project(
     project_dir: Path,
     do_clients: list[RDSClient],
     ds_client: RDSClient,
@@ -155,7 +140,7 @@ async def __run_simulated_flwr_project(
         f"Running DS client '{ds_client.email}' with config path {ds_client._syftbox_client.config_path}"
     )
     ds_task: asyncio.Task = asyncio.create_task(
-        __run_main_py(
+        _run_main_py(
             main_py_path,
             ds_client._syftbox_client.config_path,
             ds_client.email,
@@ -165,7 +150,7 @@ async def __run_simulated_flwr_project(
 
     client_tasks: list[asyncio.Task] = []
     for client in do_clients:
-        mock_dataset_path = __get_client_mock_dataset_path(
+        mock_dataset_path = _get_client_mock_dataset_path(
             mock_dataset_paths, client.email
         )
         logger.info(
@@ -173,7 +158,7 @@ async def __run_simulated_flwr_project(
         )
         client_tasks.append(
             asyncio.create_task(
-                __run_main_py(
+                _run_main_py(
                     main_py_path,
                     client._syftbox_client.config_path,
                     client.email,
@@ -203,18 +188,44 @@ async def __run_simulated_flwr_project(
     return run_success
 
 
-def __get_client_mock_dataset_path(
+def _get_client_mock_dataset_path(
     mock_dataset_paths: list[Path], client_email: str
 ) -> Path:
-    """Resolve the mock dataset path for the given dataset name"""
+    """Resolve the mock dataset path for the given client email by parsing the path structure."""
     for path in mock_dataset_paths:
-        if client_email in str(path):
-            logger.debug(f"Mock dataset path found for '{client_email}' at {path}")
-            return path
-    raise ValueError(f"Mock dataset path not found for '{client_email}'")
+        try:
+            parts = path.parts
+            # Find the index of 'datasites'
+            datasites_index = parts.index("datasites")
+            # The email should be the next part
+            if datasites_index + 1 < len(parts):
+                extracted_email = parts[datasites_index + 1]
+                if extracted_email == client_email:
+                    logger.debug(
+                        f"Mock dataset path found for '{client_email}' at {path} by parsing structure."
+                    )
+                    return path
+            else:
+                # Log a warning if the structure is unexpected right after 'datasites'
+                logger.warning(
+                    f"Unexpected path structure for mock dataset: {path}. No component found after 'datasites'."
+                )
+        except ValueError:
+            # 'datasites' not found in the path parts
+            logger.warning(
+                f"Unexpected path structure for mock dataset: {path}. 'datasites' directory not found in path parts."
+            )
+        except Exception as e:
+            # Catch any other potential errors during parsing
+            logger.warning(f"Error parsing mock dataset path {path}: {e}")
+
+    # If no match found after checking all paths
+    raise ValueError(
+        f"Mock dataset path not found for '{client_email}' in the provided list: {mock_dataset_paths}"
+    )
 
 
-def __validate_bootstraped_project(project_dir: Path) -> None:
+def _validate_bootstraped_project(project_dir: Path) -> None:
     """Validate a bootstraped `syft_flwr` project directory"""
     if not project_dir.exists():
         raise FileNotFoundError(f"Project directory {project_dir} does not exist")
@@ -229,7 +240,7 @@ def __validate_bootstraped_project(project_dir: Path) -> None:
         raise FileNotFoundError(f"pyproject.toml not found at {project_dir}")
 
 
-def __validate_mock_dataset_paths(mock_dataset_paths: list[str]) -> list[Path]:
+def _validate_mock_dataset_paths(mock_dataset_paths: list[str]) -> list[Path]:
     """Validate the mock dataset paths"""
     resolved_paths = []
     for path in mock_dataset_paths:
@@ -249,16 +260,16 @@ def run(
     nest_asyncio.apply()  # allow asyncio to run in Jupyter notebooks
 
     project_dir = Path(project_dir).expanduser().resolve()
-    __validate_bootstraped_project(project_dir)
-    mock_dataset_paths = __validate_mock_dataset_paths(mock_dataset_paths)
+    _validate_bootstraped_project(project_dir)
+    mock_dataset_paths = _validate_mock_dataset_paths(mock_dataset_paths)
 
     pyproject_conf = load_flwr_pyproject(project_dir)
     datasites = pyproject_conf["tool"]["syft_flwr"]["datasites"]
     aggregator = pyproject_conf["tool"]["syft_flwr"]["aggregator"]
 
-    do_clients, ds_client = __setup_mock_rds_clients(project_dir, aggregator, datasites)
+    do_clients, ds_client = _setup_mock_rds_clients(project_dir, aggregator, datasites)
     run_success = asyncio.run(
-        __run_simulated_flwr_project(
+        _run_simulated_flwr_project(
             project_dir, do_clients, ds_client, mock_dataset_paths
         )
     )
