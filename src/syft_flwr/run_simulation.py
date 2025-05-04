@@ -93,10 +93,8 @@ async def _run_simulated_flwr_project(
     )
 
     client_tasks: list[asyncio.Task] = []
-    for client in do_clients:
-        mock_dataset_path = _get_client_mock_dataset_path(
-            mock_dataset_paths, client.email
-        )
+    for client,mock_dataset_path in zip(do_clients, mock_dataset_paths):
+        # check if the client has a mock dataset path
         logger.info(
             f"Running DO client '{client.email}' with config path {client._syftbox_client.config_path} on mock dataset {mock_dataset_path}"
         )
@@ -132,42 +130,6 @@ async def _run_simulated_flwr_project(
     return run_success
 
 
-def _get_client_mock_dataset_path(
-    mock_dataset_paths: list[Path], client_email: str
-) -> Path:
-    """Resolve the mock dataset path for the given client email by parsing the path structure."""
-    for path in mock_dataset_paths:
-        try:
-            parts = path.parts
-            # Find the index of 'datasites'
-            datasites_index = parts.index("datasites")
-            # The email should be the next part
-            if datasites_index + 1 < len(parts):
-                extracted_email = parts[datasites_index + 1]
-                if extracted_email == client_email:
-                    logger.debug(
-                        f"Mock dataset path found for '{client_email}' at {path} by parsing structure."
-                    )
-                    return path
-            else:
-                # Log a warning if the structure is unexpected right after 'datasites'
-                logger.warning(
-                    f"Unexpected path structure for mock dataset: {path}. No component found after 'datasites'."
-                )
-        except ValueError:
-            # 'datasites' not found in the path parts
-            logger.warning(
-                f"Unexpected path structure for mock dataset: {path}. 'datasites' directory not found in path parts."
-            )
-        except Exception as e:
-            # Catch any other potential errors during parsing
-            logger.warning(f"Error parsing mock dataset path {path}: {e}")
-
-    # If no match found after checking all paths
-    raise ValueError(
-        f"Mock dataset path not found for '{client_email}' in the provided list: {mock_dataset_paths}"
-    )
-
 
 def _validate_bootstraped_project(project_dir: Path) -> None:
     """Validate a bootstraped `syft_flwr` project directory"""
@@ -199,9 +161,6 @@ def run(
     project_dir: Union[str, Path], mock_dataset_paths: list[Union[str, Path]]
 ) -> None:
     """Run a syft_flwr project in simulation mode over mock data"""
-    import nest_asyncio
-
-    nest_asyncio.apply()  # allow asyncio to run in Jupyter notebooks
 
     project_dir = Path(project_dir).expanduser().resolve()
     _validate_bootstraped_project(project_dir)
@@ -212,12 +171,21 @@ def run(
     aggregator = pyproject_conf["tool"]["syft_flwr"]["aggregator"]
 
     do_clients, ds_client = _setup_mock_rds_clients(project_dir, aggregator, datasites)
-    run_success = asyncio.run(
-        _run_simulated_flwr_project(
+    
+
+    async def main():
+        run_success =await _run_simulated_flwr_project(
             project_dir, do_clients, ds_client, mock_dataset_paths
         )
-    )
-    if run_success:
-        logger.success("Simulation completed successfully ✅")
-    else:
-        logger.error("Simulation failed ❌")
+        if run_success:
+            logger.success("Simulation completed successfully ✅")
+        else:
+            logger.error("Simulation failed ❌")
+
+    try:
+        asyncio.get_running_loop()
+        # We are in an environment with an existing event loop (like Jupyter)
+        asyncio.create_task(main())
+    except RuntimeError:
+        # No existing event loop, create and run one (for scripts)
+        asyncio.run(main())
