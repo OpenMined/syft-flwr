@@ -1,5 +1,6 @@
 import asyncio
 import os
+import uuid
 from pathlib import Path
 
 from loguru import logger
@@ -12,9 +13,9 @@ from syft_flwr.config import load_flwr_pyproject
 
 def _setup_mock_rds_clients(
     project_dir: Path, aggregator: str, datasites: list[str]
-) -> tuple[list[RDSClient], RDSClient]:
+) -> tuple[str, list[RDSClient], RDSClient]:
     """Setup mock RDS clients for the given project directory"""
-    key = project_dir.name
+    key = project_dir.name + "_" + str(uuid.uuid4())
     remove_rds_stack_dir(key)
 
     ds_stack = setup_rds_server(email=aggregator, key=key)
@@ -26,7 +27,7 @@ def _setup_mock_rds_clients(
         do_client = do_stack.init_session(host=datasite)
         do_clients.append(do_client)
 
-    return do_clients, ds_client
+    return key, do_clients, ds_client
 
 
 async def _run_main_py(
@@ -74,9 +75,9 @@ async def _run_simulated_flwr_project(
     """Run all clients and server concurrently"""
     run_success = True
 
-    log_dir = project_dir / "logs"
+    log_dir = project_dir / "simulation_logs"
     log_dir.mkdir(parents=True, exist_ok=True)
-    logger.debug(f"📝 Log directory: {log_dir}")
+    logger.info(f"📝 Log directory: {log_dir}")
 
     main_py_path = project_dir / "main.py"
 
@@ -93,7 +94,7 @@ async def _run_simulated_flwr_project(
     )
 
     client_tasks: list[asyncio.Task] = []
-    for client,mock_dataset_path in zip(do_clients, mock_dataset_paths):
+    for client, mock_dataset_path in zip(do_clients, mock_dataset_paths):
         # check if the client has a mock dataset path
         logger.info(
             f"Running DO client '{client.email}' with config path {client._syftbox_client.config_path} on mock dataset {mock_dataset_path}"
@@ -128,7 +129,6 @@ async def _run_simulated_flwr_project(
     await asyncio.gather(*client_tasks, return_exceptions=True)
 
     return run_success
-
 
 
 def _validate_bootstraped_project(project_dir: Path) -> None:
@@ -170,22 +170,35 @@ def run(
     datasites = pyproject_conf["tool"]["syft_flwr"]["datasites"]
     aggregator = pyproject_conf["tool"]["syft_flwr"]["aggregator"]
 
-    do_clients, ds_client = _setup_mock_rds_clients(project_dir, aggregator, datasites)
-    
+    key, do_clients, ds_client = _setup_mock_rds_clients(
+        project_dir, aggregator, datasites
+    )
 
     async def main():
-        run_success =await _run_simulated_flwr_project(
-            project_dir, do_clients, ds_client, mock_dataset_paths
-        )
-        if run_success:
-            logger.success("Simulation completed successfully ✅")
-        else:
-            logger.error("Simulation failed ❌")
+        try:
+            run_success = await _run_simulated_flwr_project(
+                project_dir, do_clients, ds_client, mock_dataset_paths
+            )
+            if run_success:
+                logger.success("Simulation completed successfully ✅")
+            else:
+                logger.error("Simulation failed ❌")
+        except Exception as e:
+            logger.error(f"Simulation failed ❌: {e}")
+        finally:
+            # Clean up the RDS stack
+            remove_rds_stack_dir(key)
+            logger.debug(f"Removed RDS stack: {key}")
 
     try:
-        asyncio.get_running_loop()
+        loop = asyncio.get_running_loop()
+        logger.debug(f"Running in an environment with an existing event loop {loop}")
         # We are in an environment with an existing event loop (like Jupyter)
         asyncio.create_task(main())
     except RuntimeError:
+        logger.debug("No existing event loop, creating and running one")
         # No existing event loop, create and run one (for scripts)
-        asyncio.run(main())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(main())
+        loop.close()
