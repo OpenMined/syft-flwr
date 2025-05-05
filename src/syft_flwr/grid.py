@@ -71,13 +71,13 @@ class SyftGrid(Grid):
     ) -> Message:
         """Create a new message with specified parameters."""
         return create_flwr_message(
-            content,
-            message_type,
-            dst_node_id,
-            group_id,
-            ttl,
-            cast(Run, self._run).run_id,
-            self.node.node_id,
+            content=content,
+            message_type=message_type,
+            dst_node_id=dst_node_id,
+            group_id=group_id,
+            ttl=ttl,
+            run_id=cast(Run, self._run).run_id,
+            src_node_id=self.node.node_id,
         )
 
     def get_node_ids(self) -> list[int]:
@@ -128,6 +128,13 @@ class SyftGrid(Grid):
                 raise ValueError(f"Empty response: {response}")
 
             message: Message = bytes_to_flower_message(response.body)
+            if message.has_error():
+                error = message.error
+                logger.error(
+                    f"Message {msg_id} error with code={error.code}, reason={error.reason}"
+                )
+                continue
+
             logger.debug(
                 f"Pulled message from {response.url} with metadata: {message.metadata}, size: {len(response.body) / 1024 / 1024} (Mb)"
             )

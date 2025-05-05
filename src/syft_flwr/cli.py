@@ -33,6 +33,35 @@ DATASITES_OPTS = typer.Option(
     "--datasites",
     help="Datasites addresses",
 )
+MOCK_DATASET_PATHS_OPTS = typer.Option(
+    "-m",
+    "--mock-dataset-paths",
+    help="Mock dataset paths",
+)
+
+
+def prompt_for_missing_args(
+    aggregator: str, datasites: List[str]
+) -> Tuple[Path, str, List[str]]:
+    if not aggregator:
+        aggregator = typer.prompt(
+            "Enter the datasite email of the Aggregator (Flower Server)"
+        )
+    if not datasites:
+        datasites = typer.prompt(
+            "Enter a comma-separated email of datasites of the Flower Clients"
+        )
+        datasites = datasites.split(",")
+
+    return aggregator, datasites
+
+
+def prompt_for_missing_mock_paths(mock_dataset_paths: List[str]) -> List[str]:
+    if not mock_dataset_paths:
+        mock_paths = typer.prompt("Enter comma-separated paths to mock datasets")
+        mock_dataset_paths = mock_paths.split(",")
+
+    return mock_dataset_paths
 
 
 @app.command()
@@ -58,20 +87,25 @@ def bootstrap(
         raise typer.Exit(1)
 
 
-def prompt_for_missing_args(
-    aggregator: str, datasites: List[str]
-) -> Tuple[Path, str, List[str]]:
-    if not aggregator:
-        aggregator = typer.prompt(
-            "Enter the datasite email of the Aggregator (Flower Server)"
-        )
-    if not datasites:
-        datasites = typer.prompt(
-            "Enter a comma-separated email of datasites of the Flower Clients"
-        )
-        datasites = datasites.split(",")
+@app.command()
+def run(
+    project_dir: Annotated[Path, PROJECT_DIR_OPTS],
+    mock_dataset_paths: Annotated[List[str], MOCK_DATASET_PATHS_OPTS] = None,
+) -> None:
+    """Run a syft_flwr project in simulation mode over mock data"""
+    from syft_flwr.run_simulation import run
 
-    return aggregator, datasites
+    try:
+        mock_dataset_paths: list[str] = prompt_for_missing_mock_paths(
+            mock_dataset_paths
+        )
+        project_dir = Path(project_dir).expanduser().resolve()
+        rprint(f"[cyan]Running syft_flwr project at '{project_dir}'[/cyan]")
+        rprint(f"[cyan]Mock dataset paths: {mock_dataset_paths}[/cyan]")
+        run(project_dir, mock_dataset_paths)
+    except Exception as e:
+        rprint(f"[red]Error[/red]: {e}")
+        raise typer.Exit(1)
 
 
 def main() -> None:

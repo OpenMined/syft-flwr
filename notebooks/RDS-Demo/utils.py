@@ -1,24 +1,9 @@
-import shutil
-import tempfile
 from pathlib import Path
 
 from flwr_datasets import FederatedDataset
 from flwr_datasets.partitioner import IidPartitioner
 from loguru import logger
 from typing_extensions import Union
-
-
-def reset_db(key):
-    root_path = Path(tempfile.gettempdir(), key)
-
-    if root_path.exists():
-        try:
-            shutil.rmtree(root_path)
-            print("Successfully Reset Flwr DB ✅")
-        except Exception as e:
-            logger.warning(f"Failed to reset directory {root_path}: {e}")
-    else:
-        print("Skipping Reset , as path does not exist")
 
 
 def save_dataset_to_disk(
