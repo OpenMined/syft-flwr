@@ -52,7 +52,6 @@ def syftbox_flwr_client(client_app: ClientApp, context: Context):
                 run_id=message.metadata.run_id,
                 error=error,
             )
-            # Convert to bytes for transmission
             error_bytes: bytes = flower_message_to_bytes(error_reply)
             logger.info(f"Error reply message size: {len(error_bytes)/2**20} MB")
             return error_bytes
@@ -60,7 +59,6 @@ def syftbox_flwr_client(client_app: ClientApp, context: Context):
     try:
         box.run_forever()
     except Exception as e:
-        # Log any exceptions from the event loop itself
         logger.error(
             f"Fatal error in syftbox_flwr_client: {str(e)}\n{traceback.format_exc()}"
         )
