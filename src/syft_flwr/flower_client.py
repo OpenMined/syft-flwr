@@ -1,3 +1,4 @@
+import sys
 import traceback
 
 from flwr.client import ClientApp
@@ -63,7 +64,4 @@ def syftbox_flwr_client(client_app: ClientApp, context: Context):
         logger.error(
             f"Fatal error in syftbox_flwr_client: {str(e)}\n{traceback.format_exc()}"
         )
-        # Exit with error code
-        import sys
-
         sys.exit(1)
