@@ -26,6 +26,9 @@ def get_syftbox_dataset_path() -> Path:
 
 
 def run_syft_flwr() -> bool:
+    """Util function to check if we are running with syft_flwr or plain flwr
+    Currently only checks the `DATA_DIR` environment variable.
+    """
     try:
         get_syftbox_dataset_path()
         return True

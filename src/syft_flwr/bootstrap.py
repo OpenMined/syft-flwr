@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from loguru import logger
 from typing_extensions import List, Union
 
 from syft_flwr import __version__
@@ -90,3 +91,7 @@ def bootstrap(
     __validate_flwr_project_dir(flwr_project_dir)
     __update_pyproject_toml(flwr_project_dir, aggregator, datasites)
     __copy_main_py(flwr_project_dir)
+
+    logger.info(
+        f"Successfully bootstrapped syft-flwr project at {flwr_project_dir} with datasites {datasites} and aggregator {aggregator} ✅"
+    )

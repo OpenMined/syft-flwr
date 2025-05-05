@@ -1,3 +1,5 @@
+import warnings
+from pathlib import Path
 from uuid import uuid4
 
 from flwr.client.client_app import LoadClientAppError
@@ -9,11 +11,16 @@ from syft_flwr.config import load_flwr_pyproject
 from syft_flwr.flower_client import syftbox_flwr_client
 from syft_flwr.flower_server import syftbox_flwr_server
 from syft_flwr.flwr_compatibility import RecordDict
+from syft_flwr.run_simulation import run
 
-__all__ = ["syftbox_run_flwr_client", "syftbox_run_flwr_server"]
+__all__ = ["syftbox_run_flwr_client", "syftbox_run_flwr_server", "run"]
 
 
-def syftbox_run_flwr_client(flower_project_dir):
+# Suppress Pydantic deprecation warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="pydantic")
+
+
+def syftbox_run_flwr_client(flower_project_dir: Path) -> None:
     pyproject_conf = load_flwr_pyproject(flower_project_dir)
     client_ref = pyproject_conf["tool"]["flwr"]["app"]["components"]["clientapp"]
 
@@ -33,7 +40,7 @@ def syftbox_run_flwr_client(flower_project_dir):
     syftbox_flwr_client(client_app, context)
 
 
-def syftbox_run_flwr_server(flower_project_dir):
+def syftbox_run_flwr_server(flower_project_dir: Path) -> None:
     pyproject_conf = load_flwr_pyproject(flower_project_dir)
     datasites = pyproject_conf["tool"]["syft_flwr"]["datasites"]
     server_ref = pyproject_conf["tool"]["flwr"]["app"]["components"]["serverapp"]
