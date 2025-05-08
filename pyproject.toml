@@ -1,7 +1,7 @@
 [project]
 name = "syft-flwr"
 version = "0.1.0"
-description = "Add your description here"
+description = "syft_flwr is an open source framework that facilitate federated learning projects using Flower over the SyftBox protocol"
 readme = "README.md"
 requires-python = ">=3.9.2"
 dependencies = [
@@ -21,10 +21,6 @@ dependencies = [
 [project.scripts]
 syft_flwr = "syft_flwr.cli:main"
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [tool.uv]
 dev-dependencies = [
     "ipykernel>=6.29.5",
@@ -32,6 +28,10 @@ dev-dependencies = [
     "pytest>=8.3.4",
     "pre-commit>=4.0.1",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/syft_flwr"]
