@@ -182,6 +182,7 @@ checkpoints/
 # Datasets
 **MedMNIST**
 **/datasets/
+**/dataset/
 
 # Ruff cache
 .ruff_cache/

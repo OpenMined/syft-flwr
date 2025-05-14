@@ -11,8 +11,7 @@ Dataset: https://www.kaggle.com/datasets/uciml/pima-indians-diabetes-database/
 
 ## Data Owner
 ```bash
-git clone https://github.com/khoaguin/fl-diabetes-prediction
-cd fl-diabetes-prediction
+cd examples/fl-diabetes-prediction
 uv venv
 source .venv/bin/activate
 uv pip install jupyter
@@ -22,8 +21,7 @@ Run the `do.ipynb`
 ## Data Scientist
 
 ```bash
-git clone https://github.com/khoaguin/fl-diabetes-prediction
-cd fl-diabetes-prediction
+cd examples/fl-diabetes-prediction
 uv venv
 source .venv/bin/activate
 cd fl-diabetes-prediction
