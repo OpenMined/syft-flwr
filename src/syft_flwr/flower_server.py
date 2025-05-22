@@ -22,4 +22,8 @@ def syftbox_flwr_server(server_app: ServerApp, context: Context, datasites: list
         server_app_dir="",
     )
     logger.info(f"Server completed with context: {updated_context}")
+
+    syft_grid.send_stop_signal(group_id="final", reason="All rounds complete")
+    logger.info("Sending stop signals to the clients")
+
     return updated_context

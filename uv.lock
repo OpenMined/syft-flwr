@@ -3215,7 +3215,7 @@ wheels = [
 
 [[package]]
 name = "syft-event"
-version = "0.2.0"
+version = "0.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "loguru" },
@@ -3224,9 +3224,9 @@ dependencies = [
     { name = "syft-rpc" },
     { name = "watchdog" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2a/2a/75ec9e1b32a3e3d6dd13d58bf0299723412cc6611cd12bde9a0eaab37eac/syft_event-0.2.0.tar.gz", hash = "sha256:409fe2a4429c284a7cd5c6342e797931906ef50e55b4e1e387739891e1f47ee8", size = 6746, upload-time = "2025-04-09T17:25:12.04Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0e/15/16bfb3f9304d672468096bcfdff50c116c1a02145dc3622340eaa81be101/syft_event-0.2.1.tar.gz", hash = "sha256:e61586be9f538dc4a9c096fbfe19f2f4add77afc4a40bb3f578d340de775b1e1", size = 6787, upload-time = "2025-05-09T08:08:43.327Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/57/d5/52ea21aa9450df45df5a05d2d811efaca756331d7a0d23f3d86cac8c8434/syft_event-0.2.0-py3-none-any.whl", hash = "sha256:0a5fd89720691a992478e710f3bf6967e0d622f20309650322553dfea38e11f5", size = 7636, upload-time = "2025-04-09T17:25:10.779Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/7c/376b4f6bcdeba508a10949211c9196344bbf852d1df8940d5d1a1461b59c/syft_event-0.2.1-py3-none-any.whl", hash = "sha256:96aa89e50b09296eba55be042290d800dc45679ec9b37001c719e05db9e47697", size = 7679, upload-time = "2025-05-09T08:08:42.001Z" },
 ]
 
 [[package]]
@@ -3262,8 +3262,8 @@ requires-dist = [
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "safetensors", specifier = ">=0.5.0" },
     { name = "syft-core", specifier = "==0.2.3" },
-    { name = "syft-event", specifier = "==0.2.0" },
-    { name = "syft-rds", specifier = "==0.1.0" },
+    { name = "syft-event", specifier = "==0.2.1" },
+    { name = "syft-rds", git = "https://github.com/OpenMined/rds.git?rev=khoa%2Fpython_job_time_out" },
     { name = "syft-rpc", specifier = "==0.2.0" },
     { name = "tomli", specifier = ">=2.2.1" },
     { name = "tomli-w", specifier = ">=1.2.0" },
@@ -3280,8 +3280,8 @@ dev = [
 
 [[package]]
 name = "syft-rds"
-version = "0.1.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.1.1"
+source = { git = "https://github.com/OpenMined/rds.git?rev=khoa%2Fpython_job_time_out#498396e3d121cfe92538e348f445ab447696846f" }
 dependencies = [
     { name = "ipython", version = "8.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "ipython", version = "8.36.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
@@ -3297,10 +3297,6 @@ dependencies = [
     { name = "syft-rpc" },
     { name = "typer" },
     { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/69/81/6a0198665f1d85111b9e0b9e934817cfa6faaa3aa7a4a138aecaf0d50e3f/syft_rds-0.1.0.tar.gz", hash = "sha256:31b0f632883b24c98bd60832a8c03979a7949e9bafb58868c77b459f907d1194", size = 188178, upload-time = "2025-05-07T09:47:44.311Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5f/73/f70bfa80d915bee9873b6c0b4045f8ba54d73c04cc3b447aca63a2cd7cad/syft_rds-0.1.0-py3-none-any.whl", hash = "sha256:626d6ea0c87737dcd658fe3b4d47133208d28d3bf2214b157c5b51c7be849ba9", size = 175968, upload-time = "2025-05-07T09:47:42.479Z" },
 ]
 
 [[package]]

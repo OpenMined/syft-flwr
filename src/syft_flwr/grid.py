@@ -1,6 +1,8 @@
 import time
 from typing import Iterable, cast
 
+from flwr.common import ConfigRecord
+from flwr.common.constant import MessageType
 from flwr.common.message import Message
 from flwr.common.typing import Run
 from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
@@ -169,3 +171,23 @@ class SyftGrid(Grid):
                 break
             time.sleep(3)
         return ret.values()
+
+    def send_stop_signal(
+        self, group_id: str, reason: str = "Training complete", ttl: float = 60.0
+    ) -> list[Message]:
+        """Send a stop signal to all datasites (clients)."""
+        stop_messages: list[Message] = [
+            self.create_message(
+                content=RecordDict(
+                    {"config": ConfigRecord({"action": "stop", "reason": reason})}
+                ),
+                message_type=MessageType.SYSTEM,
+                dst_node_id=node_id,
+                group_id=group_id,
+                ttl=ttl,
+            )
+            for node_id in self.get_node_ids()
+        ]
+        self.push_messages(stop_messages)
+
+        return stop_messages
