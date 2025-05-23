@@ -1,16 +1,16 @@
 import time
 from typing import Iterable, cast
 
-from flwr.common import ConfigRecord
-from flwr.common.constant import MessageType
-from flwr.common.message import Message
-from flwr.common.typing import Run
-from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
 from loguru import logger
 from syft_core import Client
 from syft_rpc import rpc, rpc_db
 from typing_extensions import Optional
 
+from flwr.common import ConfigRecord
+from flwr.common.constant import MessageType
+from flwr.common.message import Message
+from flwr.common.typing import Run
+from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
 from syft_flwr.flwr_compatibility import (
     Grid,
     RecordDict,
@@ -149,13 +149,13 @@ class SyftGrid(Grid):
         self,
         messages: Iterable[Message],
         *,
-        timeout: Optional[float] = None,
+        timeout: Optional[float] = 10,
     ) -> Iterable[Message]:
         """Push messages to specified node IDs and pull the reply messages.
 
         This method sends a list of messages to their destination node IDs and then
         waits for the replies. It continues to pull replies until either all replies are
-        received or the specified timeout duration is exceeded.
+        received or the specified timeout duration (in seconds) is exceeded.
         """
         # Push messages
         msg_ids = set(self.push_messages(messages))
