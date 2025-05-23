@@ -1,9 +1,10 @@
 from pathlib import Path
 
-from flwr.common import parameters_to_ndarrays
-from flwr.server.strategy import FedAvg
 from loguru import logger
 from safetensors.numpy import save_file
+
+from flwr.common import parameters_to_ndarrays
+from flwr.server.strategy import FedAvg
 
 
 class FedAvgWithModelSaving(FedAvg):
@@ -23,9 +24,13 @@ class FedAvgWithModelSaving(FedAvg):
         ndarrays = parameters_to_ndarrays(parameters)
         tensor_dict = {f"layer_{i}": array for i, array in enumerate(ndarrays)}
         filename = self.save_path / f"parameters_round_{server_round}.safetensors"
-        save_file(tensor_dict, str(filename))
-
-        logger.info(f"Checkpoint saved to: {filename}")
+        if not self.save_path.exists():
+            logger.error(
+                f"Save directory {self.save_path} does NOT exist! Maybe it's deleted or moved."
+            )
+        else:
+            save_file(tensor_dict, str(filename))
+            logger.info(f"Checkpoint saved to: {filename}")
 
     def evaluate(self, server_round: int, parameters):
         """Evaluate model parameters using an evaluation function."""
