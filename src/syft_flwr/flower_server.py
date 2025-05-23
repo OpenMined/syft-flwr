@@ -9,12 +9,19 @@ from flwr.server.run_serverapp import run as run_server
 from syft_flwr.grid import SyftGrid
 
 
-def syftbox_flwr_server(server_app: ServerApp, context: Context, datasites: list[str]):
+def syftbox_flwr_server(
+    server_app: ServerApp,
+    context: Context,
+    datasites: list[str],
+    app_name: str,
+) -> Context:
     """Run the Flower ServerApp with SyftBox."""
-    syft_grid = SyftGrid(datasites=datasites)
+    syft_flwr_app_name = f"flwr/{app_name}"
+    syft_grid = SyftGrid(app_name=syft_flwr_app_name, datasites=datasites)
     run_id = randint(0, 1000)
     syft_grid.set_run(run_id)
     logger.info(f"Started SyftBox Flower Server on: {syft_grid._client.email}")
+    logger.info(f"syft_flwr app name: {syft_flwr_app_name}")
 
     try:
         updated_context = run_server(

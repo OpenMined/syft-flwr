@@ -6,7 +6,6 @@ from flwr.client.client_app import LoadClientAppError
 from flwr.common import Context
 from flwr.common.object_ref import load_app
 from flwr.server.server_app import LoadServerAppError
-
 from syft_flwr.config import load_flwr_pyproject
 from syft_flwr.flower_client import syftbox_flwr_client
 from syft_flwr.flower_server import syftbox_flwr_server
@@ -23,6 +22,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module="pydantic"
 def syftbox_run_flwr_client(flower_project_dir: Path) -> None:
     pyproject_conf = load_flwr_pyproject(flower_project_dir)
     client_ref = pyproject_conf["tool"]["flwr"]["app"]["components"]["clientapp"]
+    app_name = pyproject_conf["tool"]["syft_flwr"]["app_name"]
 
     context = Context(
         run_id=uuid4().int,
@@ -37,13 +37,14 @@ def syftbox_run_flwr_client(flower_project_dir: Path) -> None:
         flower_project_dir,
     )
 
-    syftbox_flwr_client(client_app, context)
+    syftbox_flwr_client(client_app, context, app_name)
 
 
 def syftbox_run_flwr_server(flower_project_dir: Path) -> None:
     pyproject_conf = load_flwr_pyproject(flower_project_dir)
     datasites = pyproject_conf["tool"]["syft_flwr"]["datasites"]
     server_ref = pyproject_conf["tool"]["flwr"]["app"]["components"]["serverapp"]
+    app_name = pyproject_conf["tool"]["syft_flwr"]["app_name"]
 
     context = Context(
         run_id=uuid4().int,
@@ -58,4 +59,4 @@ def syftbox_run_flwr_server(flower_project_dir: Path) -> None:
         flower_project_dir,
     )
 
-    syftbox_flwr_server(server_app, context, datasites)
+    syftbox_flwr_server(server_app, context, datasites, app_name)

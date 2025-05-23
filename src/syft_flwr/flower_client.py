@@ -1,14 +1,14 @@
 import sys
 import traceback
 
-from flwr.client import ClientApp
-from flwr.common import Context
-from flwr.common.constant import ErrorCode, MessageType
-from flwr.common.message import Error, Message
 from loguru import logger
 from syft_event import SyftEvents
 from syft_event.types import Request
 
+from flwr.client import ClientApp
+from flwr.common import Context
+from flwr.common.constant import ErrorCode, MessageType
+from flwr.common.message import Error, Message
 from syft_flwr.flwr_compatibility import RecordDict, create_flwr_message
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
 
@@ -41,12 +41,13 @@ def _create_error_reply(message: Message, error: Error) -> bytes:
     return error_bytes
 
 
-def syftbox_flwr_client(client_app: ClientApp, context: Context):
+def syftbox_flwr_client(client_app: ClientApp, context: Context, app_name: str):
     """Run the Flower ClientApp with SyftBox."""
-
-    box = SyftEvents("flwr")
+    syft_flwr_app_name = f"flwr/{app_name}"
+    box = SyftEvents(syft_flwr_app_name)
     client_email = box.client.email
     logger.info(f"Started SyftBox Flower Client on: {client_email}")
+    logger.info(f"syft_flwr app name: {syft_flwr_app_name}")
 
     @box.on_request("/messages")
     def handle_messages(request: Request) -> None:
