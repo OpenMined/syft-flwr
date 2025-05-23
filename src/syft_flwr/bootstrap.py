@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 from loguru import logger
@@ -50,8 +51,15 @@ def __update_pyproject_toml(
     deps.append(f"syft_flwr=={__version__}")
     pyproject_conf["project"]["dependencies"] = deps
 
-    # always override the datasites and aggregator
     pyproject_conf["tool"]["syft_flwr"] = {}
+
+    # configure unique app name for each syft_flwr run
+    base_app_name = pyproject_conf["project"]["name"]
+    pyproject_conf["tool"]["syft_flwr"]["app_name"] = (
+        f"{aggregator}_{base_app_name}_{int(time.time())}"
+    )
+
+    # always override the datasites and aggregator
     pyproject_conf["tool"]["syft_flwr"]["datasites"] = datasites
     pyproject_conf["tool"]["syft_flwr"]["aggregator"] = aggregator
 

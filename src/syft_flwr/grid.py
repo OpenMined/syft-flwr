@@ -27,6 +27,7 @@ AGGREGATOR_NODE_ID = 1
 class SyftGrid(Grid):
     def __init__(
         self,
+        app_name: str,
         datasites: list[str] = [],
         client: Client = None,
     ) -> None:
@@ -38,6 +39,7 @@ class SyftGrid(Grid):
         logger.debug(
             f"Initialize SyftGrid for '{self._client.email}' with datasites: {self.datasites}"
         )
+        self.app_name = app_name
 
     def set_run(self, run_id: int) -> None:
         # TODO: In Grpc Grid case, the superlink is the one which sets up the run id,
@@ -98,7 +100,9 @@ class SyftGrid(Grid):
             msg.metadata.__dict__["_src_node_id"] = self.node.node_id
             # RPC URL
             dest_datasite = self.client_map[msg.metadata.dst_node_id]
-            url = rpc.make_url(dest_datasite, app_name="flwr", endpoint="messages")
+            url = rpc.make_url(
+                dest_datasite, app_name=self.app_name, endpoint="messages"
+            )
             # Check message
             self._check_message(msg)
             # Serialize message
@@ -109,7 +113,9 @@ class SyftGrid(Grid):
                 f"Pushed message to {url} with metadata {msg.metadata}; size {len(msg_bytes) / 1024 / 1024} (Mb)"
             )
             # Save future
-            rpc_db.save_future(future=future, namespace="flwr", client=self._client)
+            rpc_db.save_future(
+                future=future, namespace=self.app_name, client=self._client
+            )
             message_ids.append(future.id)
 
         return message_ids
@@ -149,7 +155,7 @@ class SyftGrid(Grid):
         self,
         messages: Iterable[Message],
         *,
-        timeout: Optional[float] = 10,
+        timeout: Optional[float] = 60,
     ) -> Iterable[Message]:
         """Push messages to specified node IDs and pull the reply messages.
 
