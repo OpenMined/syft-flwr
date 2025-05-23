@@ -13,9 +13,9 @@ dependencies = [
     "tomli>=2.2.1",
     "tomli-w>=1.2.0",
     "syft-core==0.2.3",
-    "syft-event==0.2.1",
+    "syft-event==0.2.0",
     "syft-rpc==0.2.0",
-    "syft-rds",
+    "syft-rds==0.1.0",
 ]
 
 [project.scripts]
@@ -28,9 +28,6 @@ dev-dependencies = [
     "pytest>=8.3.4",
     "pre-commit>=4.0.1",
 ]
-
-[tool.uv.sources]
-syft-rds = { git = "https://github.com/OpenMined/rds.git", rev = "khoa/python_job_time_out" }
 
 [build-system]
 requires = ["hatchling"]

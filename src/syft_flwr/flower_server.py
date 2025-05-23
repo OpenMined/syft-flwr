@@ -15,15 +15,19 @@ def syftbox_flwr_server(server_app: ServerApp, context: Context, datasites: list
     syft_grid.set_run(run_id)
     logger.info(f"Started SyftBox Flower Server on: {syft_grid._client.email}")
 
-    updated_context = run_server(
-        syft_grid,
-        context=context,
-        loaded_server_app=server_app,
-        server_app_dir="",
-    )
-    logger.info(f"Server completed with context: {updated_context}")
-
-    syft_grid.send_stop_signal(group_id="final", reason="All rounds complete")
-    logger.info("Sending stop signals to the clients")
+    try:
+        updated_context = run_server(
+            syft_grid,
+            context=context,
+            loaded_server_app=server_app,
+            server_app_dir="",
+        )
+        logger.info(f"Server completed with context: {updated_context}")
+    except Exception as e:
+        logger.error(f"Server encountered an error: {str(e)}")
+        updated_context = context
+    finally:
+        syft_grid.send_stop_signal(group_id="final", reason="Server stopped")
+        logger.info("Sending stop signals to the clients")
 
     return updated_context

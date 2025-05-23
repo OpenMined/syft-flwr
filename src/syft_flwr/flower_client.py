@@ -13,12 +13,6 @@ from syft_flwr.flwr_compatibility import RecordDict, create_flwr_message
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
 
 
-def _handle_stop_message(message: Message, box: SyftEvents) -> None:
-    """Handle stop signal message from the server, e.g. when training is done."""
-    logger.info(f"Received stop message: {message}")
-    box._stop_event.set()
-
-
 def _handle_normal_message(
     message: Message, client_app: ClientApp, context: Context
 ) -> bytes:
@@ -66,7 +60,8 @@ def syftbox_flwr_client(client_app: ClientApp, context: Context):
                 message.metadata.message_type == MessageType.SYSTEM
                 and message.content["config"]["action"] == "stop"
             ):
-                _handle_stop_message(message, box)
+                logger.info(f"Received stop message: {message}")
+                box._stop_event.set()
                 return None
 
             return _handle_normal_message(message, client_app, context)
@@ -79,7 +74,7 @@ def syftbox_flwr_client(client_app: ClientApp, context: Context):
             error = Error(
                 code=ErrorCode.CLIENT_APP_RAISED_EXCEPTION, reason=error_message
             )
-
+            box._stop_event.set()
             return _create_error_reply(message, error)
 
     try:
