@@ -173,9 +173,15 @@ class SyftGrid(Grid):
             res_msgs = self.pull_messages(msg_ids)
             ret.update(res_msgs)
             msg_ids.difference_update(res_msgs.keys())
-            if len(msg_ids) == 0:
+            if len(msg_ids) == 0:  # All messages received
                 break
-            time.sleep(3)
+            time.sleep(3)  # polling interval
+
+        if msg_ids:
+            logger.warning(
+                f"Timeout reached. {len(msg_ids)} message(s) sent out but not replied."
+            )
+
         return ret.values()
 
     def send_stop_signal(
