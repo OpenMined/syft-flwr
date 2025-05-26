@@ -1,16 +1,17 @@
+import os
 import time
 from typing import Iterable, cast
-
-from loguru import logger
-from syft_core import Client
-from syft_rpc import rpc, rpc_db
-from typing_extensions import Optional
 
 from flwr.common import ConfigRecord
 from flwr.common.constant import MessageType
 from flwr.common.message import Message
 from flwr.common.typing import Run
 from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
+from loguru import logger
+from syft_core import Client
+from syft_rpc import rpc, rpc_db
+from typing_extensions import Optional
+
 from syft_flwr.flwr_compatibility import (
     Grid,
     RecordDict,
@@ -22,6 +23,10 @@ from syft_flwr.utils import str_to_int
 
 # this is what superlink super node do
 AGGREGATOR_NODE_ID = 1
+
+
+# env vars
+SYFT_FLWR_MSG_TIMEOUT = "SYFT_FLWR_MSG_TIMEOUT"
 
 
 class SyftGrid(Grid):
@@ -155,7 +160,7 @@ class SyftGrid(Grid):
         self,
         messages: Iterable[Message],
         *,
-        timeout: Optional[float] = 60,
+        timeout: Optional[float] = None,
     ) -> Iterable[Message]:
         """Push messages to specified node IDs and pull the reply messages.
 
@@ -163,6 +168,17 @@ class SyftGrid(Grid):
         waits for the replies. It continues to pull replies until either all replies are
         received or the specified timeout duration (in seconds) is exceeded.
         """
+        if os.environ.get(SYFT_FLWR_MSG_TIMEOUT) is not None:
+            timeout = float(os.environ.get(SYFT_FLWR_MSG_TIMEOUT))
+        if timeout is not None:
+            logger.debug(
+                f"syft_flwr messages timeout = {timeout}: Will move on after {timeout} (s) if no reply is received"
+            )
+        else:
+            logger.debug(
+                "syft_flwr messages timeout = None: Will wait indefinitely for replies"
+            )
+
         # Push messages
         msg_ids = set(self.push_messages(messages))
 
