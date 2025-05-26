@@ -44,10 +44,3 @@ default = "local-simulation"
 [tool.flwr.federations.local-simulation.options]
 num-supernodes = 2
 
-[tool.syft_flwr]
-app_name = "khoa@openmined.org_fl-diabetes-prediction_1748246582"
-datasites = [
-    "flower-test-group-1@openmined.org",
-    "flower-test-group-2@openmined.org",
-]
-aggregator = "khoa@openmined.org"
