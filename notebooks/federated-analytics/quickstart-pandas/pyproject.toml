@@ -3,12 +3,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "fed_analytics"
+name = "pandas_example"
 version = "1.0.0"
 description = "Federated Learning with Pandas and Flower (Quickstart Example)"
 license = "Apache-2.0"
 authors = [
-    { name = "OpenMined", email = "info@openmined.org" },
+    { name = "The Flower Authors", email = "hello@flower.ai" },
+    { name = "Ragy Haddad", email = "ragy202@gmail.com" },
 ]
 dependencies = [
     "flwr[simulation]>=1.18.0",
@@ -24,8 +25,8 @@ packages = ["."]
 publisher = "flwrlabs"
 
 [tool.flwr.app.components]
-serverapp = "fed_analytics.server_app:app"
-clientapp = "fed_analytics.client_app:app"
+serverapp = "pandas_example.server_app:app"
+clientapp = "pandas_example.client_app:app"
 
 [tool.flwr.app.config]
 num-server-rounds = 3
@@ -35,4 +36,4 @@ fraction-sample = 1.0
 default = "local-simulation"
 
 [tool.flwr.federations.local-simulation]
-options.num-supernodes = 4
+options.num-supernodes = 2

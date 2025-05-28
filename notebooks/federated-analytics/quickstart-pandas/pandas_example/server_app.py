@@ -1,14 +1,15 @@
-"""fed_analytics: A Flower / Pandas app."""
+"""pandas_example: A Flower / Pandas app."""
 
 import random
 import time
 from collections.abc import Iterable
-from logging import INFO
 
 import numpy as np
 from flwr.common import Context, Message, MessageType, RecordDict
-from flwr.common.logger import log
 from flwr.server import Grid, ServerApp
+from loguru import logger
+
+MIN_NODES = 2
 
 app = ServerApp()
 
@@ -19,26 +20,26 @@ def main(grid: Grid, context: Context) -> None:
     `ClientApp`s."""
 
     num_rounds = context.run_config["num-server-rounds"]
-    min_nodes = 2
+
     fraction_sample = context.run_config["fraction-sample"]
 
     for server_round in range(num_rounds):
-        log(INFO, "")  # Add newline for log readability
-        log(INFO, "Starting round %s/%s", server_round + 1, num_rounds)
+        logger.info("")  # Add newline for log readability
+        logger.info(f"Starting round {server_round + 1}/{num_rounds}")
 
         # Loop and wait until enough nodes are available.
         all_node_ids: list[int] = []
-        while len(all_node_ids) < min_nodes:
+        while len(all_node_ids) < MIN_NODES:
             all_node_ids = list(grid.get_node_ids())
-            if len(all_node_ids) >= min_nodes:
+            if len(all_node_ids) >= MIN_NODES:
                 # Sample nodes
                 num_to_sample = int(len(all_node_ids) * fraction_sample)
                 node_ids = random.sample(all_node_ids, num_to_sample)
                 break
-            log(INFO, "Waiting for nodes to connect...")
+            logger.info("Waiting for nodes to connect...")
             time.sleep(2)
 
-        log(INFO, "Sampled %s nodes (out of %s)", len(node_ids), len(all_node_ids))
+        logger.info(f"Sampled {len(node_ids)} nodes (out of {len(all_node_ids)})")
 
         # Create messages
         recorddict = RecordDict()
@@ -54,13 +55,13 @@ def main(grid: Grid, context: Context) -> None:
 
         # Send messages and wait for all results
         replies = grid.send_and_receive(messages)
-        log(INFO, "Received %s/%s results", len(replies), len(messages))
+        logger.info(f"Received {len(replies)}/{len(messages)} results")
 
         # Aggregate partial histograms
         aggregated_hist = aggregate_partial_histograms(replies)
 
         # Display aggregated histogram
-        log(INFO, "Aggregated histogram: %s", aggregated_hist)
+        logger.info(f"Aggregated histogram: {aggregated_hist}")
 
 
 def aggregate_partial_histograms(messages: Iterable[Message]):

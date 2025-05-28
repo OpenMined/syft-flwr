@@ -1,4 +1,4 @@
-"""fed_analytics: A Flower / Pandas app."""
+"""pandas_example: A Flower / Pandas app."""
 
 import warnings
 
