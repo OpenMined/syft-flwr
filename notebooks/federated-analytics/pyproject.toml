@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fed_analytics"
+version = "1.0.0"
+description = "Federated Learning with Pandas and Flower (Quickstart Example)"
+license = "Apache-2.0"
+authors = [
+    { name = "OpenMined", email = "info@openmined.org" },
+]
+dependencies = [
+    "flwr[simulation]>=1.18.0",
+    "flwr-datasets[vision]>=0.5.0",
+    "numpy>=2.0.2",
+    "pandas==2.2.3",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+[tool.flwr.app]
+publisher = "flwrlabs"
+
+[tool.flwr.app.components]
+serverapp = "fed_analytics.server_app:app"
+clientapp = "fed_analytics.client_app:app"
+
+[tool.flwr.app.config]
+num-server-rounds = 3
+fraction-sample = 1.0
+
+[tool.flwr.federations]
+default = "local-simulation"
+
+[tool.flwr.federations.local-simulation]
+options.num-supernodes = 4
