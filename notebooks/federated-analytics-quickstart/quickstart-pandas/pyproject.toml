@@ -7,11 +7,10 @@ build-backend = "hatchling.build"
 [project]
 name = "pandas_example"
 version = "1.0.0"
-description = "Federated Learning with Pandas and Flower (Quickstart Example)"
+description = "Federated Analytics with Pandas, Flower and syft_flwr"
 license = "Apache-2.0"
 authors = [
-    { name = "The Flower Authors", email = "hello@flower.ai" },
-    { name = "Ragy Haddad", email = "ragy202@gmail.com" },
+    { name = "OpenMined", email = "info@openmined.org" },
 ]
 dependencies = [
     "flwr[simulation]>=1.18.0",
@@ -44,11 +43,3 @@ default = "local-simulation"
 
 [tool.flwr.federations.local-simulation.options]
 num-supernodes = 2
-
-[tool.syft_flwr]
-app_name = "ds@openmined.org_pandas_example_1748582078"
-datasites = [
-    "do1@openmined.org",
-    "do2@openmined.org",
-]
-aggregator = "ds@openmined.org"
