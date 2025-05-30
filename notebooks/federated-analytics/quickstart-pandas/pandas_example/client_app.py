@@ -3,6 +3,7 @@
 import warnings
 
 import numpy as np
+import pandas as pd
 from flwr.client import ClientApp
 from flwr.common import Context, Message, MetricRecord, RecordDict
 from flwr_datasets import FederatedDataset
@@ -11,6 +12,21 @@ from flwr_datasets.partitioner import IidPartitioner
 fds = None  # Cache FederatedDataset
 
 warnings.filterwarnings("ignore", category=UserWarning)
+
+
+def load_syftbox_dataset() -> pd.DataFrame:
+    from datasets import load_from_disk
+    from datasets.arrow_dataset import Dataset
+    from loguru import logger
+
+    from syft_flwr.utils import get_syftbox_dataset_path
+
+    data_dir = get_syftbox_dataset_path()
+    dataset: Dataset = load_from_disk(str(data_dir))
+    df: pd.DataFrame = dataset.with_format("pandas")[:]
+    logger.info(f"Loaded syftbox dataset from {data_dir}")
+    logger.info(f"Dataset head: {df.head(2)}")
+    return df[["SepalLengthCm", "SepalWidthCm"]]
 
 
 def get_clientapp_dataset(partition_id: int, num_partitions: int):
@@ -40,7 +56,12 @@ def query(msg: Message, context: Context):
     partition_id = context.node_config["partition-id"]
     num_partitions = context.node_config["num-partitions"]
 
-    dataset = get_clientapp_dataset(partition_id, num_partitions)
+    from syft_flwr.utils import run_syft_flwr
+
+    if not run_syft_flwr():
+        dataset = get_clientapp_dataset(partition_id, num_partitions)
+    else:
+        dataset = load_syftbox_dataset()
 
     metrics = {}
     # Compute some statistics for each column in the dataframe

@@ -1,5 +1,7 @@
 [build-system]
-requires = ["hatchling"]
+requires = [
+    "hatchling",
+]
 build-backend = "hatchling.build"
 
 [project]
@@ -16,10 +18,13 @@ dependencies = [
     "flwr-datasets[vision]>=0.5.0",
     "numpy>=2.0.2",
     "pandas==2.2.3",
+    "syft_flwr==0.1.2",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["."]
+packages = [
+    ".",
+]
 
 [tool.flwr.app]
 publisher = "flwrlabs"
@@ -31,9 +36,19 @@ clientapp = "pandas_example.client_app:app"
 [tool.flwr.app.config]
 num-server-rounds = 3
 fraction-sample = 1.0
+partition-id = 0
+num-partitions = 1
 
 [tool.flwr.federations]
 default = "local-simulation"
 
-[tool.flwr.federations.local-simulation]
-options.num-supernodes = 2
+[tool.flwr.federations.local-simulation.options]
+num-supernodes = 2
+
+[tool.syft_flwr]
+app_name = "ds@openmined.org_pandas_example_1748582078"
+datasites = [
+    "do1@openmined.org",
+    "do2@openmined.org",
+]
+aggregator = "ds@openmined.org"
