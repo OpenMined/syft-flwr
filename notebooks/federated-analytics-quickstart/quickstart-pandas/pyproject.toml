@@ -1,0 +1,45 @@
+[build-system]
+requires = [
+    "hatchling",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "pandas_example"
+version = "1.0.0"
+description = "Federated Analytics with Pandas, Flower and syft_flwr"
+license = "Apache-2.0"
+authors = [
+    { name = "OpenMined", email = "info@openmined.org" },
+]
+dependencies = [
+    "flwr[simulation]>=1.18.0",
+    "flwr-datasets[vision]>=0.5.0",
+    "numpy>=2.0.2",
+    "pandas==2.2.3",
+    "syft_flwr==0.1.2",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    ".",
+]
+
+[tool.flwr.app]
+publisher = "flwrlabs"
+
+[tool.flwr.app.components]
+serverapp = "pandas_example.server_app:app"
+clientapp = "pandas_example.client_app:app"
+
+[tool.flwr.app.config]
+num-server-rounds = 3
+fraction-sample = 1.0
+partition-id = 0
+num-partitions = 1
+
+[tool.flwr.federations]
+default = "local-simulation"
+
+[tool.flwr.federations.local-simulation.options]
+num-supernodes = 2
