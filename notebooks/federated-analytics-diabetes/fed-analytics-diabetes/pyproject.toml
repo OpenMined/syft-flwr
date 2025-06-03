@@ -33,7 +33,7 @@ serverapp = "fed_analytics_diabetes.server_app:app"
 clientapp = "fed_analytics_diabetes.client_app:app"
 
 [tool.flwr.app.config]
-num-server-rounds = 2
+num-server-rounds = 1
 fraction-sample = 1.0
 partition-id = 0
 num-partitions = 1
@@ -43,3 +43,4 @@ default = "local-simulation"
 
 [tool.flwr.federations.local-simulation.options]
 num-supernodes = 2
+
