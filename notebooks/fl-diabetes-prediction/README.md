@@ -17,13 +17,6 @@ git clone https://github.com/OpenMined/syft-flwr.git _tmp \
 		&& rm -rf _tmp && cd fl-diabetes-prediction
 ```
 
-### Install and run `syftbox` client
-Make sure you have syftbox client running in a terminal:
-1. Install `syftbox`: `curl -fsSL https://syftbox.net/install.sh | sh`
-2. Follow the instructions to start your `syftbox` client
-
-When you have `syftbox` installed and run in the background, you can proceeed and run the notebooks
-
 ### Setup python virtual environment
 Assume that you have python and the [uv](https://docs.astral.sh/uv/) package manager installed. Now let's create a virtual python environment with `jupyter` installed:
 ```bash
@@ -31,7 +24,14 @@ uv venv
 source .venv/bin/activate
 uv pip install jupyterlab
 ```
-Now you can run the notebooks with the installed environment
+Now you can run the notebooks with the installed environment in your favorite IDE.
+
+### Install and run `syftbox` client
+Make sure you have syftbox client running in a terminal:
+1. Install `syftbox`: `curl -fsSL https://syftbox.net/install.sh | sh`
+2. Follow the instructions to start your `syftbox` client
+
+When you have `syftbox` installed and run in the background, you can proceeed and run the notebooks
 
 ## Workflow
 1. For the data scientist's workflow (prepare code, observe mock datasets on the data owner's datasites, submit jobs), please look into the `ds.ipynb` notebook. Optionally, you can look at the `local_training.ipynb` to see the DS's process of processing data and training the neural network locally
