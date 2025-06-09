@@ -33,8 +33,7 @@ Make sure you have syftbox client running in a terminal:
 When you have `syftbox` installed and run in the background, you can proceeed and run the notebooks with the installed Python environment in your favorite IDE.
 
 ## Workflow
-> Note: At the start of the notebooks, you can set the flag `LOCAL_TEST` to `True` if you want to run the clients locally to test the workflow, and to `False` if you want to run the clients over the network (real distributed setup)
-
+> Note: At the start of the notebooks, you can set the flag `LOCAL_TEST` to `True` if you want to run the clients locally to test the workflow, where all clients' local datasites will be saved under the `flwr` folder. If running locally, you don't need your `syftbox client` running. Set `LOCAL_TEST` to `False` and make sure you have your `syftbox` client running if you want to run the clients over the network (real distributed setup)
 
 1. For the data scientist's workflow (prepare code, observe mock datasets on the data owner's datasites, submit jobs), please look into the `ds.ipynb` notebook. Optionally, you can look at the `local_training.ipynb` to see the DS's process of processing data and training the neural network locally
 
