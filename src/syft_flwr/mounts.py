@@ -5,7 +5,7 @@ from typing import List
 import tomli
 from loguru import logger
 from syft_core import Client
-from syft_rds.models.models import DockerMount, JobConfig
+from syft_rds.models import DockerMount, JobConfig
 from syft_rds.syft_runtime.mounts import MountProvider
 
 

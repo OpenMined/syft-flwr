@@ -2,7 +2,7 @@ from time import sleep
 
 import syft_rds as sy
 from syft_core import Client
-from syft_rds.models.models import JobStatus
+from syft_rds.models import JobStatus
 
 email = Client.load().email
 print(f"SyftBox client email: {email}")
