@@ -25,7 +25,7 @@ client = sy.init_session(email)
 def main():
     logger.info("Waiting for jobs...")
     while True:
-        jobs = client.jobs.get_all(status="pending_code_review")
+        jobs = client.job.get_all(status="pending_code_review")
         for job in jobs:
             if job.status == JobStatus.pending_code_review:
                 logger.info(f"Got job {job.uid}")
