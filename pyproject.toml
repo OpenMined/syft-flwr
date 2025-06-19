@@ -1,6 +1,6 @@
 [project]
 name = "syft-flwr"
-version = "0.1.3"
+version = "0.1.4"
 description = "syft_flwr is an open source framework that facilitate federated learning projects using Flower over the SyftBox protocol"
 readme = "README.md"
 requires-python = ">=3.9.2"
