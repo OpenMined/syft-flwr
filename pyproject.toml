@@ -12,9 +12,9 @@ dependencies = [
     "typing-extensions>=4.13.0",
     "tomli>=2.2.1",
     "tomli-w>=1.2.0",
-    "syft-core==0.2.3",
-    "syft-event==0.2.3",
-    "syft-rpc==0.2.2",
+    "syft-core==0.2.4",
+    "syft-event==0.2.4",
+    "syft-rpc==0.2.3",
     "syft-rds==0.1.3",
 ]
 
