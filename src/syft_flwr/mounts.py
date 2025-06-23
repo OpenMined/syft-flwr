@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 from typing import List
 
@@ -39,6 +40,10 @@ class SyftFlwrMountProvider(MountProvider):
             toml_dict = tomli.load(fp)
             syft_flwr_app_name = toml_dict["tool"]["syft_flwr"]["app_name"]
 
+        rpc_messages_source = Path(f"{flwr_app_data}/{syft_flwr_app_name}/rpc/messages")
+        rpc_messages_source.mkdir(parents=True, exist_ok=True)
+        os.chmod(rpc_messages_source, 0o777)
+
         mounts = [
             DockerMount(
                 source=simplified_config_path,
@@ -46,7 +51,7 @@ class SyftFlwrMountProvider(MountProvider):
                 mode="ro",
             ),
             DockerMount(
-                source=Path(f"{flwr_app_data}/{syft_flwr_app_name}/rpc/messages"),
+                source=rpc_messages_source,
                 target=f"/app/SyftBox/datasites/{client_email}/app_data/flwr/{syft_flwr_app_name}/rpc/messages",
                 mode="rw",
             ),
