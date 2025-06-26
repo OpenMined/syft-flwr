@@ -1,4 +1,3 @@
-import os
 from time import sleep
 
 import flwr
@@ -9,12 +8,12 @@ from syft_rds.models import JobStatus
 
 import syft_flwr
 
-os.environ["SYFT_RDS_BLOCKING_EXECUTION"] = "False"
+BLOCKING_EXECUTION = False
 
 logger.info(f"syft_rds version: {sy.__version__}")
 logger.info(f"syft_flwr version: {syft_flwr.__version__}")
 logger.info(f"flwr version: {flwr.__version__}")
-logger.debug(f"Blocking execution: {os.environ['SYFT_RDS_BLOCKING_EXECUTION']}")
+logger.debug(f"Blocking execution: {BLOCKING_EXECUTION}")
 
 
 email = Client.load().email
@@ -31,7 +30,7 @@ def main():
                 logger.info(f"Got job {job.uid}")
                 logger.info(job.user_code)
                 logger.info(f"Job started {job.uid}")
-                res_job = client.run_private(job)
+                res_job = client.run_private(job, blocking=BLOCKING_EXECUTION)
                 logger.info(res_job)
                 logger.info(f"Job finished {job.uid}")
 
