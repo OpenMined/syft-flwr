@@ -1,0 +1,17 @@
+[project]
+name = "fl-diabetes-prediction"
+version = "0.1.0"
+description = "Diabetes prediction using federated learning with Flower and Syft"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "flwr-datasets>=0.5.0",
+    "flwr[simulation]==1.17.0",
+    "imblearn>=0.0",
+    "jupyterlab>=4.4.4",
+    "loguru>=0.7.3",
+    "pandas>=2.3.0",
+    "scikit-learn==1.6.1",
+    "syft-flwr>=0.1.5",
+    "torch==2.7.0",
+]
