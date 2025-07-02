@@ -20,11 +20,6 @@ git clone https://github.com/OpenMined/syft-flwr.git _tmp \
 ### Setup python virtual environment
 Assume that you have python and the [uv](https://docs.astral.sh/uv/) package manager installed. Now let's create a virtual python environment with all dependencies installed:
 ```bash
-uv venv
-source .venv/bin/activate
-```
-and then
-```bash
 uv sync
 ```
 
