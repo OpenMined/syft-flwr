@@ -15,9 +15,9 @@ def str_to_int(input_string: str) -> int:
     return zlib.crc32(input_string.encode())
 
 
-def get_syftbox_dataset_path() -> Path:
+def get_syftbox_dataset_path(path: str = None) -> Path:
     """Get the path to the syftbox dataset from the environment variable"""
-    data_dir = Path(os.getenv("DATA_DIR", ".data/"))
+    data_dir = Path(path or os.getenv("DATA_DIR", ".data/"))
     if not data_dir.exists():
         raise FileNotFoundError(
             f"Path {data_dir} does not exist (must be a valid file or directory)"
