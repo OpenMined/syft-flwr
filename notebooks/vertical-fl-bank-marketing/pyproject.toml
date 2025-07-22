@@ -14,4 +14,8 @@ dependencies = [
     "numpy>=2.3.1",
     "matplotlib>=3.8.3",
     "seaborn>=0.13.2",
+    "scikit-learn>=1.7.1",
+    "kagglehub>=0.3.12",
+    "ipywidgets>=8.1.7",
+    "torch>=2.7.1",
 ]

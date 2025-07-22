@@ -1,12 +1,9 @@
-import torch
+from collections import OrderedDict
+from typing import List
 
 import numpy as np
-
-from typing import List
-from collections import OrderedDict
-
-from sklearn.metrics import accuracy_score, roc_auc_score
-
+import torch
+from loguru import logger
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -21,26 +18,23 @@ def set_parameters(net, parameters: List[np.ndarray]):
     net.load_state_dict(state_dict, strict=True)
 
 
-def load_syftbox_dataset(id: int) -> tuple[torch.utils.data.TensorDataset, torch.utils.data.TensorDataset]:
+def load_syftbox_dataset(
+    id: int,
+) -> tuple[torch.utils.data.TensorDataset, torch.utils.data.TensorDataset]:
     from syft_flwr.utils import get_syftbox_dataset_path
-    import os
-    
-    # TODO: update `get_syftbox_dataset_path` to accept a path
-    # data_dir = get_syftbox_dataset_path(f"/Users/nutorbit/workspace/syftbox-flwr/notebooks/marketing/flwr/datasites/do_{id+1}@gmail.com/private/datasets")
 
-    os.environ["DATA_DIR"] = f"/Users/nutorbit/workspace/syftbox-flwr/notebooks/marketing/flwr/datasites/do_{id+1}@gmail.com/private/datasets"  # TODO: this is a hack to get the dataset path
-    
     data_dir = get_syftbox_dataset_path()
-    
+    logger.info(f"getting dataset from {data_dir}")
+
     train_path = data_dir / f"marketing-data-{id}"
     test_path = data_dir / "marketing-data-test"
 
-    X_train = np.load(train_path / f"X_train.npy")
-    y_train = np.load(train_path / f"y_train.npy")
-    
-    X_test = np.load(test_path / f"X_test.npy")
-    y_test = np.load(test_path / f"y_test.npy")
-    
+    X_train = np.load(train_path / "X_train.npy")
+    y_train = np.load(train_path / "y_train.npy")
+
+    X_test = np.load(test_path / "X_test.npy")
+    y_test = np.load(test_path / "y_test.npy")
+
     # tensor_train_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(X_train), torch.LongTensor(y_train))
     # tensor_test_dataset = torch.utils.data.TensorDataset(torch.FloatTensor(X_test), torch.LongTensor(y_test))
 
@@ -50,5 +44,3 @@ def load_syftbox_dataset(id: int) -> tuple[torch.utils.data.TensorDataset, torch
         torch.FloatTensor(X_test),
         torch.LongTensor(y_test),
     )
-
-    
