@@ -18,7 +18,7 @@ dependencies = [
     "scikit-learn==1.6.1",
     "loguru",
     "jupyter",
-    "syft_flwr==0.1.3",
+    "syft_flwr==0.1.5",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -45,7 +45,7 @@ default = "local-simulation"
 num-supernodes = 2
 
 [tool.syft_flwr]
-app_name = "nutorbitx@gmail.com_marketing-prediction_1749807127"
+app_name = "nutorbitx@gmail.com_marketing-prediction_1753160246"
 datasites = [
     "do_1@gmail.com",
     "do_2@gmail.com",
