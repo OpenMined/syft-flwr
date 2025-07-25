@@ -53,3 +53,5 @@ cd syft-flwr/notebooks/vfl-bank-marketing
 ## References
 
 - https://syftbox.net
+- https://www.kaggle.com/datasets/volodymyrgavrysh/bank-marketing-campaigns-dataset/
+- https://github.com/OpenMined/syft-flwr
