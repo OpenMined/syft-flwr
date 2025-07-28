@@ -1,7 +1,7 @@
 [project]
-name = "fl-diabetes-prediction"
+name = "fl-diabetes-prediction-workspace"
 version = "0.1.0"
-description = "Diabetes prediction using federated learning with Flower and Syft"
+description = "Workspace for diabetes prediction using federated learning with Flower and Syft"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -11,8 +11,12 @@ dependencies = [
     "jupyterlab>=4.4.4",
     "loguru>=0.7.3",
     "pandas>=2.3.0",
+    "ipywidgets>=8.1.7",
     "scikit-learn==1.6.1",
-    "syft-flwr>=0.1.5",
     "torch==2.7.0",
     "ray>=2.0.0",
+    "syft-flwr>=0.1.6",
 ]
+
+[tool.uv]
+package = false
