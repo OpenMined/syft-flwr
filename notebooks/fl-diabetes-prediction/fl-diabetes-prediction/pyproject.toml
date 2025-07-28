@@ -18,6 +18,7 @@ dependencies = [
     "scikit-learn==1.6.1",
     "loguru",
     "jupyter",
+    "syft_flwr==0.1.6",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -43,3 +44,10 @@ default = "local-simulation"
 [tool.flwr.federations.local-simulation.options]
 num-supernodes = 2
 
+[tool.syft_flwr]
+app_name = "ds@openmined.org_fl-diabetes-prediction_1753435643"
+datasites = [
+    "do1@openmined.org",
+    "do2@openmined.org",
+]
+aggregator = "ds@openmined.org"

@@ -485,9 +485,9 @@ wheels = [
 ]
 
 [[package]]
-name = "fl-diabetes-prediction"
+name = "fl-diabetes-prediction-workspace"
 version = "0.1.0"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
     { name = "flwr" },
     { name = "flwr-datasets" },
@@ -513,7 +513,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.3.0" },
     { name = "ray", specifier = ">=2.0.0" },
     { name = "scikit-learn", specifier = "==1.6.1" },
-    { name = "syft-flwr", directory = "../../" },
+    { name = "syft-flwr", specifier = ">=0.1.6" },
     { name = "torch", specifier = "==2.7.0" },
 ]
 
@@ -2417,7 +2417,7 @@ wheels = [
 [[package]]
 name = "syft-flwr"
 version = "0.1.6"
-source = { directory = "../../" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "flwr" },
     { name = "flwr-datasets", extra = ["vision"] },
@@ -2428,25 +2428,9 @@ dependencies = [
     { name = "tomli-w" },
     { name = "typing-extensions" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "flwr", extras = ["simulation"], specifier = "==1.17.0" },
-    { name = "flwr-datasets", extras = ["vision"], specifier = ">=0.5.0" },
-    { name = "loguru", specifier = ">=0.7.3" },
-    { name = "safetensors", specifier = ">=0.5.0" },
-    { name = "syft-rds", specifier = "==0.1.5" },
-    { name = "tomli", specifier = ">=2.2.1" },
-    { name = "tomli-w", specifier = ">=1.2.0" },
-    { name = "typing-extensions", specifier = ">=4.13.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "ipykernel", specifier = ">=6.29.5" },
-    { name = "ipywidgets", specifier = ">=8.1.7" },
-    { name = "pre-commit", specifier = ">=4.0.1" },
-    { name = "pytest", specifier = ">=8.3.4" },
+sdist = { url = "https://files.pythonhosted.org/packages/4e/6a/b48273ec4277b509b379681a8565dc54013bd83ab2c15b9fb165bf34499f/syft_flwr-0.1.6.tar.gz", hash = "sha256:0c314c8c26a1094438fdb6a88114cb2690b392c97e70269ae5217d2cd4b984a8", size = 17016, upload-time = "2025-07-25T04:32:09.455Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/28/2f/9c61d888fe44bff837b804e30fb297d20c3a51ef6567f46fc26c23fbb337/syft_flwr-0.1.6-py3-none-any.whl", hash = "sha256:11c5c0dd7c5add06e60c4690dc29a6edd52e0be70aaeac900f4b3c786adde8ff", size = 21128, upload-time = "2025-07-25T04:32:08.154Z" },
 ]
 
 [[package]]
