@@ -4,7 +4,10 @@
 
 In this tutorial, we'll walk through a practical federated learning implementation for diabetes prediction using [syft_flwr](https://github.com/OpenMined/syft-flwr) — a framework that combines the flexibility of [Flower](https://github.com/adap/flower/) (a popular federated learning framework) with the privacy-preserving networking capabilities of [syftbox](https://www.syftbox.net/).
 
-![overview](./images/overview.png)
+<video style="width: 100%; max-width: 800px;" controls>
+  <source src="./images/flTraining.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 
 ## Set up
 
