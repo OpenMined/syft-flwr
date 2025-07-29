@@ -27,7 +27,7 @@ The set of notebooks in `local/` shows how things work with 2 data owners and 1 
 Please start with the `do1.ipynb`, then go to the `do2.ipynb`, and finally `ds.ipynb`, and switch hats when necessary when indicated to do so.
 
 ### Distributed setup
-In the distributed setup, each DO's datasite and the DS's datasite run on different machines. They communicate using the SyftBox client. There are detailed instructions to install the SyftBox client in the notebooks.
+In the distributed setup in `distributed/`, we have the exact same workflow except that each DO's datasite and the DS's datasite run on different machines,and they communicate using the SyftBox client. There are detailed instructions to install the SyftBox client in the notebooks.
 
 ## References
 - https://syftbox.net
