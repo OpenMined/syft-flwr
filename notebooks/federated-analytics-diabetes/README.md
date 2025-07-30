@@ -45,4 +45,3 @@ In the distributed setup in `distributed/`, we have the exact same workflow exce
 - https://github.com/OpenMined/syft-flwr
 - https://github.com/adap/flower/
 - https://github.com/OpenMined/rds
-- https://github.com/elarsiad/diabetes-prediction-keras
