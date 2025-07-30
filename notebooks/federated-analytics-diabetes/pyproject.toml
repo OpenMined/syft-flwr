@@ -7,11 +7,11 @@ requires-python = ">=3.12"
 dependencies = [
     "flwr-datasets>=0.5.0",
     "flwr[simulation]==1.17.0",
-    "syft-flwr>=0.1.5",
-    "jupyterlab>=4.4.4",
+    "jupyterlab>=4.4.5",
     "loguru>=0.7.3",
     "pandas>=2.3.0",
-    "numpy>=2.3.1",
+    "numpy>=2.3.2",
     "matplotlib>=3.8.3",
     "seaborn>=0.13.2",
+    "syft-flwr>=0.1.6",
 ]
