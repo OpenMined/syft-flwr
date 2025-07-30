@@ -17,7 +17,7 @@ dependencies = [
     "flwr-datasets[vision]>=0.5.0",
     "numpy>=2.0.2",
     "pandas==2.2.3",
-    "syft_flwr==0.1.5",
+    "syft_flwr==0.1.6",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -43,11 +43,3 @@ default = "local-simulation"
 
 [tool.flwr.federations.local-simulation.options]
 num-supernodes = 2
-
-[tool.syft_flwr]
-app_name = "khoa@openmined.org_fed-analytics-diabetes_1752540460"
-datasites = [
-    "flower-test-group-1@openmined.org",
-    "flower-test-group-2@openmined.org",
-]
-aggregator = "khoa@openmined.org"
