@@ -176,34 +176,58 @@ def create_federated_splits(
     X_splits = []
     y_splits = []
 
-    # Create splits based on column sets
+    # Create splits based on column sets - ALL CLIENTS GET SAME SAMPLES
     for cols in DATA_PARTITION_SETS:
         X_split = X_train[cols[:-1]]  # Exclude target column
-        y_split = y_train
+        y_split = y_train  # ALL clients get same labels (same samples)
         X_splits.append(X_split)
         y_splits.append(y_split)
 
-    # Apply different sampling strategies for each client
-    X_splits, y_splits = _apply_client_sampling_strategies(X_splits, y_splits)
-
     return X_splits, y_splits
 
 
-def _apply_client_sampling_strategies(
-    X_splits: List[pd.DataFrame], y_splits: List[pd.Series]
-) -> Tuple[List[pd.DataFrame], List[pd.Series]]:
-    # Client 0: Sample 50% of data
-    X_splits[0] = X_splits[0].sample(
-        frac=CONFIG["client_0_fraction"], random_state=CONFIG["random_state"]
-    )
-    y_splits[0] = y_splits[0].loc[X_splits[0].index]
+def create_balanced_mock_data(
+    X_split: pd.DataFrame, y_split: pd.Series, mock_size: int = 10
+) -> Tuple[pd.DataFrame, pd.Series]:
+    """Create balanced mock data ensuring both classes are represented."""
+    # Get unique classes
+    unique_classes = y_split.unique()
 
-    # Client 1: Remove overlap with client 0
-    overlap_indices = X_splits[0].index.intersection(X_splits[1].index)
-    X_splits[1] = X_splits[1].drop(overlap_indices)
-    y_splits[1] = y_splits[1].drop(overlap_indices)
+    if len(unique_classes) == 1:
+        # If only one class exists, just take the first mock_size samples
+        return X_split.head(mock_size), y_split.head(mock_size)
 
-    return X_splits, y_splits
+    # Try to get equal representation of both classes
+    samples_per_class = mock_size // len(unique_classes)
+    remaining_samples = mock_size % len(unique_classes)
+
+    mock_indices = []
+
+    for i, class_label in enumerate(unique_classes):
+        class_indices = y_split[y_split == class_label].index
+
+        # Number of samples for this class
+        n_samples = samples_per_class + (1 if i < remaining_samples else 0)
+        n_samples = min(n_samples, len(class_indices))  # Don't exceed available samples
+
+        # Sample indices for this class
+        selected_indices = class_indices[:n_samples]
+        mock_indices.extend(selected_indices)
+
+    # If we don't have enough samples from balanced approach, fill with remaining
+    if len(mock_indices) < mock_size:
+        remaining_needed = mock_size - len(mock_indices)
+        all_indices = set(y_split.index)
+        used_indices = set(mock_indices)
+        available_indices = list(all_indices - used_indices)
+
+        additional_indices = available_indices[:remaining_needed]
+        mock_indices.extend(additional_indices)
+
+    # Sort indices to maintain order
+    mock_indices = sorted(mock_indices[:mock_size])
+
+    return X_split.loc[mock_indices], y_split.loc[mock_indices]
 
 
 def create_readme_files(output_path: Path) -> None:
@@ -293,34 +317,6 @@ This directory contains the complete training dataset for this client.
 This data represents the private dataset that would be held by this participant in a real federated learning scenario.
 """
 
-    # README content for server test partition
-    readme_server_test_content = """# Bank Marketing Dataset - Server Test Set
-
-This partition contains the test dataset used for model evaluation in the vertical federated learning setup.
-
-## Purpose:
-This test set is used to evaluate the performance of the federated learning model trained on the distributed bank marketing data.
-
-## Features:
-The test set contains all features from both partitions:
-
-### Bank Features:
-- age, job, marital, education, default, housing, loan, duration
-
-### Marketing Features:
-- contact, month, day_of_week, campaign, pdays, previous, poutcome
-
-## Target Variable:
-- **y**: Has the client subscribed to a term deposit? (binary: 0='no', 1='yes')
-
-## Data Format:
-- **X_test.npy**: Test features (numpy array)
-- **y_test.npy**: Test labels (numpy array)
-
-## Usage:
-This dataset is used for final model evaluation after the vertical federated learning training process is complete.
-"""
-
     # Write README files for each client's mock and private directories
     readme_contents = [readme_0_content, readme_1_content]
     for i, content in enumerate(readme_contents):
@@ -337,12 +333,6 @@ This dataset is used for final model evaluation after the vertical federated lea
         private_readme_path.parent.mkdir(parents=True, exist_ok=True)
         with open(private_readme_path, "w") as f:
             f.write(f"{content}\n\n{readme_private_content}")
-
-    # Write server test README
-    server_test_readme_path = output_path / "server_test" / "README.md"
-    server_test_readme_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(server_test_readme_path, "w") as f:
-        f.write(readme_server_test_content)
 
 
 def save_processed_data(
@@ -363,9 +353,8 @@ def save_processed_data(
         mock_path = output_path / folder_name / "mock"
         mock_path.mkdir(parents=True, exist_ok=True)
 
-        # Get first 10 rows for mock data
-        X_mock = X_split.head(10)
-        y_mock = y_split.head(10)
+        # Get balanced mock data ensuring both classes are represented
+        X_mock, y_mock = create_balanced_mock_data(X_split, y_split, 10)
 
         np.save(mock_path / "X_train.npy", X_mock.values)
         np.save(mock_path / "y_train.npy", y_mock.values)
@@ -377,14 +366,44 @@ def save_processed_data(
         np.save(private_path / "X_train.npy", X_split.values)
         np.save(private_path / "y_train.npy", y_split.values)
 
-    # Save test data in server_test directory
-    server_test_path = output_path / "server_test"
-    server_test_path.mkdir(parents=True, exist_ok=True)
-    np.save(server_test_path / "X_test.npy", X_test.values)
-    np.save(server_test_path / "y_test.npy", y_test.values)
+    # Save TRAINING labels for server (same samples as clients)
+    # In proper VFL, server needs training labels for the same samples clients are using
+    server_train_path = output_path / "server_train"
+    server_train_path.mkdir(parents=True, exist_ok=True)
+
+    # Use the same labels that clients have (from any client since they're identical)
+    server_train_labels = y_splits[0]  # All clients have same labels, so use first one
+    np.save(server_train_path / "y_train.npy", server_train_labels.values)
+
+    # Also save mock version for testing
+    server_mock_labels = create_balanced_mock_data(
+        pd.DataFrame(index=server_train_labels.index), server_train_labels, 10
+    )[1]
+    np.save(server_train_path / "y_mock.npy", server_mock_labels.values)
 
     # Create README files
     create_readme_files(output_path)
+
+    # Create README for server training labels
+    server_train_readme = """# Server Training Labels
+
+This directory contains training labels for the server in the vertical federated learning setup.
+
+## Purpose:
+In VFL, the server acts as the label holder and coordinates training using the same samples
+that clients are working on, but with access to the ground truth labels.
+
+## Files:
+- **y_train.npy**: Training labels for the same samples clients are using
+- **y_mock.npy**: Mock training labels (10 samples) for testing
+
+## Note:
+These labels correspond to the exact same samples (row indices) that clients have in their
+training data, ensuring proper vertical federated learning alignment.
+"""
+
+    with open(server_train_path / "README.md", "w") as f:
+        f.write(server_train_readme)
 
 
 def process_marketing_data(data_path: str) -> None:

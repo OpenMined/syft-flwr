@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from flwr.client import ClientApp, NumPyClient
 from flwr.common import Context
+from loguru import logger
 from torch import optim
 
 from .model import SimpleMLP, init_weights
@@ -19,12 +20,11 @@ class FlowerClient(NumPyClient):
         self.embedding = self.net(self.train)
 
     def get_parameters(self, config):
-        print(f"[Client {self.cid}] get_parameters")
+        logger.info(f"[Client {self.cid}] get_parameters")
         return get_parameters(self.net)
 
     def fit(self, parameters, config):
         self.embedding = self.net(self.train)
-        torch.save(self.net, f"model_{self.cid}.pt")
         return [self.embedding.detach().numpy()], 1, {}
 
     def evaluate(self, parameters, config):
@@ -38,7 +38,7 @@ class FlowerClient(NumPyClient):
 
             # Ensure gradients match embedding shape
             if client_gradients.shape != self.embedding.shape:
-                print(
+                logger.error(
                     f"[Client {self.cid}] Gradient shape mismatch: {client_gradients.shape} vs {self.embedding.shape}"
                 )
                 return 0.0, 1, {"error": "gradient_shape_mismatch"}
@@ -51,11 +51,13 @@ class FlowerClient(NumPyClient):
             # Recompute embedding after update
             self.embedding = self.net(self.train)
 
-            print(f"[Client {self.cid}] Successfully updated model with gradients")
+            logger.info(
+                f"[Client {self.cid}] Successfully updated model with gradients"
+            )
             return 0.0, 1, {"status": "success"}
 
         except Exception as e:
-            print(f"[Client {self.cid}] Error in evaluate: {e}")
+            logger.error(f"[Client {self.cid}] Error in evaluate: {e}")
             return 0.0, 1, {"error": str(e)}
 
 
@@ -64,8 +66,9 @@ def client_fn(context: Context):
 
     X_train, _ = load_syftbox_dataset()
     input_features = X_train.shape[1]
+    logger.info(f"X_train's shape: {X_train.shape}, input_features: {input_features}")
 
-    net = SimpleMLP((input_features,), [1], 2, nn.ReLU)  # TODO: temporary fix
+    net = SimpleMLP((input_features,), [1], 2, nn.ReLU)
     net.apply(init_weights)
 
     return FlowerClient(

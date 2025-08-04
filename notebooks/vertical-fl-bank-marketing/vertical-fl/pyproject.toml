@@ -34,7 +34,7 @@ serverapp = "bankmarketing.server:app"
 clientapp = "bankmarketing.client:app"
 
 [tool.flwr.app.config]
-num-server-rounds = 2
+num-server-rounds = 5
 partition-id = 0
 num-partitions = 1
 
@@ -45,7 +45,7 @@ default = "local-simulation"
 num-supernodes = 2
 
 [tool.syft_flwr]
-app_name = "nutorbitx@gmail.com_marketing-prediction_1754282155"
+app_name = "nutorbitx@gmail.com_marketing-prediction_1754301335"
 datasites = [
     "do_1@gmail.com",
     "do_2@gmail.com",

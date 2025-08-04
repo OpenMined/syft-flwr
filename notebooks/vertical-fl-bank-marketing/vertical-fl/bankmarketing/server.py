@@ -32,19 +32,20 @@ def server_fn(context: Context) -> ServerAppComponents:
     params = ndarrays_to_parameters(get_parameters(net))
 
     from .strategy import AggregateCustomMetricStrategy
-    from .utils import load_server_test_dataset
+    from .utils import load_server_training_labels
 
-    # Load server's own test dataset for evaluation
-    _, y_test = load_server_test_dataset()
+    # Load server's training labels (same samples as clients)
+    y_train = load_server_training_labels()
 
     strategy = AggregateCustomMetricStrategy(
-        labels=y_test,
+        labels=y_train,
         save_path=Path(__file__).parent.parent.parent / "weights",
+        client_embedding_sizes=[2, 2],  # Each client contributes 2D embeddings
         fraction_fit=1.0,  # Use 100% of available clients
         fraction_evaluate=1.0,  # Use 100% for evaluation
         min_fit_clients=2,  # Must have exactly 2 clients
         min_available_clients=2,  # Wait until 2 clients are available
-        accept_failures=False,  # Critical: do not proceed with failures
+        accept_failures=False,  # Critical: do not proceed with failures for VFL
         initial_parameters=params,
         evaluate_metrics_aggregation_fn=weighted_average,
     )

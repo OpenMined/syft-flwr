@@ -1,3 +1,4 @@
+import os
 from collections import OrderedDict
 from pathlib import Path
 from typing import List
@@ -19,9 +20,18 @@ def set_parameters(net, parameters: List[np.ndarray]):
     net.load_state_dict(state_dict, strict=True)
 
 
-def load_syftbox_dataset() -> (
-    tuple[torch.utils.data.TensorDataset, torch.utils.data.TensorDataset]
-):
+def load_syftbox_dataset() -> tuple[torch.Tensor, torch.Tensor]:
+    """Load training dataset from SyftBox data directory.
+
+    Loads the training features and labels from numpy arrays stored in the
+    SyftBox data directory. This function is used in vertical federated learning
+    scenarios where clients need access to training data features.
+
+    Example:
+        >>> X_train, y_train = load_syftbox_dataset()
+        >>> print(f"Features shape: {X_train.shape}")
+        >>> print(f"Labels shape: {y_train.shape}")
+    """
     from syft_flwr.utils import get_syftbox_dataset_path
 
     data_dir = get_syftbox_dataset_path()
@@ -36,26 +46,34 @@ def load_syftbox_dataset() -> (
     )
 
 
-def load_server_test_dataset() -> tuple[torch.Tensor, torch.Tensor]:
-    """Load the server's test dataset for evaluation purposes.
+def load_server_training_labels() -> torch.Tensor:
+    """Load the server's training labels for VFL training.
+
+    These labels correspond to the same samples that clients are working on.
 
     Returns:
-        tuple: X_test, y_test tensors for server evaluation
+        torch.Tensor: y_train tensor matching client training data
     """
-    # Get the path to the test data directory
     project_root = Path(__file__).parent.parent.parent
-    test_data_path = (
-        project_root / "dataset" / "marketing" / "processed" / "server_test"
+    train_labels_path = (
+        project_root / "dataset" / "marketing" / "processed" / "server_train"
     )
 
-    logger.info(f"Loading server test dataset from {test_data_path}")
+    logger.info(f"Loading server training labels from {train_labels_path}")
 
-    if not test_data_path.exists():
-        raise FileNotFoundError(f"Test data directory not found: {test_data_path}")
+    if not train_labels_path.exists():
+        raise FileNotFoundError(
+            f"Server training labels directory not found: {train_labels_path}"
+        )
 
-    X_test = np.load(test_data_path / "X_test.npy")
-    y_test = np.load(test_data_path / "y_test.npy")
+    # Use environment variable to control which dataset to load
+    use_mock = os.getenv("USE_MOCK_DATA", "true").lower() == "true"
 
-    logger.info(f"Loaded test dataset with {len(X_test)} samples")
+    if use_mock:
+        y_train = np.load(train_labels_path / "y_mock.npy")
+        logger.info(f"Loaded mock training labels with {len(y_train)} samples")
+    else:
+        y_train = np.load(train_labels_path / "y_train.npy")
+        logger.info(f"Loaded full training labels with {len(y_train)} samples")
 
-    return torch.FloatTensor(X_test), torch.LongTensor(y_test)
+    return torch.LongTensor(y_train)
