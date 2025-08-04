@@ -39,7 +39,8 @@ def load_syftbox_dataset() -> pd.DataFrame:
 
 def load_flwr_data(partition_id: int, num_partitions: int) -> pd.DataFrame:
     """
-    Load the `fl-diabetes-prediction` dataset to memory
+    Load the `pima-indians-diabetes-database` dataset to memory in partitions
+    (each client holds one partition)
     """
     logger.info(
         f"Loading FLWR data for partition {partition_id} of {num_partitions} partitions"

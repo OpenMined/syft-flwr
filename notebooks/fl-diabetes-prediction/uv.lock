@@ -485,13 +485,14 @@ wheels = [
 ]
 
 [[package]]
-name = "fl-diabetes-prediction"
+name = "fl-diabetes-prediction-workspace"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "flwr" },
     { name = "flwr-datasets" },
     { name = "imblearn" },
+    { name = "ipywidgets" },
     { name = "jupyterlab" },
     { name = "loguru" },
     { name = "pandas" },
@@ -506,12 +507,13 @@ requires-dist = [
     { name = "flwr", extras = ["simulation"], specifier = "==1.17.0" },
     { name = "flwr-datasets", specifier = ">=0.5.0" },
     { name = "imblearn", specifier = ">=0.0" },
+    { name = "ipywidgets", specifier = ">=8.1.7" },
     { name = "jupyterlab", specifier = ">=4.4.4" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "pandas", specifier = ">=2.3.0" },
     { name = "ray", specifier = ">=2.0.0" },
     { name = "scikit-learn", specifier = "==1.6.1" },
-    { name = "syft-flwr", specifier = ">=0.1.5" },
+    { name = "syft-flwr", specifier = ">=0.1.6" },
     { name = "torch", specifier = "==2.7.0" },
 ]
 
@@ -828,6 +830,22 @@ wheels = [
 ]
 
 [[package]]
+name = "ipywidgets"
+version = "8.1.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "comm" },
+    { name = "ipython" },
+    { name = "jupyterlab-widgets" },
+    { name = "traitlets" },
+    { name = "widgetsnbextension" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3e/48/d3dbac45c2814cb73812f98dd6b38bbcc957a4e7bb31d6ea9c03bf94ed87/ipywidgets-8.1.7.tar.gz", hash = "sha256:15f1ac050b9ccbefd45dccfbb2ef6bed0029d8278682d569d71b8dd96bee0376", size = 116721, upload-time = "2025-05-05T12:42:03.489Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/58/6a/9166369a2f092bd286d24e6307de555d63616e8ddb373ebad2b5635ca4cd/ipywidgets-8.1.7-py3-none-any.whl", hash = "sha256:764f2602d25471c213919b8a1997df04bef869251db4ca8efba1b76b1bd9f7bb", size = 139806, upload-time = "2025-05-05T12:41:56.833Z" },
+]
+
+[[package]]
 name = "isoduration"
 version = "20.11.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1091,6 +1109,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/0a/c9/a883ce65eb27905ce77ace410d83587c82ea64dc85a48d1f7ed52bcfa68d/jupyterlab_server-2.27.3.tar.gz", hash = "sha256:eb36caca59e74471988f0ae25c77945610b887f777255aa21f8065def9e51ed4", size = 76173, upload-time = "2024-07-16T17:02:04.149Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/09/2032e7d15c544a0e3cd831c51d77a8ca57f7555b2e1b2922142eddb02a84/jupyterlab_server-2.27.3-py3-none-any.whl", hash = "sha256:e697488f66c3db49df675158a77b3b017520d772c6e1548c7d9bcc5df7944ee4", size = 59700, upload-time = "2024-07-16T17:02:01.115Z" },
+]
+
+[[package]]
+name = "jupyterlab-widgets"
+version = "3.0.15"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b9/7d/160595ca88ee87ac6ba95d82177d29ec60aaa63821d3077babb22ce031a5/jupyterlab_widgets-3.0.15.tar.gz", hash = "sha256:2920888a0c2922351a9202817957a68c07d99673504d6cd37345299e971bb08b", size = 213149, upload-time = "2025-05-05T12:32:31.004Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/6a/ca128561b22b60bd5a0c4ea26649e68c8556b82bc70a0c396eebc977fe86/jupyterlab_widgets-3.0.15-py3-none-any.whl", hash = "sha256:d59023d7d7ef71400d51e6fee9a88867f6e65e10a4201605d2d7f3e8f012a31c", size = 216571, upload-time = "2025-05-05T12:32:29.534Z" },
 ]
 
 [[package]]
@@ -2358,7 +2385,7 @@ wheels = [
 
 [[package]]
 name = "syft-core"
-version = "0.2.5"
+version = "0.2.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic", extra = ["email"] },
@@ -2366,14 +2393,14 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wcmatch" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/82/6d/d7768967c367b4d4cdaf4e247c6ab76950fe81a8780d265d13a3a908efd0/syft_core-0.2.5.tar.gz", hash = "sha256:461c4f8d09ed4d9aad7d228e137bab772b194a91d6f36b4b8be2eda4b57fee85", size = 15997, upload-time = "2025-06-24T14:12:15.156Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/41/63/a68eb1c684dee2e10799152a8ce4e6420f5035e40eaddeae4ea001ec1178/syft_core-0.2.8.tar.gz", hash = "sha256:834319e51786ce4448382a8e15c20e923fb713e8ecf9925f064df58208622df1", size = 16231, upload-time = "2025-07-12T21:08:24.555Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4a/bc/c87e40c811ec74f9040e3d481690b18dcd65c77acd705a7f2f987e1bc9a9/syft_core-0.2.5-py3-none-any.whl", hash = "sha256:24127e34471e4b8e5b095b98f5b2a42140a2ba420196af2fa2b3574e39ce9718", size = 14346, upload-time = "2025-06-24T14:12:13.835Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/fc/88818d165b201352759f5bb6da47f4f9204b53d0222919216a0f39812802/syft_core-0.2.8-py3-none-any.whl", hash = "sha256:7c3511b7dfef9cc5bff6f72e24d7e5aa66bd02dcee8e088d852755c017063444", size = 14500, upload-time = "2025-07-12T21:08:23.308Z" },
 ]
 
 [[package]]
 name = "syft-event"
-version = "0.2.7"
+version = "0.2.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "loguru" },
@@ -2382,14 +2409,14 @@ dependencies = [
     { name = "syft-rpc" },
     { name = "watchdog" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b3/87/6ed4002b95c505665bf06e89ebd4e5eaf4933c24c32388872b735b104a9a/syft_event-0.2.7.tar.gz", hash = "sha256:82bc95294786a3b64c1ab1fb731dca178bc7517307f95570c8473d2de1be0c13", size = 9764, upload-time = "2025-06-27T09:47:13.515Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/23/db/30cb16d456bbe8d97fcc27bc6c872654be01b6e6a00752c7ea224580e190/syft_event-0.2.8.tar.gz", hash = "sha256:fa92c3918fb7c8088e19788b823f6686da5aee2aa08d5851a7c3bb157cb773bd", size = 9780, upload-time = "2025-07-12T21:09:13.025Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/35/79/a488f72524f5f24ea15756b068a2d7f8cf742ab0b06ad85275dc5caa952e/syft_event-0.2.7-py3-none-any.whl", hash = "sha256:89de5c5acbdc10f66c787908e3978324bd0ab83e50a52f6c127daf36f888b830", size = 10955, upload-time = "2025-06-27T09:47:11.806Z" },
+    { url = "https://files.pythonhosted.org/packages/02/8d/941b0ba95e2bf12997263d7c48e659c8d07e766b046a475aee7fa6e3161e/syft_event-0.2.8-py3-none-any.whl", hash = "sha256:c06e746ef4944a730bdf501c0868a67b51145b858381e35dc6d6f3611c481011", size = 10978, upload-time = "2025-07-12T21:09:11.682Z" },
 ]
 
 [[package]]
 name = "syft-flwr"
-version = "0.1.5"
+version = "0.1.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "flwr" },
@@ -2401,14 +2428,14 @@ dependencies = [
     { name = "tomli-w" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/96/fb/48d791924f660fbb943403764b85b7216fe3f36624d6981aaf5e9858c890/syft_flwr-0.1.5.tar.gz", hash = "sha256:470d4ef141aa127cec68818f13f6efc1197966d48717b7f392f8c4fb221f309a", size = 17016, upload-time = "2025-06-30T04:07:17.006Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4e/6a/b48273ec4277b509b379681a8565dc54013bd83ab2c15b9fb165bf34499f/syft_flwr-0.1.6.tar.gz", hash = "sha256:0c314c8c26a1094438fdb6a88114cb2690b392c97e70269ae5217d2cd4b984a8", size = 17016, upload-time = "2025-07-25T04:32:09.455Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/65/f9/8bddd3e9fa894618d90b551461972e629e1832f46262129e7117e77e966e/syft_flwr-0.1.5-py3-none-any.whl", hash = "sha256:7a40158fde0de0ffa0c7ec815c1141653c5e1cc7c1b8caf0a6c8036be57103ea", size = 21127, upload-time = "2025-06-30T03:58:56.344Z" },
+    { url = "https://files.pythonhosted.org/packages/28/2f/9c61d888fe44bff837b804e30fb297d20c3a51ef6567f46fc26c23fbb337/syft_flwr-0.1.6-py3-none-any.whl", hash = "sha256:11c5c0dd7c5add06e60c4690dc29a6edd52e0be70aaeac900f4b3c786adde8ff", size = 21128, upload-time = "2025-07-25T04:32:08.154Z" },
 ]
 
 [[package]]
 name = "syft-rds"
-version = "0.1.4"
+version = "0.1.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ipython" },
@@ -2424,23 +2451,23 @@ dependencies = [
     { name = "typer" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d7/f0/b9a47a1c89e6cedac0ffc95ea70f285982df6daaf70f504c5047d26d4f13/syft_rds-0.1.4.tar.gz", hash = "sha256:d2bdd3f81dce0a8df2f6528863c9100aaac6857657f184228fb23768ff2140f2", size = 167810, upload-time = "2025-06-30T03:50:37.688Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/31/28/bf4ea1e96d07d9a80e320b77579d4d028e20f2d5ab5896f1521a24c31958/syft_rds-0.1.5.tar.gz", hash = "sha256:269e056d2231534641333654f2ca51eff41b29ab52960c4549facd8ec9b6b63d", size = 167989, upload-time = "2025-07-25T03:43:10.096Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c8/9e/4ef053d548f6274b654355040a3184e48d82053ac49ff5b0d38636a0eb3c/syft_rds-0.1.4-py3-none-any.whl", hash = "sha256:ff5ced5239ed99efec54ab36039adbe9eebaf51126086760e5ca499f128f7f13", size = 197966, upload-time = "2025-06-30T03:50:36.031Z" },
+    { url = "https://files.pythonhosted.org/packages/70/0a/524b35d6f61cf3cb4758c0775f427aa7837d3c3741c3d51cc5a82f264911/syft_rds-0.1.5-py3-none-any.whl", hash = "sha256:1503934308c94f8ed41e9fb5a1c79a26a0ebb35857df5cfe36b2ad1942357f01", size = 198169, upload-time = "2025-07-25T03:43:08.472Z" },
 ]
 
 [[package]]
 name = "syft-rpc"
-version = "0.2.4"
+version = "0.2.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "syft-core" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a8/be/8092c946cd8b7d48b1d804458062e5df42b2b608dc2ef898619846892229/syft_rpc-0.2.4.tar.gz", hash = "sha256:768fbdac72cdbfaad59501b8dac5e867502f939a7541a1c66aaf482fd040fb82", size = 10663, upload-time = "2025-06-24T14:46:48.278Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0a/96/d2cd2d0ccd5cf2e075af57cf8261c9a233451cc2eb68d633aa47fa212db7/syft_rpc-0.2.8.tar.gz", hash = "sha256:b66525334b34cc4bd2d484467e5de62f12deb134dbb3ac3014eaa6ea5bb8aa58", size = 10663, upload-time = "2025-07-12T21:08:46.217Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/79/fb/b2d452d540a7c4fc043016eb9f68a537248760362fbb2d2a5232ad7097f0/syft_rpc-0.2.4-py3-none-any.whl", hash = "sha256:78e9453c9c092512a3b08f6ca8a07af9498509801f4ca2ef3614f07acb2aab2b", size = 11070, upload-time = "2025-06-24T14:46:47.294Z" },
+    { url = "https://files.pythonhosted.org/packages/32/6f/88f13192de72a1c1c87864348043be6c9f1256c00d2c6bbb373850ae9f1b/syft_rpc-0.2.8-py3-none-any.whl", hash = "sha256:4e11dce495de3b0cb3e142e04a879057d63768512234a19703e6b92abd1dc873", size = 11073, upload-time = "2025-07-12T21:08:45.025Z" },
 ]
 
 [[package]]
@@ -2635,11 +2662,11 @@ wheels = [
 
 [[package]]
 name = "typing-extensions"
-version = "4.14.0"
+version = "4.14.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d1/bc/51647cd02527e87d05cb083ccc402f93e441606ff1f01739a62c8ad09ba5/typing_extensions-4.14.0.tar.gz", hash = "sha256:8676b788e32f02ab42d9e7c61324048ae4c6d844a399eebace3d4979d75ceef4", size = 107423, upload-time = "2025-06-02T14:52:11.399Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/98/5a/da40306b885cc8c09109dc2e1abd358d5684b1425678151cdaed4731c822/typing_extensions-4.14.1.tar.gz", hash = "sha256:38b39f4aeeab64884ce9f74c94263ef78f3c22467c8724005483154c26648d36", size = 107673, upload-time = "2025-07-04T13:28:34.16Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/69/e0/552843e0d356fbb5256d21449fa957fa4eff3bbc135a74a691ee70c7c5da/typing_extensions-4.14.0-py3-none-any.whl", hash = "sha256:a1514509136dd0b477638fc68d6a91497af5076466ad0fa6c338e44e359944af", size = 43839, upload-time = "2025-06-02T14:52:10.026Z" },
+    { url = "https://files.pythonhosted.org/packages/b5/00/d631e67a838026495268c2f6884f3711a15a9a2a96cd244fdaea53b823fb/typing_extensions-4.14.1-py3-none-any.whl", hash = "sha256:d1e1e3b58374dc93031d6eda2420a48ea44a36c2b4766a4fdeb3710755731d76", size = 43906, upload-time = "2025-07-04T13:28:32.743Z" },
 ]
 
 [[package]]
@@ -2748,6 +2775,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e6/30/fba0d96b4b5fbf5948ed3f4681f7da2f9f64512e1d303f94b4cc174c24a5/websocket_client-1.8.0.tar.gz", hash = "sha256:3239df9f44da632f96012472805d40a23281a991027ce11d2f45a6f24ac4c3da", size = 54648, upload-time = "2024-04-23T22:16:16.976Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5a/84/44687a29792a70e111c5c477230a72c4b957d88d16141199bf9acb7537a3/websocket_client-1.8.0-py3-none-any.whl", hash = "sha256:17b44cc997f5c498e809b22cdf2d9c7a9e71c02c8cc2b6c56e7c2d1239bfa526", size = 58826, upload-time = "2024-04-23T22:16:14.422Z" },
+]
+
+[[package]]
+name = "widgetsnbextension"
+version = "4.0.14"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/41/53/2e0253c5efd69c9656b1843892052a31c36d37ad42812b5da45c62191f7e/widgetsnbextension-4.0.14.tar.gz", hash = "sha256:a3629b04e3edb893212df862038c7232f62973373869db5084aed739b437b5af", size = 1097428, upload-time = "2025-04-10T13:01:25.628Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ca/51/5447876806d1088a0f8f71e16542bf350918128d0a69437df26047c8e46f/widgetsnbextension-4.0.14-py3-none-any.whl", hash = "sha256:4875a9eaf72fbf5079dc372a51a9f268fc38d46f767cbf85c43a36da5cb9b575", size = 2196503, upload-time = "2025-04-10T13:01:23.086Z" },
 ]
 
 [[package]]
