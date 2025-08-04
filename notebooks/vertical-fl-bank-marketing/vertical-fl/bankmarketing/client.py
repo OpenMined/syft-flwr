@@ -15,7 +15,6 @@ class FlowerClient(NumPyClient):
         self.cid = cid
         self.net = net
         self.train = torch.tensor(data).float()
-
         self.optimizer = optim.Adam(self.net.parameters(), lr=0.001)
         self.embedding = self.net(self.train)
 
@@ -29,18 +28,45 @@ class FlowerClient(NumPyClient):
         return [self.embedding.detach().numpy()], 1, {}
 
     def evaluate(self, parameters, config):
-        self.net.zero_grad()
-        self.embedding.backward(torch.from_numpy(parameters[int(self.cid)]))
-        self.optimizer.step()
-        return 0.0, 1, {}
+        """
+        In VFL, clients receive gradients from server and update their models.
+        The parameters contain gradients for this client's embedding.
+        """
+        try:
+            # Get gradients from server for this client
+            client_gradients = torch.from_numpy(parameters[int(self.cid)])
+
+            # Ensure gradients match embedding shape
+            if client_gradients.shape != self.embedding.shape:
+                print(
+                    f"[Client {self.cid}] Gradient shape mismatch: {client_gradients.shape} vs {self.embedding.shape}"
+                )
+                return 0.0, 1, {"error": "gradient_shape_mismatch"}
+
+            # Apply gradients to embedding and backpropagate
+            self.net.zero_grad()
+            self.embedding.backward(client_gradients)
+            self.optimizer.step()
+
+            # Recompute embedding after update
+            self.embedding = self.net(self.train)
+
+            print(f"[Client {self.cid}] Successfully updated model with gradients")
+            return 0.0, 1, {"status": "success"}
+
+        except Exception as e:
+            print(f"[Client {self.cid}] Error in evaluate: {e}")
+            return 0.0, 1, {"error": str(e)}
 
 
 def client_fn(context: Context):
     from .utils import load_syftbox_dataset
 
-    net = SimpleMLP((8,), [1], 2, nn.ReLU)  # TODO: temporary fix
+    X_train, _ = load_syftbox_dataset()
+    input_features = X_train.shape[1]
+
+    net = SimpleMLP((input_features,), [1], 2, nn.ReLU)  # TODO: temporary fix
     net.apply(init_weights)
-    X_train, _, _, _ = load_syftbox_dataset(int(context.node_config["partition-id"]))
 
     return FlowerClient(
         int(context.node_config["partition-id"]), net, X_train

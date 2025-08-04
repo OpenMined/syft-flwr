@@ -45,7 +45,7 @@ default = "local-simulation"
 num-supernodes = 2
 
 [tool.syft_flwr]
-app_name = "nutorbitx@gmail.com_marketing-prediction_1753160246"
+app_name = "nutorbitx@gmail.com_marketing-prediction_1754282155"
 datasites = [
     "do_1@gmail.com",
     "do_2@gmail.com",

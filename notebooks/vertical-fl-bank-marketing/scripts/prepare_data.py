@@ -5,6 +5,63 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
+PROJECT_PATH = Path(__file__).parent.parent
+DATSET_PATH = PROJECT_PATH / "dataset"
+
+
+CONFIG = {
+    "test_size": 0.2,
+    "random_state": 42,
+    "client_0_fraction": 0.5,
+    "client_2_fraction": 0.3,
+    "output_dir": str(DATSET_PATH / "marketing" / "processed"),
+    "target_column": "y",
+}
+
+
+# Define column sets
+BANK_COLS = [
+    "age",
+    "job",
+    "marital",
+    "education",
+    "default",
+    "housing",
+    "loan",
+    "duration",
+]
+
+MARKETING_COLS = [
+    "contact",
+    "month",
+    "day_of_week",
+    "campaign",
+    "pdays",
+    "previous",
+    "poutcome",
+]
+
+CATEGORICAL_COLUMNS = [
+    "job",
+    "marital",
+    "education",
+    "default",
+    "loan",
+    "housing",
+    "contact",
+    "month",
+    "day_of_week",
+    "poutcome",
+]
+
+DATA_PARTITION_SETS = [
+    BANK_COLS + [CONFIG["target_column"]],
+    MARKETING_COLS + [CONFIG["target_column"]],
+]
+
+# Define descriptive folder names for data partitions
+CLIENT_FOLDER_NAMES = ["bank_features", "marketing_features"]
+
 
 def download_dataset_if_needed(data_path: str) -> None:
     """Download the bank marketing dataset from Kaggle if it doesn't exist."""
@@ -79,56 +136,6 @@ def download_dataset_if_needed(data_path: str) -> None:
         )
         print(f"And save it as: {target_file}")
         raise
-
-
-CONFIG = {
-    "test_size": 0.2,
-    "random_state": 42,
-    "client_0_fraction": 0.5,
-    "client_2_fraction": 0.3,
-    "output_dir": "./data/marketing/processed",
-    "target_column": "y",
-}
-
-# Define column sets
-BANK_COLS = [
-    "age",
-    "job",
-    "marital",
-    "education",
-    "default",
-    "housing",
-    "loan",
-    "duration",
-]
-
-MARKETING_COLS = [
-    "contact",
-    "month",
-    "day_of_week",
-    "campaign",
-    "pdays",
-    "previous",
-    "poutcome",
-]
-
-CATEGORICAL_COLUMNS = [
-    "job",
-    "marital",
-    "education",
-    "default",
-    "loan",
-    "housing",
-    "contact",
-    "month",
-    "day_of_week",
-    "poutcome",
-]
-
-DATA_PARTITION_SETS = [
-    BANK_COLS + [CONFIG["target_column"]],
-    MARKETING_COLS + [CONFIG["target_column"]],
-]
 
 
 def transform_data_oh(
@@ -251,8 +258,43 @@ This partition contains marketing campaign-related features from the Bank Market
 This data is part of a vertical federated learning setup where different participants hold different feature sets of the same dataset.
 """
 
-    # README content for test partition
-    readme_test_content = """# Bank Marketing Dataset - Test Set
+    # README content for mock data
+    readme_mock_content = """# Mock Dataset (Sample Data)
+
+This directory contains a small sample of the training data (10 rows) for development and testing purposes.
+
+## Purpose:
+- Quick testing and development
+- Verification of data processing pipeline
+- Demo purposes
+
+## Data Format:
+- **X_train.npy**: Sample training features (numpy array, 10 rows)
+- **y_train.npy**: Sample training labels (numpy array, 10 rows)
+
+## Note:
+This is a subset of the full training data available in the `private/` directory.
+"""
+
+    # README content for private data
+    readme_private_content = """# Private Dataset (Full Training Data)
+
+This directory contains the complete training dataset for this client.
+
+## Purpose:
+- Full federated learning training
+- Complete feature set for this participant
+
+## Data Format:
+- **X_train.npy**: Complete training features (numpy array)
+- **y_train.npy**: Complete training labels (numpy array)
+
+## Security:
+This data represents the private dataset that would be held by this participant in a real federated learning scenario.
+"""
+
+    # README content for server test partition
+    readme_server_test_content = """# Bank Marketing Dataset - Server Test Set
 
 This partition contains the test dataset used for model evaluation in the vertical federated learning setup.
 
@@ -279,17 +321,28 @@ The test set contains all features from both partitions:
 This dataset is used for final model evaluation after the vertical federated learning training process is complete.
 """
 
-    # Write README files
+    # Write README files for each client's mock and private directories
     readme_contents = [readme_0_content, readme_1_content]
     for i, content in enumerate(readme_contents):
-        readme_path = output_path / str(i) / "README.md"
-        with open(readme_path, "w") as f:
-            f.write(content)
+        folder_name = CLIENT_FOLDER_NAMES[i]
 
-    # Write test README
-    test_readme_path = output_path / "test" / "README.md"
-    with open(test_readme_path, "w") as f:
-        f.write(readme_test_content)
+        # Mock directory README
+        mock_readme_path = output_path / folder_name / "mock" / "README.md"
+        mock_readme_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(mock_readme_path, "w") as f:
+            f.write(f"{content}\n\n{readme_mock_content}")
+
+        # Private directory README
+        private_readme_path = output_path / folder_name / "private" / "README.md"
+        private_readme_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(private_readme_path, "w") as f:
+            f.write(f"{content}\n\n{readme_private_content}")
+
+    # Write server test README
+    server_test_readme_path = output_path / "server_test" / "README.md"
+    server_test_readme_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(server_test_readme_path, "w") as f:
+        f.write(readme_server_test_content)
 
 
 def save_processed_data(
@@ -302,18 +355,33 @@ def save_processed_data(
     output_path = Path(CONFIG["output_dir"])
     output_path.mkdir(parents=True, exist_ok=True)
 
-    # Save training splits
+    # Save training splits for each client
     for i, (X_split, y_split) in enumerate(zip(X_splits, y_splits)):
-        client_path = output_path / str(i)
-        client_path.mkdir(parents=True, exist_ok=True)
-        np.save(client_path / "X_train.npy", X_split.values)
-        np.save(client_path / "y_train.npy", y_split.values)
+        folder_name = CLIENT_FOLDER_NAMES[i]
 
-    # Save test data
-    test_path = output_path / "test"
-    test_path.mkdir(parents=True, exist_ok=True)
-    np.save(test_path / "X_test.npy", X_test.values)
-    np.save(test_path / "y_test.npy", y_test.values)
+        # Create mock directory with 10 rows only
+        mock_path = output_path / folder_name / "mock"
+        mock_path.mkdir(parents=True, exist_ok=True)
+
+        # Get first 10 rows for mock data
+        X_mock = X_split.head(10)
+        y_mock = y_split.head(10)
+
+        np.save(mock_path / "X_train.npy", X_mock.values)
+        np.save(mock_path / "y_train.npy", y_mock.values)
+
+        # Create private directory with full data
+        private_path = output_path / folder_name / "private"
+        private_path.mkdir(parents=True, exist_ok=True)
+
+        np.save(private_path / "X_train.npy", X_split.values)
+        np.save(private_path / "y_train.npy", y_split.values)
+
+    # Save test data in server_test directory
+    server_test_path = output_path / "server_test"
+    server_test_path.mkdir(parents=True, exist_ok=True)
+    np.save(server_test_path / "X_test.npy", X_test.values)
+    np.save(server_test_path / "y_test.npy", y_test.values)
 
     # Create README files
     create_readme_files(output_path)
@@ -348,4 +416,4 @@ def process_marketing_data(data_path: str) -> None:
 
 if __name__ == "__main__":
     # data link: https://www.kaggle.com/datasets/volodymyrgavrysh/bank-marketing-campaigns-dataset
-    process_marketing_data("./data/bank-additional-full.csv")
+    process_marketing_data(DATSET_PATH / "bank-additional-full.csv")
