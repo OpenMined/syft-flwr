@@ -1,14 +1,14 @@
 [project]
 name = "syft-flwr"
-version = "0.1.6"
+version = "0.1.7"
 description = "syft_flwr is an open source framework that facilitate federated learning projects using Flower over the SyftBox protocol"
 readme = "README.md"
 requires-python = ">=3.9.2"
 dependencies = [
-    "flwr[simulation]==1.17.0",
+    "flwr[simulation]>=1.20.0",
     "flwr-datasets[vision]>=0.5.0",
     "loguru>=0.7.3",
-    "safetensors>=0.5.0",
+    "safetensors>=0.6.2",
     "typing-extensions>=4.13.0",
     "tomli>=2.2.1",
     "tomli-w>=1.2.0",
@@ -20,10 +20,13 @@ syft_flwr = "syft_flwr.cli:main"
 
 [tool.uv]
 dev-dependencies = [
-    "ipykernel>=6.29.5",
+    "ipykernel>=6.30.1",
     "ipywidgets>=8.1.7",
-    "pytest>=8.3.4",
-    "pre-commit>=4.0.1",
+    "pytest>=8.4.1",
+    "pre-commit>=4.3.0",
+    "torch>=2.0.0",
+    "imblearn>=0.0",
+    "jupyterlab"
 ]
 
 [build-system]

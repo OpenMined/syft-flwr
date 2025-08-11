@@ -10,15 +10,13 @@ version = "1.0.0"
 description = "Federated Learning for Diabetes Prediction"
 license = "Apache-2.0"
 dependencies = [
-    "flwr[simulation]==1.17.0",
     "flwr-datasets>=0.5.0",
-    "torch==2.7.0",
+    "torch>=2.8.0",
     "imblearn",
     "pandas",
     "scikit-learn==1.6.1",
     "loguru",
     "jupyter",
-    "syft_flwr==0.1.6",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -43,11 +41,3 @@ default = "local-simulation"
 
 [tool.flwr.federations.local-simulation.options]
 num-supernodes = 2
-
-[tool.syft_flwr]
-app_name = "ds@openmined.org_fl-diabetes-prediction_1753435643"
-datasites = [
-    "do1@openmined.org",
-    "do2@openmined.org",
-]
-aggregator = "ds@openmined.org"

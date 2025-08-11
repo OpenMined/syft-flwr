@@ -13,11 +13,10 @@ authors = [
     { name = "OpenMined", email = "info@openmined.org" },
 ]
 dependencies = [
-    "flwr[simulation]>=1.13.1",
     "flwr-datasets[vision]>=0.5.0",
     "numpy>=2.0.2",
     "pandas==2.2.3",
-    "syft_flwr==0.1.6",
+    "syft_flwr==0.1.7",
 ]
 
 [tool.hatch.build.targets.wheel]
