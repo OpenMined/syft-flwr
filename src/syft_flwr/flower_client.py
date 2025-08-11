@@ -1,14 +1,14 @@
 import sys
 import traceback
 
-from loguru import logger
-from syft_event import SyftEvents
-from syft_event.types import Request
-
 from flwr.client import ClientApp
 from flwr.common import Context
 from flwr.common.constant import ErrorCode, MessageType
 from flwr.common.message import Error, Message
+from loguru import logger
+from syft_event import SyftEvents
+from syft_event.types import Request
+
 from syft_flwr.flwr_compatibility import RecordDict, create_flwr_message
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
 
@@ -57,13 +57,22 @@ def syftbox_flwr_client(client_app: ClientApp, context: Context, app_name: str):
         message: Message = bytes_to_flower_message(request.body)
         try:
             # Handle stop signal
-            if (
-                message.metadata.message_type == MessageType.SYSTEM
-                and message.content["config"]["action"] == "stop"
-            ):
-                logger.info(f"Received stop message: {message}")
-                box._stop_event.set()
-                return None
+            if message.metadata.message_type == MessageType.SYSTEM:
+                # Check for stop action in various possible formats
+                is_stop_signal = False
+                if (
+                    "config" in message.content
+                    and "action" in message.content["config"]
+                ):
+                    is_stop_signal = message.content["config"]["action"] == "stop"
+                elif message.metadata.group_id == "final":
+                    # Alternative stop signal format
+                    is_stop_signal = True
+
+                if is_stop_signal:
+                    logger.info(f"Received stop message: {message}")
+                    box._stop_event.set()
+                    return None
 
             return _handle_normal_message(message, client_app, context)
 
