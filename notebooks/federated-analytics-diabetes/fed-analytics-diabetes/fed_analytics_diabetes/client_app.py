@@ -110,8 +110,8 @@ def query(msg: Message, context: Context):
             metrics[f"{feature_name}_hist_outcome0"] = [0] * (
                 len(current_bin_edges) - 1
             )
-            metrics[f"{feature_name}_mean_outcome0"] = np.nan
-            metrics[f"{feature_name}_sum_outcome0"] = np.nan
+            metrics[f"{feature_name}_mean_outcome0"] = 0.0
+            metrics[f"{feature_name}_sum_outcome0"] = 0
             metrics[f"{feature_name}_count_outcome0"] = 0
 
         # Metrics for y=1
@@ -130,12 +130,19 @@ def query(msg: Message, context: Context):
             metrics[f"{feature_name}_hist_outcome1"] = [0] * (
                 len(current_bin_edges) - 1
             )
-            metrics[f"{feature_name}_mean_outcome1"] = np.nan
-            metrics[f"{feature_name}_sum_outcome1"] = np.nan
+            metrics[f"{feature_name}_mean_outcome1"] = 0.0
+            metrics[f"{feature_name}_sum_outcome1"] = 0
             metrics[f"{feature_name}_count_outcome1"] = 0
 
     logger.info(f"Metrics: {metrics}")
 
-    reply_content = RecordDict({"query_results": MetricRecord(metrics)})
+    try:
+        # Create RecordDict with metrics
+        reply_content = RecordDict({"query_results": MetricRecord(metrics)})
+        logger.info("Successfully created reply content")
+        return Message(reply_content, reply_to=msg)
 
-    return Message(reply_content, reply_to=msg)
+    except Exception as e:
+        logger.error(f"Error creating reply content: {e}")
+        logger.error(f"Metrics that caused error: {metrics}")
+        raise
