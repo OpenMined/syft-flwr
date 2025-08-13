@@ -23,7 +23,7 @@ Concrete Example:
 
 ### Request / Response Flow
 1. Write: Server creates `.request` file in target user's datasite directory
-2. Sync: SyftBox daemon syncs file across network to recipient's machine
-3. Watch: Recipient's SyftEvents watches filesystem and triggers on new .request files
-4. Process: Handler processes request and writes .response file
+2. Sync: SyftBox daemon (installed with the SyftBox client via https://syftbox.net) syncs file across network to recipient's machine
+3. Watch: Recipient's `SyftEvents` watches filesystem and triggers on new `.request` files
+4. Process: Handler processes request and writes `.response` file
 5. Sync Back: Response file syncs back to sender
