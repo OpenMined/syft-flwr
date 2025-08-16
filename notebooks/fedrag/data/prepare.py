@@ -6,7 +6,7 @@ import os
 from fedrag.mirage_qa import MirageQA
 from fedrag.retriever import Retriever
 
-from data_prepare.download import DownloadCorpora
+from data.download import DownloadCorpora
 
 VALID_DATASETS = ["pubmed", "statpearls", "textbooks", "wikipedia"]
 
