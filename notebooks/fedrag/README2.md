@@ -67,7 +67,21 @@ Run
 ```bash
 ./data/prepare.sh
 ```
-to download the `Textbooks` and `StatPearls` corpora and create an index for each corpus using the *first 100 chunks (documents)*. The processed data will be downloaded under the `data/corpus` directory. The total required disk space for all the documents of `Textbooks` and `StatPearls` is around `3GBs`.
+to download the `Textbooks` and `StatPearls` corpora and create an index for each corpus using the *first 100 chunks (documents)*. The processed data will be downloaded under the `data/corpus` directory. The total required disk space for all the documents of `Textbooks` and `StatPearls` is around `3GBs`. The structure of the `corpus` folder will look like below:
+```
+├── corpus                               # Medical knowledge base for RAG
+│   ├── statpearls                       # StatPearls medical database
+│   │   ├── all_doc_ids.npy              # NumPy array mapping document IDs to articles
+│   │   ├── chunk                        # Contains 9,618 JSONL files with chunked medical articles
+│   │   ├── faiss.index                  # FAISS vector index for fast similarity search
+│   │   ├── statpearls_NBK430685         # Specific article/book directory
+│   │   └── statpearls_NBK430685.tar.gz  # Compressed archive of raw data
+│   └── textbooks                        # Medical textbook corpus
+│       ├── all_doc_ids.npy              # Document ID mappings for textbook chunks
+│       ├── chunk                        # Chunked snippets from 18 medical textbooks
+│       ├── faiss.index                  # FAISS vector index for textbook content
+│       └── README.md
+```
 
 To download all corpora and create an index for all files, please run the following command:
 ```bash
@@ -92,9 +106,25 @@ In this federated setup, these corpora are distributed across clients for decent
 For QA benchmarking, the example supports the following benchmark datasets: `PubMedQA`, `BioASQ`, `MMLU`, `MedQA`, `MedMCQA`. These are question-answer pairs used to test how well the system performs. They contain pre-made questions with correct answers.
 
 #### How they work together
-1. The system retrieves relevant documents from the corpora (`PubMed`, `StatPearls`, etc.) split among different clients
+1. Different clients hold different relevant documents from the corpora (`PubMed`, `StatPearls`, etc.)
+
 2. The server uses those documents to answer questions from the QA benchmarks
 3. The server compares generated answers against the benchmark's correct answers to measure performance
+
+```
+User Query → Server → [Client1, Client2, ...] → Local Retrieval
+                  ↓
+           Document Merging (RRF)
+                  ↓
+              LLM Inference
+                  ↓
+              Final Answer
+```
+
+```
+client_app.py → retriever.py
+server_app.py → {llm_querier.py, mirage_qa.py, task.py}
+```
 
 
 ## References
