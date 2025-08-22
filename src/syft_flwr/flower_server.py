@@ -1,11 +1,13 @@
 import traceback
 from random import randint
 
-from loguru import logger
-
 from flwr.common import Context
 from flwr.server import ServerApp
 from flwr.server.run_serverapp import run as run_server
+from loguru import logger
+from syft_core import Client
+from syft_crypto.x3dh_bootstrap import ensure_bootstrap
+
 from syft_flwr.grid import SyftGrid
 
 
@@ -17,9 +19,20 @@ def syftbox_flwr_server(
 ) -> Context:
     """Run the Flower ServerApp with SyftBox."""
     syft_flwr_app_name = f"flwr/{app_name}"
-    syft_grid = SyftGrid(app_name=syft_flwr_app_name, datasites=datasites)
+
+    # Bootstrap X3DH encryption keys for the server
+    client = Client.load()
+    client = ensure_bootstrap(client)
+
+    # Construct the SyftGrid
+    syft_grid = SyftGrid(
+        app_name=syft_flwr_app_name, datasites=datasites, client=client
+    )
+
+    # Set the run id (random for now)
     run_id = randint(0, 1000)
     syft_grid.set_run(run_id)
+
     logger.info(f"Started SyftBox Flower Server on: {syft_grid._client.email}")
     logger.info(f"syft_flwr app name: {syft_flwr_app_name}")
 

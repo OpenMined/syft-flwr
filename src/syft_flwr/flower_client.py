@@ -6,6 +6,8 @@ from flwr.common import Context
 from flwr.common.constant import ErrorCode, MessageType
 from flwr.common.message import Error, Message
 from loguru import logger
+from syft_core import Client
+from syft_crypto.x3dh_bootstrap import ensure_bootstrap
 from syft_event import SyftEvents
 from syft_event.types import Request
 
@@ -44,7 +46,9 @@ def _create_error_reply(message: Message, error: Error) -> bytes:
 def syftbox_flwr_client(client_app: ClientApp, context: Context, app_name: str):
     """Run the Flower ClientApp with SyftBox."""
     syft_flwr_app_name = f"flwr/{app_name}"
-    box = SyftEvents(syft_flwr_app_name)
+    client = Client.load()
+    client = ensure_bootstrap(client)
+    box = SyftEvents(app_name=syft_flwr_app_name, client=client)
     client_email = box.client.email
     logger.info(f"Started SyftBox Flower Client on: {client_email}")
     logger.info(f"syft_flwr app name: {syft_flwr_app_name}")
