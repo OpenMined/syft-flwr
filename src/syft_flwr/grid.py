@@ -36,6 +36,22 @@ class SyftGrid(Grid):
         datasites: list[str] = [],
         client: Client = None,
     ) -> None:
+        """
+        SyftGrid is the server-side message orchestrator for federated learning in syft_flwr.
+        It acts as a bridge between Flower's server logic and SyftBox's communication layer:
+
+        Flower Server → SyftGrid → syft_rpc → SyftBox network → FL Clients
+                            ↑                                          ↓
+                            └──────────── responses ←─────────────────┘
+
+        SyftGrid enables Flower's centralized server to communicate with distributed SyftBox
+        clients without knowing the underlying transport details.
+
+        Core functionalities:
+        - push_messages(): Sends messages to clients via syft_rpc, returns future IDs
+        - pull_messages(): Retrieves responses using futures
+        - send_and_receive(): Combines push/pull with timeout handling
+        """
         self._client = Client.load() if client is None else client
         self._run: Optional[Run] = None
         self.node = Node(node_id=AGGREGATOR_NODE_ID)
@@ -47,19 +63,40 @@ class SyftGrid(Grid):
         self.app_name = app_name
 
     def set_run(self, run_id: int) -> None:
-        # TODO: In Grpc Grid case, the superlink is the one which sets up the run id,
-        # do we need to do the same here, where the run id is set from an external context.
+        """Set the run ID for this federated learning session.
 
+        Args:
+            run_id: Unique identifier for the FL run/session
+
+        Note:
+            In Grpc Grid case, the superlink sets up the run id.
+            Here, the run id is set from an external context.
+        """
         # Convert to Flower Run object
         self._run = Run.create_empty(run_id)
 
     @property
     def run(self) -> Run:
-        """Run ID."""
+        """Get the current Flower Run object.
+
+        Returns:
+            A copy of the current Run object with run metadata
+        """
         return Run(**vars(cast(Run, self._run)))
 
     def _check_message(self, message: Message) -> None:
-        # Check if the message is valid
+        """Validate a Flower message before sending.
+
+        Args:
+            message: The Flower Message to validate
+
+        Raises:
+            ValueError: If message metadata is invalid (wrong run_id, src_node_id,
+                       missing ttl, or invalid reply_to field)
+
+        Note:
+            Ensures message belongs to current run and originates from this server node.
+        """
         if not (
             message.metadata.run_id == cast(Run, self._run).run_id
             and message.metadata.src_node_id == self.node.node_id
@@ -78,7 +115,21 @@ class SyftGrid(Grid):
         group_id: str,
         ttl: Optional[float] = None,
     ) -> Message:
-        """Create a new message with specified parameters."""
+        """Create a new Flower message with proper metadata.
+
+        Args:
+            content: Message payload as RecordDict (e.g., model parameters, metrics)
+            message_type: Type of FL message (e.g., MessageType.TRAIN, MessageType.EVALUATE)
+            dst_node_id: Destination node ID (client identifier)
+            group_id: Message group identifier for related messages
+            ttl: Time-to-live in seconds (optional, for message expiration)
+
+        Returns:
+            A Flower Message object ready to be sent to a client
+
+        Note:
+            Automatically adds current run_id and server's node_id to metadata.
+        """
         return create_flwr_message(
             content=content,
             message_type=message_type,
@@ -90,12 +141,36 @@ class SyftGrid(Grid):
         )
 
     def get_node_ids(self) -> list[int]:
-        """Get node IDs of all connected nodes."""
-        # it is map from datasites to node id
+        """Get node IDs of all connected FL clients.
+
+        Returns:
+            List of integer node IDs representing connected datasites/clients
+
+        Note:
+            Node IDs are deterministically generated from datasite email addresses
+            using str_to_int() for consistent client identification.
+        """
         return list(self.client_map.keys())
 
     def push_messages(self, messages: Iterable[Message]) -> Iterable[str]:
-        """Push messages to specified node IDs."""
+        """Push FL messages to specified clients asynchronously.
+
+        Args:
+            messages: Iterable of Flower Messages to send to clients
+
+        Returns:
+            List of future IDs that can be used to retrieve responses
+
+        Process:
+            1. Validates each message metadata
+            2. Serializes Flower Message to bytes
+            3. Sends via syft_rpc to appropriate datasite
+            4. Stores futures for later retrieval
+
+        Note:
+            Messages are sent asynchronously; use returned IDs with pull_messages()
+            to retrieve responses.
+        """
         # Construct Messages
         run_id = cast(Run, self._run).run_id
         message_ids = []
@@ -126,7 +201,25 @@ class SyftGrid(Grid):
         return message_ids
 
     def pull_messages(self, message_ids):
-        """Pull messages based on message IDs."""
+        """Pull response messages from clients using future IDs.
+
+        Args:
+            message_ids: List of future IDs from push_messages()
+
+        Returns:
+            Dict mapping message_id to Flower Message response
+
+        Process:
+            1. Resolves each future to get RPC response
+            2. Deserializes response bytes to Flower Message
+            3. Handles errors and missing responses gracefully
+            4. Cleans up completed futures from storage
+
+        Note:
+            - Skips messages that haven't arrived yet (returns None)
+            - Logs but skips messages with errors
+            - Responses are automatically decrypted if encryption is enabled
+        """
         messages = {}
 
         for msg_id in message_ids:
@@ -203,7 +296,21 @@ class SyftGrid(Grid):
     def send_stop_signal(
         self, group_id: str, reason: str = "Training complete", ttl: float = 60.0
     ) -> list[Message]:
-        """Send a stop signal to all datasites (clients)."""
+        """Send a stop signal to all connected FL clients.
+
+        Args:
+            group_id: Identifier for this group of stop messages
+            reason: Human-readable reason for stopping (default: "Training complete")
+            ttl: Time-to-live for stop messages in seconds (default: 60.0)
+
+        Returns:
+            List of stop Messages that were sent
+
+        Note:
+            Used to gracefully terminate FL clients when training completes or
+            when the server encounters an error. Clients will shut down upon
+            receiving this SYSTEM message with action="stop".
+        """
         stop_messages: list[Message] = [
             self.create_message(
                 content=RecordDict(
