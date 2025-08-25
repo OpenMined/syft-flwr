@@ -1,33 +1,64 @@
 """Shared test fixtures for syft_flwr tests."""
 
+import shutil
+import tempfile
 from pathlib import Path
+from typing import Generator
 
 import pytest
-from syft_rds.orchestra import remove_rds_stack_dir, setup_rds_server
+from syft_core import Client, SyftClientConfig
+from syft_rds.orchestra import SingleRDSStack
 
-# Test emails for different roles
-DS_EMAIL = "data_scientist@test.openmined.org"
-DO1_EMAIL = "data_owner1@test.openmined.org"
-DO2_EMAIL = "data_owner2@test.openmined.org"
+DS_EMAIL = "ds@openmined.org"
+DO1_EMAIL = "do1@openmined.org"
+DO2_EMAIL = "do2@openmined.org"
 
-# Shared data directory for testing
-SHARED_DATA_DIR = "shared_data_dir"
 
-# Test directories
-TEST_DIR = Path(__file__).parent
-ASSET_PATH = TEST_DIR / "assets"
+@pytest.fixture
+def temp_workspace() -> Generator[Path, None, None]:
+    """Create isolated temporary workspace for each test"""
+    temp_dir: str = tempfile.mkdtemp()
+    workspace: Path = Path(temp_dir) / "SyftBox"
+    workspace.mkdir(parents=True, exist_ok=True)
+
+    dot_syftbox_dir: Path = workspace.parent / ".syftbox"
+    dot_syftbox_dir.mkdir(parents=True, exist_ok=True)
+
+    yield workspace
+
+    shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def create_temp_client(email: str, workspace_dir: Path) -> Client:
+    """Create a temporary Client instance for testing"""
+    config: SyftClientConfig = SyftClientConfig(
+        email=email,
+        data_dir=workspace_dir,
+        server_url="http://localhost:8080",
+        client_url="http://127.0.0.1:8082",
+        path=workspace_dir.parent / ".syftbox" / f"{email.split('@')[0]}_config.yaml",
+    )
+    return Client(config)
 
 
 # Helper functions for creating RDS server stacks
-def _setup_single_rds_server(email: str, tmp_path: Path, key: str, reset: bool = False):
-    """Helper function to setup a single RDS server."""
-    return setup_rds_server(
-        email=email,
-        root_dir=tmp_path,
-        key=key,
-        reset=reset,
-        log_level="INFO",
-    )
+def _setup_single_rds_server(email: str, temp_workspace: Path):
+    client: Client = create_temp_client(email, temp_workspace)
+    stack = SingleRDSStack(client)
+
+    return stack
+
+
+@pytest.fixture
+def ds_client(temp_workspace):
+    """Get just the DS client for simple tests."""
+    return _setup_single_rds_server(DS_EMAIL, temp_workspace).client
+
+
+@pytest.fixture
+def do1_client(temp_workspace):
+    """Get just the DO1 client for simple tests."""
+    return _setup_single_rds_server(DO1_EMAIL, temp_workspace).client
 
 
 def _create_participant_info(email: str, stack):
@@ -47,87 +78,22 @@ def _cleanup_stacks(*stacks):
 
 
 @pytest.fixture
-def rds_stack_ds(tmp_path):
-    """Setup DS (Data Scientist) RDS server stack."""
-    stack = _setup_single_rds_server(DS_EMAIL, tmp_path, "ds_test", reset=True)
-    yield stack
-    stack.stop()
-
-
-@pytest.fixture
-def rds_stack_do1(tmp_path):
-    """Setup DO1 (Data Owner 1) RDS server stack."""
-    stack = _setup_single_rds_server(DO1_EMAIL, tmp_path, "do1_test", reset=True)
-    yield stack
-    stack.stop()
-
-
-@pytest.fixture
-def rds_stack_do2(tmp_path):
-    """Setup DO2 (Data Owner 2) RDS server stack."""
-    stack = _setup_single_rds_server(DO2_EMAIL, tmp_path, "do2_test", reset=True)
-    yield stack
-    stack.stop()
-
-
-@pytest.fixture
-def ds_client(rds_stack_ds):
-    """Get just the DS client for simple tests."""
-    return rds_stack_ds.client
-
-
-@pytest.fixture
-def full_fl_network(tmp_path):
+def full_fl_network(temp_workspace) -> Generator[dict, None, None]:
     """
     Setup a complete FL network with 1 DS (aggregator) and 2 DOs.
     This fixture sets up the full RDS stack for each participant.
     """
-    # Clean up any existing network first
-    remove_rds_stack_dir(root_dir=tmp_path, key="fl_network")
-
     # Setup all three RDS server stacks using helper function
-    ds_stack = _setup_single_rds_server(DS_EMAIL, tmp_path, "fl_network", reset=True)
-    do1_stack = _setup_single_rds_server(DO1_EMAIL, tmp_path, "fl_network", reset=False)
-    do2_stack = _setup_single_rds_server(DO2_EMAIL, tmp_path, "fl_network", reset=False)
+    ds_stack = _setup_single_rds_server(DS_EMAIL, temp_workspace)
+    do1_stack = _setup_single_rds_server(DO1_EMAIL, temp_workspace)
+    do2_stack = _setup_single_rds_server(DO2_EMAIL, temp_workspace)
 
     yield {
         "ds": _create_participant_info(DS_EMAIL, ds_stack),
         "do1": _create_participant_info(DO1_EMAIL, do1_stack),
         "do2": _create_participant_info(DO2_EMAIL, do2_stack),
-        "root_dir": tmp_path,
+        "root_dir": temp_workspace,
     }
 
     # Cleanup using helper function
     _cleanup_stacks(ds_stack, do1_stack, do2_stack)
-
-
-@pytest.fixture
-def mock_flwr_context():
-    """Create a mock Flower context for testing."""
-    from unittest.mock import MagicMock
-
-    context = MagicMock()
-    context.node_id = 0
-    context.node_config = {}
-    context.state = MagicMock()
-    return context
-
-
-@pytest.fixture
-def mock_flwr_server_app():
-    """Create a mock Flower ServerApp for testing."""
-    from unittest.mock import MagicMock
-
-    server_app = MagicMock()
-    server_app.config = {}
-    return server_app
-
-
-@pytest.fixture
-def mock_flwr_client_app():
-    """Create a mock Flower ClientApp for testing."""
-    from unittest.mock import MagicMock
-
-    client_app = MagicMock()
-    client_app.config = {}
-    return client_app
