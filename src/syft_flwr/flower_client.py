@@ -2,6 +2,7 @@ import base64
 import os
 import sys
 import traceback
+from typing import Optional, Union
 
 from flwr.client import ClientApp
 from flwr.common import Context
@@ -18,184 +19,190 @@ from syft_flwr.flwr_compatibility import RecordDict, create_flwr_message
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
 
 
-def _handle_normal_message(
-    message: Message,
-    client_app: ClientApp,
-    context: Context,
-    encryption_enabled: bool = False,
-):
-    # Normal message handling
-    logger.info(f"Processing message with metadata: {message.metadata}")
-    reply_message: Message = client_app(message=message, context=context)
-    res_bytes: bytes = flower_message_to_bytes(reply_message)
+class MessageHandler:
+    """Handles message processing for Flower client."""
 
-    # Log with encryption status
-    if encryption_enabled:
-        logger.info(
-            f"🔒 Preparing ENCRYPTED reply, size: {len(res_bytes)/2**20:.2f} MB"
+    def __init__(
+        self, client_app: ClientApp, context: Context, encryption_enabled: bool
+    ):
+        self.client_app = client_app
+        self.context = context
+        self.encryption_enabled = encryption_enabled
+
+    def prepare_reply(self, data: bytes) -> Union[str, bytes]:
+        """Prepare reply data based on encryption setting."""
+        if self.encryption_enabled:
+            logger.info(f"🔒 Preparing ENCRYPTED reply, size: {len(data)/2**20:.2f} MB")
+            return base64.b64encode(data).decode("utf-8")
+        else:
+            logger.info(f"📤 Preparing PLAINTEXT reply, size: {len(data)/2**20:.2f} MB")
+            return data
+
+    def process_message(self, message: Message) -> Union[str, bytes]:
+        """Process normal Flower message and return reply."""
+        logger.info(f"Processing message with metadata: {message.metadata}")
+        reply_message = self.client_app(message=message, context=self.context)
+        reply_bytes = flower_message_to_bytes(reply_message)
+        return self.prepare_reply(reply_bytes)
+
+    def create_error_reply(
+        self, message: Optional[Message], error: Error
+    ) -> Union[str, bytes]:
+        """Create error reply message."""
+        error_reply = create_flwr_message(
+            content=RecordDict(),
+            reply_to=message,
+            message_type=message.metadata.message_type if message else MessageType.TASK,
+            src_node_id=message.metadata.dst_node_id if message else 0,
+            dst_node_id=message.metadata.src_node_id if message else 0,
+            group_id=message.metadata.group_id if message else "",
+            run_id=message.metadata.run_id if message else 0,
+            error=error,
         )
-        # When encryption is enabled, return base64-encoded string directly
-        return base64.b64encode(res_bytes).decode("utf-8")
-    else:
-        logger.info(
-            f"📤 Preparing PLAINTEXT reply, size: {len(res_bytes)/2**20:.2f} MB"
-        )
-        # Return raw bytes when not encrypting
-        return res_bytes
+        error_bytes = flower_message_to_bytes(error_reply)
+        logger.info(f"Error reply size: {len(error_bytes)/2**20:.2f} MB")
+        return self.prepare_reply(error_bytes)
 
 
-def _create_error_reply(
-    message: Message, error: Error, encryption_enabled: bool = False
-):
-    """Create and return error reply message in bytes."""
-    error_reply: Message = create_flwr_message(
-        content=RecordDict(),
-        reply_to=message,
-        message_type=message.metadata.message_type,
-        src_node_id=message.metadata.dst_node_id,
-        dst_node_id=message.metadata.src_node_id,
-        group_id=message.metadata.group_id,
-        run_id=message.metadata.run_id,
-        error=error,
-    )
-    error_bytes: bytes = flower_message_to_bytes(error_reply)
-    logger.info(f"Error reply message size: {len(error_bytes)/2**20:.2f} MB")
+class RequestProcessor:
+    """Processes incoming requests and handles encryption/decryption."""
 
-    if encryption_enabled:
-        # Return base64-encoded string for encryption
-        return base64.b64encode(error_bytes).decode("utf-8")
-    else:
-        return error_bytes
+    def __init__(
+        self, message_handler: MessageHandler, box: SyftEvents, client_email: str
+    ):
+        self.message_handler = message_handler
+        self.box = box
+        self.client_email = client_email
 
+    def decode_request_body(self, request_body: Union[bytes, str]) -> bytes:
+        """Decode request body, handling base64 if encrypted."""
+        if not self.message_handler.encryption_enabled:
+            return request_body
 
-def syftbox_flwr_client(client_app: ClientApp, context: Context, app_name: str):
-    """Run the Flower ClientApp with SyftBox."""
-    syft_flwr_app_name = f"flwr/{app_name}"
-    client = Client.load()
+        try:
+            # Convert to string if bytes
+            if isinstance(request_body, bytes):
+                request_body_str = request_body.decode("utf-8")
+            else:
+                request_body_str = request_body
+            # Decode base64
+            decoded = base64.b64decode(request_body_str)
+            logger.debug("🔓 Decoded base64 message")
+            return decoded
+        except Exception:
+            # Not base64 or decoding failed, use as-is
+            return request_body
 
-    # Check if encryption is enabled (default: True for production)
-    encryption_enabled = (
-        os.environ.get(SYFT_FLWR_ENCRYPTION_ENABLED, "true").lower() != "false"
-    )
+    def is_stop_signal(self, message: Message) -> bool:
+        """Check if message is a stop signal."""
+        if message.metadata.message_type != MessageType.SYSTEM:
+            return False
 
-    # Bootstrap X3DH encryption keys for the client (if encryption is enabled)
-    if encryption_enabled:
-        client = ensure_bootstrap(client)
-    else:
-        logger.warning("⚠️ Encryption disabled - skipping client key bootstrap")
+        # Check for stop action in config
+        if "config" in message.content and "action" in message.content["config"]:
+            return message.content["config"]["action"] == "stop"
 
-    box = SyftEvents(app_name=syft_flwr_app_name, client=client)
-    client_email = box.client.email
+        # Alternative stop signal format
+        return message.metadata.group_id == "final"
 
-    logger.info(f"Started SyftBox Flower Client on: {client_email}")
-    logger.info(f"syft_flwr app name: {syft_flwr_app_name}")
-
-    if encryption_enabled:
-        logger.info("🔐 End-to-end encryption is ENABLED for FL messages")
-        logger.debug("🔐 End-to-end encryption is ENABLED for FL messages")
-    else:
-        logger.warning(
-            "⚠️ End-to-end encryption is DISABLED for FL messages (development mode)"
-        )
-
-    @box.on_request(
-        "/messages", auto_decrypt=encryption_enabled, encrypt_reply=encryption_enabled
-    )
-    def handle_messages(request: Request) -> None:
-        # Log message reception with encryption status
-        encryption_status = "🔐 ENCRYPTED" if encryption_enabled else "📥 PLAINTEXT"
+    def process(self, request: Request) -> Optional[Union[str, bytes]]:
+        """Process incoming request and return response."""
         original_sender = request.headers.get("X-Syft-Original-Sender", "unknown")
+        encryption_status = (
+            "🔐 ENCRYPTED"
+            if self.message_handler.encryption_enabled
+            else "📥 PLAINTEXT"
+        )
 
         logger.info(
             f"{encryption_status} Received request from {original_sender}, "
             f"id: {request.id}, size: {len(request.body) / 1024 / 1024:.2f} MB"
         )
 
+        # Parse message
         try:
-            # Request body is automatically decrypted if auto_decrypt=True
-            request_body = request.body
+            request_body = self.decode_request_body(request.body)
+            message = bytes_to_flower_message(request_body)
 
-            # If encryption is enabled, the decrypted body should be a base64-encoded string
-            if encryption_enabled:
-                try:
-                    # Try to decode as base64 string directly
-                    if isinstance(request_body, bytes):
-                        request_body_str = request_body.decode("utf-8")
-                    else:
-                        request_body_str = request_body
-                    # Decode the base64-encoded Flower message
-                    request_body = base64.b64decode(request_body_str)
-                    logger.debug(f"🔓 Decoded base64 message from {original_sender}")
-                except Exception:
-                    # Not base64 or decoding failed, use as-is (might be plaintext fallback)
-                    pass
-
-            # Parse the (potentially decoded) message
-            message: Message = bytes_to_flower_message(request_body)
-
-            # Log successful decryption if encryption is enabled
-            if encryption_enabled:
+            if self.message_handler.encryption_enabled:
                 logger.debug(
                     f"🔓 Successfully decrypted message from {original_sender}"
                 )
-        except ValueError as e:
-            # Message deserialization error - could be decryption failure
+        except Exception as e:
             logger.error(
-                f"❌ Failed to deserialize message from {original_sender}: {e}. "
-                f"This may indicate a decryption failure or corrupted message."
+                f"❌ Failed to deserialize message from {original_sender}: {e}"
             )
             error = Error(
                 code=ErrorCode.CLIENT_APP_RAISED_EXCEPTION,
                 reason=f"Message deserialization failed: {e}",
             )
-            return _create_error_reply(None, error, encryption_enabled)
-        except Exception as e:
-            logger.error(
-                f"❌ Unexpected error processing message from {original_sender}: {e}"
-            )
-            error = Error(
-                code=ErrorCode.CLIENT_APP_RAISED_EXCEPTION,
-                reason=f"Message processing failed: {e}",
-            )
-            return _create_error_reply(None, error, encryption_enabled)
+            return self.message_handler.create_error_reply(None, error)
 
+        # Handle message
         try:
-            # Handle stop signal
-            if message.metadata.message_type == MessageType.SYSTEM:
-                # Check for stop action in various possible formats
-                is_stop_signal = False
-                if (
-                    "config" in message.content
-                    and "action" in message.content["config"]
-                ):
-                    is_stop_signal = message.content["config"]["action"] == "stop"
-                elif message.metadata.group_id == "final":
-                    # Alternative stop signal format
-                    is_stop_signal = True
+            # Check for stop signal
+            if self.is_stop_signal(message):
+                logger.info("Received stop signal")
+                self.box._stop_event.set()
+                return None
 
-                if is_stop_signal:
-                    logger.info(f"Received stop message: {message}")
-                    box._stop_event.set()
-                    return None
-
-            # Handle normal FL message and return reply
-            # The reply will be automatically encrypted if encrypt_reply=True
-            # by the box.on_request decorator
-            return _handle_normal_message(
-                message, client_app, context, encryption_enabled
-            )
+            # Process normal message
+            return self.message_handler.process_message(message)
 
         except Exception as e:
-            error_traceback = traceback.format_exc()
-            error_message = f"Client: '{client_email}'. Error: {str(e)}. Traceback: {error_traceback}"
+            error_message = f"Client: '{self.client_email}'. Error: {str(e)}. Traceback: {traceback.format_exc()}"
             logger.error(error_message)
 
             error = Error(
                 code=ErrorCode.CLIENT_APP_RAISED_EXCEPTION, reason=error_message
             )
-            box._stop_event.set()
-            return _create_error_reply(message, error, encryption_enabled)
+            self.box._stop_event.set()
+            return self.message_handler.create_error_reply(message, error)
 
+
+def _setup_client(app_name: str) -> tuple[Client, bool, str]:
+    """Setup SyftBox client and encryption."""
+    client = Client.load()
+
+    # Check encryption setting
+    encryption_enabled = (
+        os.environ.get(SYFT_FLWR_ENCRYPTION_ENABLED, "true").lower() != "false"
+    )
+
+    # Bootstrap encryption if needed
+    if encryption_enabled:
+        client = ensure_bootstrap(client)
+        logger.info("🔐 End-to-end encryption is ENABLED for FL messages")
+    else:
+        logger.warning("⚠️ Encryption disabled - skipping client key bootstrap")
+        logger.warning(
+            "⚠️ End-to-end encryption is DISABLED for FL messages (development mode)"
+        )
+
+    return client, encryption_enabled, f"flwr/{app_name}"
+
+
+def syftbox_flwr_client(client_app: ClientApp, context: Context, app_name: str):
+    """Run the Flower ClientApp with SyftBox."""
+    # Setup
+    client, encryption_enabled, syft_flwr_app_name = _setup_client(app_name)
+    box = SyftEvents(app_name=syft_flwr_app_name, client=client)
+
+    logger.info(f"Started SyftBox Flower Client on: {box.client.email}")
+    logger.info(f"syft_flwr app name: {syft_flwr_app_name}")
+
+    # Create handlers
+    message_handler = MessageHandler(client_app, context, encryption_enabled)
+    processor = RequestProcessor(message_handler, box, box.client.email)
+
+    # Register message handler
+    @box.on_request(
+        "/messages", auto_decrypt=encryption_enabled, encrypt_reply=encryption_enabled
+    )
+    def handle_messages(request: Request) -> Optional[Union[str, bytes]]:
+        return processor.process(request)
+
+    # Run
     try:
         box.run_forever()
     except Exception as e:
