@@ -1,6 +1,6 @@
+import base64
 import os
 import time
-from typing import Iterable, cast
 
 from flwr.common import ConfigRecord
 from flwr.common.constant import MessageType
@@ -9,9 +9,11 @@ from flwr.common.typing import Run
 from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
 from loguru import logger
 from syft_core import Client
-from syft_rpc import rpc, rpc_db
-from typing_extensions import Optional
+from syft_crypto import EncryptedPayload, decrypt_message
+from syft_rpc import SyftResponse, rpc, rpc_db
+from typing_extensions import Iterable, Optional, Union, cast
 
+from syft_flwr.consts import SYFT_FLWR_ENCRYPTION_ENABLED
 from syft_flwr.flwr_compatibility import (
     Grid,
     RecordDict,
@@ -23,7 +25,6 @@ from syft_flwr.utils import str_to_int
 
 # this is what superlink super node do
 AGGREGATOR_NODE_ID = 1
-
 
 # env vars
 SYFT_FLWR_MSG_TIMEOUT = "SYFT_FLWR_MSG_TIMEOUT"
@@ -57,9 +58,22 @@ class SyftGrid(Grid):
         self.node = Node(node_id=AGGREGATOR_NODE_ID)
         self.datasites = datasites
         self.client_map = {str_to_int(ds): ds for ds in self.datasites}
+
+        # Check if encryption is enabled (default: True for production)
+        self._encryption_enabled = (
+            os.environ.get(SYFT_FLWR_ENCRYPTION_ENABLED, "true").lower() != "false"
+        )
+
         logger.debug(
             f"Initialize SyftGrid for '{self._client.email}' with datasites: {self.datasites}"
         )
+        if self._encryption_enabled:
+            logger.info("🔐 End-to-end encryption is ENABLED for FL messages")
+        else:
+            logger.warning(
+                "⚠️ End-to-end encryption is DISABLED for FL messages (development mode)"
+            )
+
         self.app_name = app_name
 
     def set_run(self, run_id: int) -> None:
@@ -92,7 +106,7 @@ class SyftGrid(Grid):
 
         Raises:
             ValueError: If message metadata is invalid (wrong run_id, src_node_id,
-                       missing ttl, or invalid reply_to field)
+                    missing ttl, or invalid reply_to field)
 
         Note:
             Ensures message belongs to current run and originates from this server node.
@@ -164,12 +178,13 @@ class SyftGrid(Grid):
         Process:
             1. Validates each message metadata
             2. Serializes Flower Message to bytes
-            3. Sends via syft_rpc to appropriate datasite
-            4. Stores futures for later retrieval
+            3. Optionally encrypts message for recipient
+            4. Sends via syft_rpc to appropriate datasite
+            5. Stores futures for later retrieval
 
         Note:
             Messages are sent asynchronously; use returned IDs with pull_messages()
-            to retrieve responses.
+            to retrieve responses. Encryption is automatic if enabled.
         """
         # Construct Messages
         run_id = cast(Run, self._run).run_id
@@ -187,16 +202,76 @@ class SyftGrid(Grid):
             self._check_message(msg)
             # Serialize message
             msg_bytes = flower_message_to_bytes(msg)
-            # Send message
-            future = rpc.send(url=url, body=msg_bytes, client=self._client)
-            logger.debug(
-                f"Pushed message to {url} with metadata {msg.metadata}; size {len(msg_bytes) / 1024 / 1024} (Mb)"
-            )
-            # Save future
-            rpc_db.save_future(
-                future=future, namespace=self.app_name, client=self._client
-            )
-            message_ids.append(future.id)
+
+            # Send message with encryption if enabled
+            try:
+                if self._encryption_enabled:
+                    # Send base64-encoded string for encryption (much simpler than JSON wrapper)
+                    future = rpc.send(
+                        url=url,
+                        body=base64.b64encode(msg_bytes).decode("utf-8"),
+                        client=self._client,
+                        encrypt=True,
+                    )
+                    logger.debug(
+                        f"🔐 Pushed ENCRYPTED message to {dest_datasite} at {url} "
+                        f"with metadata {msg.metadata}; size {len(msg_bytes) / 1024 / 1024:.2f} MB"
+                    )
+                else:
+                    # Send without encryption (development/testing)
+                    future = rpc.send(url=url, body=msg_bytes, client=self._client)
+                    logger.debug(
+                        f"📤 Pushed PLAINTEXT message to {dest_datasite} at {url} "
+                        f"with metadata {msg.metadata}; size {len(msg_bytes) / 1024 / 1024:.2f} MB"
+                    )
+
+                # Save future
+                rpc_db.save_future(
+                    future=future, namespace=self.app_name, client=self._client
+                )
+                message_ids.append(future.id)
+
+            except KeyError as e:
+                # Missing recipient keys
+                logger.error(
+                    f"❌ Encryption key error for {dest_datasite}: {e}. "
+                    f"Recipient may not have bootstrapped their keys. "
+                    f"Skipping message to node {msg.metadata.dst_node_id}"
+                )
+                continue
+
+            except ValueError as e:
+                # Invalid encryption parameters
+                logger.error(
+                    f"❌ Encryption parameter error for {dest_datasite}: {e}. "
+                    f"Check recipient email format and bootstrap status. "
+                    f"Skipping message to node {msg.metadata.dst_node_id}"
+                )
+                continue
+
+            except Exception as e:
+                # Fallback for unexpected errors
+                if self._encryption_enabled:
+                    logger.warning(
+                        f"⚠️ Encryption failed for {dest_datasite}: {e}. "
+                        f"Falling back to unencrypted transmission for node {msg.metadata.dst_node_id}"
+                    )
+                    try:
+                        # Try sending without encryption as fallback
+                        future = rpc.send(url=url, body=msg_bytes, client=self._client)
+                        rpc_db.save_future(
+                            future=future, namespace=self.app_name, client=self._client
+                        )
+                        message_ids.append(future.id)
+                        logger.info(
+                            f"✅ Successfully sent unencrypted fallback message to {dest_datasite}"
+                        )
+                    except Exception as fallback_error:
+                        logger.error(
+                            f"❌ Failed to send message to {dest_datasite} even without encryption: {fallback_error}"
+                        )
+                else:
+                    logger.error(f"❌ Failed to send message to {dest_datasite}: {e}")
 
         return message_ids
 
@@ -223,29 +298,89 @@ class SyftGrid(Grid):
         messages = {}
 
         for msg_id in message_ids:
-            future = rpc_db.get_future(future_id=msg_id, client=self._client)
-            response = future.resolve()
-            if response is None:
-                continue
+            try:
+                future = rpc_db.get_future(future_id=msg_id, client=self._client)
+                response: Union[SyftResponse, None] = future.resolve()
+                if response is None:
+                    continue
 
-            response.raise_for_status()
+                response.raise_for_status()
 
-            if not response.body:
-                raise ValueError(f"Empty response: {response}")
+                if not response.body:
+                    logger.warning(f"⚠️ Empty response for message {msg_id}, skipping")
+                    continue
 
-            message: Message = bytes_to_flower_message(response.body)
-            if message.has_error():
-                error = message.error
+                # Try to decrypt if encryption is enabled
+                response_body = response.body
+
+                if self._encryption_enabled:
+                    try:
+                        # Try to parse as encrypted payload
+                        encrypted_payload = EncryptedPayload.model_validate_json(
+                            response.body.decode()
+                        )
+                        # Decrypt the message
+                        decrypted_body = decrypt_message(
+                            encrypted_payload, client=self._client
+                        )
+                        # The decrypted body should be a base64-encoded string
+                        response_body = base64.b64decode(decrypted_body)
+                        logger.debug(
+                            f"🔓 Successfully decrypted response for message {msg_id}"
+                        )
+                    except Exception as decrypt_error:
+                        # If decryption fails, log but try to process as plaintext
+                        logger.debug(
+                            f"📥 Response appears to be plaintext or decryption not needed for message {msg_id}: {decrypt_error}"
+                        )
+                        # Continue with original response body
+                        pass
+
+                # Deserialize the (potentially decrypted) message
+                message: Message = bytes_to_flower_message(response_body)
+
+                if message.has_error():
+                    error = message.error
+                    logger.error(
+                        f"❌ Message {msg_id} returned error with code={error.code}, reason={error.reason}"
+                    )
+                    continue
+
+                encryption_status = (
+                    "🔐 ENCRYPTED" if self._encryption_enabled else "📥 PLAINTEXT"
+                )
+                logger.debug(
+                    f"{encryption_status} Pulled message from {response.url} "
+                    f"with metadata: {message.metadata}, size: {len(response_body) / 1024 / 1024:.2f} MB"
+                )
+                messages[msg_id] = message
+                rpc_db.delete_future(future_id=msg_id, client=self._client)
+
+            except ValueError as e:
+                # Deserialization or decryption error
                 logger.error(
-                    f"Message {msg_id} error with code={error.code}, reason={error.reason}"
+                    f"❌ Failed to process message {msg_id}: {e}. "
+                    f"This may indicate a decryption failure, corrupted message, or incompatible format."
                 )
                 continue
 
-            logger.debug(
-                f"Pulled message from {response.url} with metadata: {message.metadata}, size: {len(response.body) / 1024 / 1024} (Mb)"
+            except Exception as e:
+                # General error handling
+                logger.error(f"❌ Unexpected error pulling message {msg_id}: {e}")
+                continue
+
+        # Log summary of pulled messages
+        if messages:
+            if self._encryption_enabled:
+                logger.info(
+                    f"🔐 Successfully pulled {len(messages)} messages (encryption enabled)"
+                )
+            else:
+                logger.info(f"📥 Successfully pulled {len(messages)} messages")
+        elif message_ids:
+            logger.warning(
+                f"⚠️ No messages successfully pulled from {len(message_ids)} attempts"
             )
-            messages[msg_id] = message
-            rpc_db.delete_future(future_id=msg_id, client=self._client)
 
         return messages
 

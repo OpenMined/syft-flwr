@@ -29,7 +29,9 @@ dev-dependencies = [
     "pre-commit>=4.3.0",
     "torch>=2.0.0",
     "imblearn>=0.0",
-    "jupyterlab"
+    "jupyterlab",
+    "pytest-xdist>=3.8.0",
+    "pytest-asyncio>=1.1.0",
 ]
 
 [build-system]

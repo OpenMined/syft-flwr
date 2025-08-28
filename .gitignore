@@ -186,3 +186,6 @@ checkpoints/
 
 # Ruff cache
 .ruff_cache/
+
+# AI stuff
+.claude/

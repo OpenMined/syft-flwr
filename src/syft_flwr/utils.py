@@ -3,6 +3,9 @@ import re
 import zlib
 from pathlib import Path
 
+from loguru import logger
+from syft_core import Client, SyftClientConfig
+
 EMAIL_REGEX = r"^[^@]+@[^@]+\.[^@]+$"
 
 
@@ -34,3 +37,19 @@ def run_syft_flwr() -> bool:
         return True
     except FileNotFoundError:
         return False
+
+
+def create_temp_client(email: str, workspace_dir: Path) -> Client:
+    """Create a temporary Client instance for testing"""
+    workspace_hash = hash(str(workspace_dir)) % 10000
+    server_port = 8080 + workspace_hash
+    client_port = 8082 + workspace_hash
+    config: SyftClientConfig = SyftClientConfig(
+        email=email,
+        data_dir=workspace_dir,
+        server_url=f"http://localhost:{server_port}",
+        client_url=f"http://localhost:{client_port}",
+        path=workspace_dir / ".syftbox" / f"{email.split('@')[0]}_config.json",
+    ).save()
+    logger.debug(f"Created temp client {email} with config {config}")
+    return Client(config)

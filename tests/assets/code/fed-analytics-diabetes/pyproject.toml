@@ -1,0 +1,48 @@
+[build-system]
+requires = [
+    "hatchling",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "fed-analytics-diabetes"
+version = "1.0.0"
+description = "Federated Analytics with Pandas, Flower and syft_flwr (Diabetes Data)"
+license = "Apache-2.0"
+authors = [
+    { name = "OpenMined", email = "info@openmined.org" },
+]
+dependencies = [
+    "flwr-datasets[vision]>=0.5.0",
+    "numpy>=2.0.2",
+    "pandas==2.2.3",
+    "syft_flwr",
+]
+
+[tool.uv.sources.syft-flwr]
+path = "../../../../"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    ".",
+]
+
+[tool.flwr.app]
+publisher = "flwrlabs"
+
+[tool.flwr.app.components]
+serverapp = "fed_analytics_diabetes.server_app:app"
+clientapp = "fed_analytics_diabetes.client_app:app"
+
+[tool.flwr.app.config]
+num-server-rounds = 1
+fraction-sample = 1.0
+partition-id = 0
+num-partitions = 1
+
+[tool.flwr.federations]
+default = "local-simulation"
+
+[tool.flwr.federations.local-simulation.options]
+num-supernodes = 2
+

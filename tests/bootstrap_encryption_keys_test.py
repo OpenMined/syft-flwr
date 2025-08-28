@@ -12,7 +12,6 @@ from syft_flwr.flower_server import syftbox_flwr_server
 def test_syft_flwr_server_bootstrap_key(ds_client: Client) -> None:
     """Test syft_flwr server bootstraps encryption keys."""
 
-    # Mock only the parts we don't want to test (FL training)
     with (
         patch("syft_flwr.flower_server.Client.load", return_value=ds_client),
         patch("syft_flwr.flower_server.run_server") as mock_run_server,
@@ -22,7 +21,6 @@ def test_syft_flwr_server_bootstrap_key(ds_client: Client) -> None:
         mock_grid = MagicMock()
         MockSyftGrid.return_value = mock_grid
 
-        # Call server - this should bootstrap the client
         syftbox_flwr_server(
             server_app=MagicMock(),
             context=MagicMock(),
@@ -50,7 +48,6 @@ def test_syft_flwr_server_bootstrap_key(ds_client: Client) -> None:
 def test_syft_flwr_client_bootstrap_key(do1_client: Client) -> None:
     """Test syft_flwr client bootstraps encryption keys."""
 
-    # Mock only the event loop part
     with (
         patch("syft_flwr.flower_client.Client.load", return_value=do1_client),
         patch("syft_flwr.flower_client.SyftEvents") as MockSyftEvents,

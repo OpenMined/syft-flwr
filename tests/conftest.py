@@ -6,8 +6,10 @@ from pathlib import Path
 from typing import Generator
 
 import pytest
-from syft_core import Client, SyftClientConfig
+from syft_core import Client
 from syft_rds.orchestra import SingleRDSStack
+
+from syft_flwr.utils import create_temp_client
 
 DS_EMAIL = "ds@openmined.org"
 DO1_EMAIL = "do1@openmined.org"
@@ -27,18 +29,6 @@ def temp_workspace() -> Generator[Path, None, None]:
     yield workspace
 
     shutil.rmtree(temp_dir, ignore_errors=True)
-
-
-def create_temp_client(email: str, workspace_dir: Path) -> Client:
-    """Create a temporary Client instance for testing"""
-    config: SyftClientConfig = SyftClientConfig(
-        email=email,
-        data_dir=workspace_dir,
-        server_url="http://localhost:8080",
-        client_url="http://127.0.0.1:8082",
-        path=workspace_dir.parent / ".syftbox" / f"{email.split('@')[0]}_config.yaml",
-    )
-    return Client(config)
 
 
 # Helper functions for creating RDS server stacks
