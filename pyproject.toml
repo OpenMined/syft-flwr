@@ -5,7 +5,7 @@ description = "syft_flwr is an open source framework that facilitate federated l
 readme = "README.md"
 requires-python = ">=3.9.2"
 dependencies = [
-    "syft-rds>=0.1.6",
+    "syft-rds>=0.2.0",
     "flwr[simulation]>=1.20.0",
     "flwr-datasets[vision]>=0.5.0",
     "loguru>=0.7.3",
@@ -14,9 +14,6 @@ dependencies = [
     "tomli>=2.2.1",
     "tomli-w>=1.2.0",
 ]
-
-[tool.uv.sources]
-syft-rds = { path = "../syft-data-science" }
 
 [project.scripts]
 syft_flwr = "syft_flwr.cli:main"
