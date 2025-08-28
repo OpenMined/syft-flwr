@@ -5,7 +5,7 @@ description = "syft_flwr is an open source framework that facilitate federated l
 readme = "README.md"
 requires-python = ">=3.9.2"
 dependencies = [
-    "syft-rds>=0.2.0",
+    "syft-rds>=0.2.1",
     "flwr[simulation]>=1.20.0",
     "flwr-datasets[vision]>=0.5.0",
     "loguru>=0.7.3",

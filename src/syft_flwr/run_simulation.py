@@ -8,7 +8,7 @@ from syft_core import Client
 from syft_crypto import did_path, ensure_bootstrap, get_did_document, private_key_path
 from syft_rds.client.rds_client import RDSClient
 from syft_rds.orchestra import SingleRDSStack, remove_rds_stack_dir
-from typing_extensions import Union
+from typing_extensions import Optional, Union
 
 from syft_flwr.config import load_flwr_pyproject
 from syft_flwr.consts import SYFT_FLWR_ENCRYPTION_ENABLED
@@ -110,7 +110,7 @@ async def _run_main_py(
     config_path: Path,
     client_email: str,
     log_dir: Path,
-    dataset_path: Union[str, Path] | None = None,
+    dataset_path: Optional[Union[str, Path]] = None,
 ) -> int:
     """Run the `main.py` file for a given client"""
     log_file_path = log_dir / f"{client_email}.log"

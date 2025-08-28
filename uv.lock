@@ -4811,7 +4811,7 @@ requires-dist = [
     { name = "flwr-datasets", extras = ["vision"], specifier = ">=0.5.0" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "safetensors", specifier = ">=0.6.2" },
-    { name = "syft-rds", specifier = ">=0.2.0" },
+    { name = "syft-rds", specifier = ">=0.2.1" },
     { name = "tomli", specifier = ">=2.2.1" },
     { name = "tomli-w", specifier = ">=1.2.0" },
     { name = "typing-extensions", specifier = ">=4.13.0" },
@@ -4832,7 +4832,7 @@ dev = [
 
 [[package]]
 name = "syft-rds"
-version = "0.2.0"
+version = "0.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ipython", version = "8.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -4848,9 +4848,9 @@ dependencies = [
     { name = "typer" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8e/2e/a8f2c5014a2a818b13537b47679fcafa0ef3590dbc2a1e298311e199efe8/syft_rds-0.2.0.tar.gz", hash = "sha256:1a81e8af37b7cc117146ccbec5d550f0fa4211553cbdd0968829fa39e801737e", size = 168000, upload-time = "2025-08-28T10:17:08.347Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e2/ef/9171f62609a7c9dae90c0a17984519a705263f065f258497cf083b1101a4/syft_rds-0.2.1.tar.gz", hash = "sha256:efc53eff77d6bf1f57b47f9a857deae7e6142a3539b8e15e879fc5707144f05c", size = 168048, upload-time = "2025-08-28T10:37:26.919Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/00/d5/650a91c84e1295fa799d0ef3c89b83ce993ef0336303716165fe11eb3968/syft_rds-0.2.0-py3-none-any.whl", hash = "sha256:049834bf9874a746e969b7c58ddc8b128c5ac000590b045c82f62752f12a43ad", size = 198179, upload-time = "2025-08-28T10:17:05.889Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/b9/3e8894a18e706113753697bd3b6168ef8daf9a706b463324088606c13a2a/syft_rds-0.2.1-py3-none-any.whl", hash = "sha256:cb6b13bb7c2e2f0b750c21dcc30ada4eeacbb83b315121701250ae7c8df3234f", size = 198186, upload-time = "2025-08-28T10:37:25.19Z" },
 ]
 
 [[package]]
