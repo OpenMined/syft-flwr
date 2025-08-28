@@ -42,6 +42,14 @@ run-jupyter jupyter_args="":
 
 # ---------------------------------------------------------------------------------------------------------------------
 
+# Run tests for syft-flwr
+[group('test')]
+test:
+    @echo "{{ _cyan }}Running syft-flwr tests...{{ _nc }}"
+    bash scripts/test.sh
+
+# ---------------------------------------------------------------------------------------------------------------------
+
 # Build syft-flwr wheel to upload to pypi
 # Before build, please bump the version in pyproject.toml and src/syft_flwr/__init__.py
 [group('build')]
