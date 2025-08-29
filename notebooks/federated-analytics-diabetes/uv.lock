@@ -627,7 +627,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.3.2" },
     { name = "pandas", specifier = ">=2.3.0" },
     { name = "seaborn", specifier = ">=0.13.2" },
-    { name = "syft-flwr", specifier = ">=0.2.0" },
+    { name = "syft-flwr", specifier = ">=0.2.1" },
 ]
 
 [[package]]
@@ -1484,11 +1484,11 @@ wheels = [
 
 [[package]]
 name = "mistune"
-version = "3.1.3"
+version = "3.1.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c4/79/bda47f7dd7c3c55770478d6d02c9960c430b0cf1773b72366ff89126ea31/mistune-3.1.3.tar.gz", hash = "sha256:a7035c21782b2becb6be62f8f25d3df81ccb4d6fa477a6525b15af06539f02a0", size = 94347, upload-time = "2025-03-19T14:27:24.955Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d7/02/a7fb8b21d4d55ac93cdcde9d3638da5dd0ebdd3a4fed76c7725e10b81cbe/mistune-3.1.4.tar.gz", hash = "sha256:b5a7f801d389f724ec702840c11d8fc48f2b33519102fc7ee739e8177b672164", size = 94588, upload-time = "2025-08-29T07:20:43.594Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/01/4d/23c4e4f09da849e127e9f123241946c23c1e30f45a88366879e064211815/mistune-3.1.3-py3-none-any.whl", hash = "sha256:1a32314113cff28aa6432e99e522677c8587fd83e3d51c29b82a52409c842bd9", size = 53410, upload-time = "2025-03-19T14:27:23.451Z" },
+    { url = "https://files.pythonhosted.org/packages/7a/f0/8282d9641415e9e33df173516226b404d367a0fc55e1a60424a152913abc/mistune-3.1.4-py3-none-any.whl", hash = "sha256:93691da911e5d9d2e23bc54472892aff676df27a75274962ff9edc210364266d", size = 53481, upload-time = "2025-08-29T07:20:42.218Z" },
 ]
 
 [[package]]
@@ -2659,7 +2659,7 @@ wheels = [
 
 [[package]]
 name = "syft-flwr"
-version = "0.2.0"
+version = "0.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "flwr", extra = ["simulation"] },
@@ -2671,9 +2671,9 @@ dependencies = [
     { name = "tomli-w" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fb/d4/ac965abbd99a4f6888c711cd8307eaf182aa46b11e035c6742b2dfc0b624/syft_flwr-0.2.0.tar.gz", hash = "sha256:179eac15ae4c23e42cece43e919911ab0a414239cf1456128da2f0c89559eae7", size = 22034, upload-time = "2025-08-29T04:54:02.869Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/32/82/4665b0ce869839eb4de8c88078cf92ce9b08929192f2f1a0dfda3b4d4138/syft_flwr-0.2.1.tar.gz", hash = "sha256:cc99d2020953a7195069baf2e0f8122666b22b5a4d3c942d872b9d7b0cdd1555", size = 22351, upload-time = "2025-08-29T09:50:43.132Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b3/67/7d63636dd085e6253e2c4380d5d495ce2d08d3d608b4b85942a027fcf048/syft_flwr-0.2.0-py3-none-any.whl", hash = "sha256:3b25f38a0cea81b40c7079595f06430db32a57318258ea13690132818153cc82", size = 26971, upload-time = "2025-08-29T04:54:01.546Z" },
+    { url = "https://files.pythonhosted.org/packages/54/06/e6432cd18fee26de97339e1e1bf04759aeaa82bf3df5850c6db94ce801f6/syft_flwr-0.2.1-py3-none-any.whl", hash = "sha256:200cc544e669db75419c12419b37aa063962f44dc0d3fe5fd6317b25705bc44a", size = 26946, upload-time = "2025-08-29T09:50:41.821Z" },
 ]
 
 [[package]]
