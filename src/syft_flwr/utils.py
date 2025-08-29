@@ -75,7 +75,7 @@ def setup_client(app_name: str) -> Tuple[Client, bool, str]:
     else:
         logger.warning("⚠️ Encryption disabled - skipping client key bootstrap")
         logger.warning(
-            "⚠️ End-to-end encryption is DISABLED for FL messages (development mode)"
+            "⚠️ End-to-end encryption is DISABLED for FL messages (development mode / insecure)"
         )
 
     return client, encryption_enabled, f"flwr/{app_name}"

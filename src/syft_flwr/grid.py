@@ -71,7 +71,7 @@ class SyftGrid(Grid):
             logger.info("🔐 End-to-end encryption is ENABLED for FL messages")
         else:
             logger.warning(
-                "⚠️ End-to-end encryption is DISABLED for FL messages (development mode)"
+                "⚠️ End-to-end encryption is DISABLED for FL messages (development mode / insecure)"
             )
 
         self.app_name = app_name
