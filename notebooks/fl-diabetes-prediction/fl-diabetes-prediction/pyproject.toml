@@ -19,6 +19,9 @@ dependencies = [
     "jupyter",
 ]
 
+# [tool.uv.sources.syft-flwr]  # for development
+# path = "../../../"
+
 [tool.hatch.build.targets.wheel]
 packages = [
     ".",
