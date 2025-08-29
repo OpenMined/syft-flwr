@@ -1,33 +1,109 @@
 import asyncio
 import os
-import uuid
+import sys
+import tempfile
 from pathlib import Path
 
 from loguru import logger
+from syft_core import Client
+from syft_crypto import did_path, ensure_bootstrap, get_did_document, private_key_path
 from syft_rds.client.rds_client import RDSClient
-from syft_rds.orchestra import remove_rds_stack_dir, setup_rds_server
-from typing_extensions import Union
+from syft_rds.orchestra import SingleRDSStack, remove_rds_stack_dir
+from typing_extensions import Optional, Union
 
 from syft_flwr.config import load_flwr_pyproject
+from syft_flwr.consts import SYFT_FLWR_ENCRYPTION_ENABLED
+from syft_flwr.utils import create_temp_client
 
 
 def _setup_mock_rds_clients(
     project_dir: Path, aggregator: str, datasites: list[str]
-) -> tuple[str, list[RDSClient], RDSClient]:
+) -> tuple[Path, list[RDSClient], RDSClient]:
     """Setup mock RDS clients for the given project directory"""
-    key = project_dir.name + "_" + str(uuid.uuid4())
-    remove_rds_stack_dir(key)
+    simulated_syftbox_network_dir = Path(tempfile.gettempdir(), project_dir.name)
+    remove_rds_stack_dir(root_dir=simulated_syftbox_network_dir)
 
-    ds_stack = setup_rds_server(email=aggregator, key=key)
-    ds_client = ds_stack.init_session(host=aggregator)
+    ds_syftbox_client = create_temp_client(
+        email=aggregator, workspace_dir=simulated_syftbox_network_dir
+    )
+    ds_stack = SingleRDSStack(client=ds_syftbox_client)
+    ds_rds_client = ds_stack.init_session(host=aggregator)
 
-    do_clients = []
+    do_rds_clients = []
     for datasite in datasites:
-        do_stack = setup_rds_server(email=datasite, key=key)
-        do_client = do_stack.init_session(host=datasite)
-        do_clients.append(do_client)
+        do_syftbox_client = create_temp_client(
+            email=datasite, workspace_dir=simulated_syftbox_network_dir
+        )
+        do_stack = SingleRDSStack(client=do_syftbox_client)
+        do_rds_client = do_stack.init_session(host=datasite)
+        do_rds_clients.append(do_rds_client)
 
-    return key, do_clients, ds_client
+    return simulated_syftbox_network_dir, do_rds_clients, ds_rds_client
+
+
+def _bootstrap_encryption_keys(
+    do_clients: list[RDSClient], ds_client: RDSClient
+) -> None:
+    """Bootstrap the encryption keys for all clients if encryption is enabled."""
+    # Check if encryption is enabled
+    encryption_enabled = (
+        os.environ.get(SYFT_FLWR_ENCRYPTION_ENABLED, "true").lower() != "false"
+    )
+
+    if not encryption_enabled:
+        logger.warning("⚠️ Encryption disabled - skipping key bootstrap")
+        return
+
+    logger.info("🔐 Bootstrapping encryption keys for all participants...")
+
+    all_syftbox_clients: list[Client] = []
+
+    # Bootstrap server
+    try:
+        server_client: Client = ds_client._syftbox_client
+        ensure_bootstrap(server_client)
+        server_client_did_path = did_path(server_client, server_client.email)
+        server_client_private_key_path = private_key_path(server_client)
+        logger.debug(
+            f"✅ Server {ds_client.email} bootstrapped with private encryption keys at {server_client_private_key_path} and did path at {server_client_did_path}"
+        )
+        all_syftbox_clients.append(server_client)
+    except Exception as e:
+        logger.error(f"❌ Failed to bootstrap server {ds_client.email}: {e}")
+        raise
+
+    # Bootstrap each client
+    for do_client in do_clients:
+        try:
+            client: Client = do_client._syftbox_client
+            ensure_bootstrap(client)
+            client_did_path = did_path(client, client.email)
+            client_did_doc = get_did_document(client, client.email)
+            client_private_key_path = private_key_path(client)
+            logger.debug(
+                f"✅ Client {do_client.email} bootstrapped with private encryption keys at {client_private_key_path} and did path at {client_did_path} with content: {client_did_doc}"
+            )
+            all_syftbox_clients.append(client)
+        except Exception as e:
+            logger.error(f"❌ Failed to bootstrap client {do_client.email}: {e}")
+            raise
+
+    # Verify all DID documents are accessible
+    for checking_client in all_syftbox_clients:
+        for target_client in all_syftbox_clients:
+            if checking_client.email != target_client.email:
+                # Verify that checking_client can see target_client's DID document
+                did_file_path = did_path(checking_client, target_client.email)
+                if did_file_path.exists():
+                    logger.debug(
+                        f"✅ {checking_client.email} can see {target_client.email}'s DID at {did_file_path}"
+                    )
+                else:
+                    logger.warning(
+                        f"⚠️ {checking_client.email} cannot find {target_client.email}'s DID at {did_file_path}"
+                    )
+
+    logger.info("🔐 All participants bootstrapped for E2E encryption ✅✅✅")
 
 
 async def _run_main_py(
@@ -35,7 +111,7 @@ async def _run_main_py(
     config_path: Path,
     client_email: str,
     log_dir: Path,
-    dataset_path: Union[str, Path] | None = None,
+    dataset_path: Optional[Union[str, Path]] = None,
 ) -> int:
     """Run the `main.py` file for a given client"""
     log_file_path = log_dir / f"{client_email}.log"
@@ -49,7 +125,7 @@ async def _run_main_py(
     try:
         with open(log_file_path, "w") as f:
             process = await asyncio.create_subprocess_exec(
-                "python",
+                sys.executable,  # Use the current Python executable
                 str(main_py_path),
                 "-s",
                 stdout=f,
@@ -131,7 +207,7 @@ async def _run_simulated_flwr_project(
     return run_success
 
 
-def _validate_bootstraped_project(project_dir: Path) -> None:
+def validate_bootstraped_project(project_dir: Path) -> None:
     """Validate a bootstraped `syft_flwr` project directory"""
     if not project_dir.exists():
         raise FileNotFoundError(f"Project directory {project_dir} does not exist")
@@ -159,42 +235,65 @@ def _validate_mock_dataset_paths(mock_dataset_paths: list[str]) -> list[Path]:
 
 def run(
     project_dir: Union[str, Path], mock_dataset_paths: list[Union[str, Path]]
-) -> None:
-    """Run a syft_flwr project in simulation mode over mock data"""
+) -> Union[bool, asyncio.Task]:
+    """Run a syft_flwr project in simulation mode over mock data.
+
+    Returns:
+        bool: True if simulation succeeded, False otherwise (synchronous execution)
+        asyncio.Task: Task handle if running in async environment (e.g., Jupyter)
+    """
 
     project_dir = Path(project_dir).expanduser().resolve()
-    _validate_bootstraped_project(project_dir)
+    validate_bootstraped_project(project_dir)
     mock_dataset_paths = _validate_mock_dataset_paths(mock_dataset_paths)
 
-    pyproject_conf = load_flwr_pyproject(project_dir)
+    # Skip module validation during testing to avoid parallel test issues
+    skip_module_check = (
+        os.environ.get("SYFT_FLWR_SKIP_MODULE_CHECK", "false").lower() == "true"
+    )
+    pyproject_conf = load_flwr_pyproject(
+        project_dir, check_module=not skip_module_check
+    )
     datasites = pyproject_conf["tool"]["syft_flwr"]["datasites"]
     aggregator = pyproject_conf["tool"]["syft_flwr"]["aggregator"]
 
-    key, do_clients, ds_client = _setup_mock_rds_clients(
+    simulated_syftbox_network_dir, do_clients, ds_client = _setup_mock_rds_clients(
         project_dir, aggregator, datasites
     )
 
+    _bootstrap_encryption_keys(do_clients, ds_client)
+
+    simulation_success = False  # Track success status
+
     async def main():
+        nonlocal simulation_success
         try:
             run_success = await _run_simulated_flwr_project(
                 project_dir, do_clients, ds_client, mock_dataset_paths
             )
+            simulation_success = run_success
             if run_success:
                 logger.success("Simulation completed successfully ✅")
             else:
                 logger.error("Simulation failed ❌")
         except Exception as e:
             logger.error(f"Simulation failed ❌: {e}")
+            simulation_success = False
         finally:
             # Clean up the RDS stack
-            remove_rds_stack_dir(key)
-            logger.debug(f"Removed RDS stack: {key}")
+            remove_rds_stack_dir(simulated_syftbox_network_dir)
+            logger.debug(f"Removed RDS stack: {simulated_syftbox_network_dir}")
+            # Also remove the .syftbox folder that saves the config files and private keys
+            remove_rds_stack_dir(simulated_syftbox_network_dir.parent / ".syftbox")
+
+        return simulation_success
 
     try:
         loop = asyncio.get_running_loop()
         logger.debug(f"Running in an environment with an existing event loop {loop}")
         # We are in an environment with an existing event loop (like Jupyter)
-        asyncio.create_task(main())
+        task = asyncio.create_task(main())
+        return task  # Return the task so callers can await it
     except RuntimeError:
         logger.debug("No existing event loop, creating and running one")
         # No existing event loop, create and run one (for scripts)
@@ -202,3 +301,4 @@ def run(
         asyncio.set_event_loop(loop)
         loop.run_until_complete(main())
         loop.close()
+        return simulation_success  # Return success status for synchronous execution
