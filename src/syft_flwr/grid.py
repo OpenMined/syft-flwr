@@ -6,8 +6,10 @@ import time
 from flwr.common import ConfigRecord
 from flwr.common.constant import MessageType
 from flwr.common.message import Message
+from flwr.common.record import RecordDict
 from flwr.common.typing import Run
 from flwr.proto.node_pb2 import Node  # pylint: disable=E0611
+from flwr.server.grid import Grid
 from loguru import logger
 from syft_core import Client
 from syft_crypto import EncryptedPayload, decrypt_message
@@ -15,14 +17,8 @@ from syft_rpc import SyftResponse, rpc, rpc_db
 from typing_extensions import Dict, Iterable, List, Optional, Tuple, cast
 
 from syft_flwr.consts import SYFT_FLWR_ENCRYPTION_ENABLED
-from syft_flwr.flwr_compatibility import (
-    Grid,
-    RecordDict,
-    check_reply_to_field,
-    create_flwr_message,
-)
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
-from syft_flwr.utils import str_to_int
+from syft_flwr.utils import check_reply_to_field, create_flwr_message, str_to_int
 
 # this is what superlink super node do
 AGGREGATOR_NODE_ID = 1
@@ -129,8 +125,6 @@ class SyftGrid(Grid):
             dst_node_id=dst_node_id,
             group_id=group_id,
             ttl=ttl,
-            run_id=cast(Run, self._run).run_id,
-            src_node_id=self.node.node_id,
         )
 
     def get_node_ids(self) -> list[int]:

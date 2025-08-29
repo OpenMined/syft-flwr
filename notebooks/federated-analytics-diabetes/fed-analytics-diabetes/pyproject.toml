@@ -19,6 +19,9 @@ dependencies = [
     "syft_flwr",
 ]
 
+# [tool.uv.sources.syft-flwr]
+# path = "../../../"  # for development
+
 [tool.hatch.build.targets.wheel]
 packages = [
     ".",
@@ -42,4 +45,3 @@ default = "local-simulation"
 
 [tool.flwr.federations.local-simulation.options]
 num-supernodes = 2
-

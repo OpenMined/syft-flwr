@@ -6,14 +6,14 @@ from flwr.client import ClientApp
 from flwr.common import Context
 from flwr.common.constant import ErrorCode, MessageType
 from flwr.common.message import Error, Message
+from flwr.common.record import RecordDict
 from loguru import logger
 from syft_event import SyftEvents
 from syft_event.types import Request
 from typing_extensions import Optional, Union
 
-from syft_flwr.flwr_compatibility import RecordDict, create_flwr_message
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
-from syft_flwr.utils import setup_client
+from syft_flwr.utils import create_flwr_message, setup_client
 
 
 class MessageHandler:
@@ -50,10 +50,8 @@ class MessageHandler:
             content=RecordDict(),
             reply_to=message,
             message_type=message.metadata.message_type if message else MessageType.TASK,
-            src_node_id=message.metadata.dst_node_id if message else 0,
             dst_node_id=message.metadata.src_node_id if message else 0,
             group_id=message.metadata.group_id if message else "",
-            run_id=message.metadata.run_id if message else 0,
             error=error,
         )
         error_bytes = flower_message_to_bytes(error_reply)
