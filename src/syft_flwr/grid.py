@@ -1,5 +1,6 @@
 import base64
 import os
+import random
 import time
 
 from flwr.common import ConfigRecord
@@ -28,6 +29,7 @@ AGGREGATOR_NODE_ID = 1
 
 # env vars
 SYFT_FLWR_MSG_TIMEOUT = "SYFT_FLWR_MSG_TIMEOUT"
+SYFT_FLWR_POLL_INTERVAL = "SYFT_FLWR_POLL_INTERVAL"
 
 
 class SyftGrid(Grid):
@@ -318,27 +320,91 @@ class SyftGrid(Grid):
 
         return dest_datasite, url, msg_bytes
 
+    def _retry_with_backoff(
+        self,
+        func,
+        max_retries: int = 3,
+        initial_delay: float = 0.1,
+        context: str = "",
+        check_error=None,
+    ):
+        """Generic retry logic with exponential backoff and jitter.
+
+        Args:
+            func: Function to retry
+            max_retries: Maximum number of retry attempts
+            initial_delay: Initial delay in seconds
+            context: Context string for logging
+            check_error: Optional function to check if error is retryable
+
+        Returns:
+            Result of func if successful
+
+        Raises:
+            Last exception if all retries fail
+        """
+        for attempt in range(max_retries):
+            try:
+                return func()
+            except Exception as e:
+                is_retryable = check_error(e) if check_error else True
+                if is_retryable and attempt < max_retries - 1:
+                    jitter = random.uniform(0, 0.05)
+                    delay = initial_delay * (2**attempt) + jitter
+                    logger.debug(
+                        f"{context} failed (attempt {attempt + 1}/{max_retries}): {e}. "
+                        f"Retrying in {delay:.3f}s"
+                    )
+                    time.sleep(delay)
+                else:
+                    raise
+
+    def _save_future_with_retry(self, future, dest_datasite: str) -> bool:
+        """Save future to database with retry logic for database locks.
+
+        Returns:
+            True if saved successfully, False if failed after retries
+        """
+        try:
+            self._retry_with_backoff(
+                func=lambda: rpc_db.save_future(
+                    future=future, namespace=self.app_name, client=self._client
+                ),
+                context=f"Database save for {dest_datasite}",
+                check_error=lambda e: "database is locked" in str(e).lower(),
+            )
+            return True
+        except Exception as e:
+            logger.warning(
+                f"⚠️ Failed to save future to database for {dest_datasite}: {e}. "
+                f"Message sent but future not persisted."
+            )
+            return False
+
     def _send_encrypted_message(
         self, url: str, msg_bytes: bytes, dest_datasite: str, msg: Message
     ) -> Optional[str]:
         """Send an encrypted message and return future ID if successful."""
         try:
+            # Send encrypted message
             future = rpc.send(
                 url=url,
                 body=base64.b64encode(msg_bytes).decode("utf-8"),
                 client=self._client,
                 encrypt=True,
             )
+
             logger.debug(
                 f"🔐 Pushed ENCRYPTED message to {dest_datasite} at {url} "
                 f"with metadata {msg.metadata}; size {len(msg_bytes) / 1024 / 1024:.2f} MB"
             )
-            rpc_db.save_future(
-                future=future, namespace=self.app_name, client=self._client
-            )
+
+            # Save future to database (non-critical - log warning if fails)
+            self._save_future_with_retry(future, dest_datasite)
             return future.id
 
         except (KeyError, ValueError) as e:
+            # Encryption setup errors - don't retry or fallback
             error_type = (
                 "Encryption key" if isinstance(e, KeyError) else "Encryption parameter"
             )
@@ -349,6 +415,7 @@ class SyftGrid(Grid):
             return None
 
         except Exception as e:
+            # Other errors - fallback to unencrypted
             logger.warning(
                 f"⚠️ Encryption failed for {dest_datasite}: {e}. "
                 f"Falling back to unencrypted transmission"
@@ -382,6 +449,9 @@ class SyftGrid(Grid):
         responses = {}
         pending_ids = msg_ids.copy()
 
+        # Get polling interval from environment or use default
+        poll_interval = float(os.environ.get(SYFT_FLWR_POLL_INTERVAL, "3"))
+
         while pending_ids and (timeout is None or time.time() < end_time):
             # Pull available messages
             batch = self.pull_messages(pending_ids)
@@ -389,7 +459,7 @@ class SyftGrid(Grid):
             pending_ids.difference_update(batch.keys())
 
             if pending_ids:
-                time.sleep(3)  # Polling interval
+                time.sleep(poll_interval)  # Configurable polling interval
 
         # Log any missing responses
         if pending_ids:
