@@ -17,7 +17,11 @@ dependencies = [
     "scikit-learn==1.6.1",
     "loguru",
     "jupyter",
+    "syft_flwr",
 ]
+
+# [tool.uv.sources.syft-flwr]
+# path = "../../../"
 
 [tool.hatch.build.targets.wheel]
 packages = [
@@ -41,3 +45,4 @@ default = "local-simulation"
 
 [tool.flwr.federations.local-simulation.options]
 num-supernodes = 2
+

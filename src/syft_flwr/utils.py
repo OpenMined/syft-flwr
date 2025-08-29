@@ -3,10 +3,13 @@ import re
 import zlib
 from pathlib import Path
 
+from flwr.common import Metadata
+from flwr.common.message import Error, Message
+from flwr.common.record import RecordDict
 from loguru import logger
 from syft_core import Client, SyftClientConfig
 from syft_crypto.x3dh_bootstrap import ensure_bootstrap
-from typing_extensions import Tuple
+from typing_extensions import Optional, Tuple
 
 from syft_flwr.consts import SYFT_FLWR_ENCRYPTION_ENABLED
 
@@ -79,3 +82,34 @@ def setup_client(app_name: str) -> Tuple[Client, bool, str]:
         )
 
     return client, encryption_enabled, f"flwr/{app_name}"
+
+
+def check_reply_to_field(metadata: Metadata) -> bool:
+    """Check if reply_to field is empty (Flower 1.17+ format)."""
+    return metadata.reply_to_message_id == ""
+
+
+def create_flwr_message(
+    content: RecordDict,
+    message_type: str,
+    dst_node_id: int,
+    group_id: str,
+    ttl: Optional[float] = None,
+    error: Optional[Error] = None,
+    reply_to: Optional[Message] = None,
+) -> Message:
+    """Create a Flower message (requires Flower >= 1.17)."""
+    if reply_to is not None:
+        if error is not None:
+            return Message(reply_to=reply_to, error=error)
+        return Message(content=content, reply_to=reply_to)
+    else:
+        if error is not None:
+            raise ValueError("Error and reply_to cannot both be None")
+        return Message(
+            content=content,
+            dst_node_id=dst_node_id,
+            message_type=message_type,
+            ttl=ttl,
+            group_id=group_id,
+        )

@@ -16,8 +16,11 @@ dependencies = [
     "flwr-datasets[vision]>=0.5.0",
     "numpy>=2.0.2",
     "pandas==2.2.3",
-    "syft_flwr==0.1.7",
+    "syft_flwr",
 ]
+
+# [tool.uv.sources.syft-flwr]
+# path = "../../../"  # for development
 
 [tool.hatch.build.targets.wheel]
 packages = [
