@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sys
 import tempfile
 from pathlib import Path
 
@@ -124,7 +125,7 @@ async def _run_main_py(
     try:
         with open(log_file_path, "w") as f:
             process = await asyncio.create_subprocess_exec(
-                "python",
+                sys.executable,  # Use the current Python executable
                 str(main_py_path),
                 "-s",
                 stdout=f,
