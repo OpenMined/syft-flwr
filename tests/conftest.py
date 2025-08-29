@@ -3,11 +3,11 @@
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Generator
 
 import pytest
 from syft_core import Client
 from syft_rds.orchestra import SingleRDSStack
+from typing_extensions import Generator
 
 from syft_flwr.utils import create_temp_client
 

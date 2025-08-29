@@ -1,22 +1,19 @@
 import base64
-import os
 import sys
 import traceback
-from typing import Optional, Union
 
 from flwr.client import ClientApp
 from flwr.common import Context
 from flwr.common.constant import ErrorCode, MessageType
 from flwr.common.message import Error, Message
 from loguru import logger
-from syft_core import Client
-from syft_crypto.x3dh_bootstrap import ensure_bootstrap
 from syft_event import SyftEvents
 from syft_event.types import Request
+from typing_extensions import Optional, Union
 
-from syft_flwr.consts import SYFT_FLWR_ENCRYPTION_ENABLED
 from syft_flwr.flwr_compatibility import RecordDict, create_flwr_message
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
+from syft_flwr.utils import setup_client
 
 
 class MessageHandler:
@@ -160,32 +157,10 @@ class RequestProcessor:
             return self.message_handler.create_error_reply(message, error)
 
 
-def _setup_client(app_name: str) -> tuple[Client, bool, str]:
-    """Setup SyftBox client and encryption."""
-    client = Client.load()
-
-    # Check encryption setting
-    encryption_enabled = (
-        os.environ.get(SYFT_FLWR_ENCRYPTION_ENABLED, "true").lower() != "false"
-    )
-
-    # Bootstrap encryption if needed
-    if encryption_enabled:
-        client = ensure_bootstrap(client)
-        logger.info("🔐 End-to-end encryption is ENABLED for FL messages")
-    else:
-        logger.warning("⚠️ Encryption disabled - skipping client key bootstrap")
-        logger.warning(
-            "⚠️ End-to-end encryption is DISABLED for FL messages (development mode)"
-        )
-
-    return client, encryption_enabled, f"flwr/{app_name}"
-
-
 def syftbox_flwr_client(client_app: ClientApp, context: Context, app_name: str):
     """Run the Flower ClientApp with SyftBox."""
     # Setup
-    client, encryption_enabled, syft_flwr_app_name = _setup_client(app_name)
+    client, encryption_enabled, syft_flwr_app_name = setup_client(app_name)
     box = SyftEvents(app_name=syft_flwr_app_name, client=client)
 
     logger.info(f"Started SyftBox Flower Client on: {box.client.email}")

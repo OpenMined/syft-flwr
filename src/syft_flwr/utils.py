@@ -5,6 +5,10 @@ from pathlib import Path
 
 from loguru import logger
 from syft_core import Client, SyftClientConfig
+from syft_crypto.x3dh_bootstrap import ensure_bootstrap
+from typing_extensions import Tuple
+
+from syft_flwr.consts import SYFT_FLWR_ENCRYPTION_ENABLED
 
 EMAIL_REGEX = r"^[^@]+@[^@]+\.[^@]+$"
 
@@ -53,3 +57,25 @@ def create_temp_client(email: str, workspace_dir: Path) -> Client:
     ).save()
     logger.debug(f"Created temp client {email} with config {config}")
     return Client(config)
+
+
+def setup_client(app_name: str) -> Tuple[Client, bool, str]:
+    """Setup SyftBox client and encryption."""
+    client = Client.load()
+
+    # Check encryption setting
+    encryption_enabled = (
+        os.environ.get(SYFT_FLWR_ENCRYPTION_ENABLED, "true").lower() != "false"
+    )
+
+    # Bootstrap encryption if needed
+    if encryption_enabled:
+        client = ensure_bootstrap(client)
+        logger.info("🔐 End-to-end encryption is ENABLED for FL messages")
+    else:
+        logger.warning("⚠️ Encryption disabled - skipping client key bootstrap")
+        logger.warning(
+            "⚠️ End-to-end encryption is DISABLED for FL messages (development mode)"
+        )
+
+    return client, encryption_enabled, f"flwr/{app_name}"

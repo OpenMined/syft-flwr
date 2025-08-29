@@ -13,7 +13,7 @@ def test_syft_flwr_server_bootstrap_key(ds_client: Client) -> None:
     """Test syft_flwr server bootstraps encryption keys."""
 
     with (
-        patch("syft_flwr.flower_server.Client.load", return_value=ds_client),
+        patch("syft_flwr.utils.Client.load", return_value=ds_client),
         patch("syft_flwr.flower_server.run_server") as mock_run_server,
         patch("syft_flwr.flower_server.SyftGrid") as MockSyftGrid,
     ):
@@ -49,7 +49,7 @@ def test_syft_flwr_client_bootstrap_key(do1_client: Client) -> None:
     """Test syft_flwr client bootstraps encryption keys."""
 
     with (
-        patch("syft_flwr.flower_client.Client.load", return_value=do1_client),
+        patch("syft_flwr.utils.Client.load", return_value=do1_client),
         patch("syft_flwr.flower_client.SyftEvents") as MockSyftEvents,
     ):
         mock_events = MagicMock()

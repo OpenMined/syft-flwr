@@ -1,4 +1,3 @@
-import os
 import traceback
 from random import randint
 
@@ -6,11 +5,9 @@ from flwr.common import Context
 from flwr.server import ServerApp
 from flwr.server.run_serverapp import run as run_server
 from loguru import logger
-from syft_core import Client
-from syft_crypto.x3dh_bootstrap import ensure_bootstrap
 
-from syft_flwr.consts import SYFT_FLWR_ENCRYPTION_ENABLED
 from syft_flwr.grid import SyftGrid
+from syft_flwr.utils import setup_client
 
 
 def syftbox_flwr_server(
@@ -20,17 +17,7 @@ def syftbox_flwr_server(
     app_name: str,
 ) -> Context:
     """Run the Flower ServerApp with SyftBox."""
-    syft_flwr_app_name = f"flwr/{app_name}"
-
-    # Bootstrap X3DH encryption keys for the server (if encryption is enabled)
-    client = Client.load()
-    encryption_enabled = (
-        os.environ.get(SYFT_FLWR_ENCRYPTION_ENABLED, "true").lower() != "false"
-    )
-    if encryption_enabled:
-        client = ensure_bootstrap(client)
-    else:
-        logger.warning("⚠️ Encryption disabled - skipping server key bootstrap")
+    client, _, syft_flwr_app_name = setup_client(app_name)
 
     # Construct the SyftGrid
     syft_grid = SyftGrid(
