@@ -5,17 +5,20 @@ description = "Workspace for diabetes prediction using federated learning with F
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "syft-flwr>=0.1.7",
+    "syft-flwr>=0.2.1",
     "flwr-datasets>=0.5.0",
     "imblearn>=0.0",
     "jupyterlab>=4.4.4",
     "loguru>=0.7.3",
     "pandas>=2.3.0",
     "ipywidgets>=8.1.7",
-    "scikit-learn==1.6.1",
+    "scikit-learn==1.7.1",
     "torch>=2.8.0",
     "ray>=2.48.0",
 ]
 
 [tool.uv]
 package = false
+
+# [tool.uv.sources]  # for development
+# syft-flwr = { path = "../../" }
