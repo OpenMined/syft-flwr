@@ -37,7 +37,7 @@ uv sync
 this will create a virtual python environment at `.venv`.
 
 
-### `wget` and `git-lfs`
+### `wget` and `git-lfs` (for dataset downloading)
 `wget` is used to download `.tar` files from the Web. `git-lfs` is used to download large files from the Hugging Face respository
 - macOS
 ```
@@ -67,18 +67,53 @@ Run
 ```bash
 ./data/prepare.sh
 ```
-to download the `Textbooks` and `StatPearls` corpora and create an index for each corpus using the *first 100 chunks (documents)*. The processed data will be downloaded under the `data/corpus` directory. The total required disk space for all the documents of `Textbooks` and `StatPearls` is around `3GBs`. The structure of the `corpus` folder will look like below:
+to download the `Textbooks` and `StatPearls` corpora and create an index for each corpus using the *first 100 chunks (documents)*. The processed data will be downloaded under the `data/corpus` directory. The total required disk space for all the documents of `Textbooks` and `StatPearls` is around `3GBs`
+
+#### StatPearls Processing Flow:
+
+1. Download (`download.py:30-40`):
+  - Downloads from NIH: `statpearls_NBK430685.tar.gz`
+  - Extracts to `corpus/statpearls/statpearls_NBK430685/`
+  - Contains XML files (`.nxml` format)
+2. Chunking - Breaking large medical texts into bite-sized pieces (`statpearls.py`):
+  - Parses each `.nxml` file (medical articles in XML format)
+  - Extracts structure: Title → Sections → Paragraphs
+  - Smart chunking logic:
+      - Concatenates short paragraphs (<200 chars) if total <1000 chars
+    - Preserves section hierarchy in titles: "Article -- Section -- Subsection"
+    - Each chunk gets ID: `statpearls_NBK430685_0, _1, _2...`
+  - Outputs: `corpus/statpearls/chunk/*.jsonl` (9,618 files)
+3. Indexing (`retriever.py:build_faiss_index`):
+  - Reads all JSONL files from `chunk/`
+  - Generates embeddings using `SentenceTransformer`
+  - Creates FAISS index (`faiss.index`) and `all_doc_ids.npy`
+
+#### Textbooks Processing Flow:
+
+1. Download (`download.py:22-28`):
+  - Clones from HuggingFace: `MedRAG/textbooks`
+  - Uses Git LFS for large files
+  - Already pre-chunked into JSONL files
+2. No chunking needed:
+  - Textbooks arrive pre-processed as JSONL files
+  - 18 textbooks, already split into chunks
+  - Format: `corpus/textbooks/chunk/*.jsonl`
+3. Indexing (same as StatPearls, using `retriever.py:build_faiss_index`):
+  - Directly builds FAISS index from existing chunks
+
+Final Structure:
 ```
 ├── corpus                               # Medical knowledge base for RAG
 │   ├── statpearls                       # StatPearls medical database
 │   │   ├── all_doc_ids.npy              # NumPy array mapping document IDs to articles
-│   │   ├── chunk                        # Contains 9,618 JSONL files with chunked medical articles
+│   │   ├── chunk/                       # Contains 9,618 JSONL files with chunked medical articles
 │   │   ├── faiss.index                  # FAISS vector index for fast similarity search
-│   │   ├── statpearls_NBK430685         # Specific article/book directory
+│   │   ├── statpearls_NBK430685         # Raw XML files
 │   │   └── statpearls_NBK430685.tar.gz  # Compressed archive of raw data
+│   │
 │   └── textbooks                        # Medical textbook corpus
 │       ├── all_doc_ids.npy              # Document ID mappings for textbook chunks
-│       ├── chunk                        # Chunked snippets from 18 medical textbooks
+│       ├── chunk/                       # Chunked snippets (JSONL files) from 18 medical textbooks
 │       ├── faiss.index                  # FAISS vector index for textbook content
 │       └── README.md
 ```
@@ -88,6 +123,35 @@ To download all corpora and create an index for all files, please run the follow
 ./data/prepare.sh --datasets "pubmed" "statpearls" "textbooks" "wikipedia" --index_num_chunks 0
 ```
 The total disk space for the all documents of all four corpora is around `120GBs`.
+
+
+### Splitting into mock and private
+
+After running `CORPUS_NAME=<corpus_name> uv run data_processing/data_processing.py` (e.g. `CORPUS_NAME="statpearls" uv run data_processing/data_processing.py`), we will have the mock and private split for each corpus with rebuilt FAISS indices, with the following structure:
+```
+.
+└── data_processing/
+    ├── statpearls/
+    │   ├── mock/
+    │   │   ├── chunk/
+    │   │   ├── all_doc_ids.npy
+    │   │   └── faiss.index
+    │   └── private/
+    │       ├── chunk/
+    │       ├── all_doc_ids.npy
+    │       └── faiss.index
+    └── textbooks/
+        ├── mock/
+        │   ├── chunk/
+        │   ├── all_doc_ids.npy
+        │   └── faiss.index
+        └── private/
+            ├── chunk/
+            ├── all_doc_ids.npy
+            └── faiss.index
+```
+
+
 
 ### Dataset explanations
 
