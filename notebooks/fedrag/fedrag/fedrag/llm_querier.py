@@ -4,6 +4,7 @@ import os
 import re
 
 import torch
+from loguru import logger
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"  # to avoid deadlocks during tokenization
@@ -13,8 +14,12 @@ class LLMQuerier:
     def __init__(self, model_name, use_gpu=False):
         if use_gpu and torch.cuda.is_available():
             self.device = torch.device("cuda")
+        elif torch.backends.mps.is_available():
+            self.device = torch.device("mps")
         else:
             self.device = torch.device("cpu")
+
+        logger.info(f"Using device: {self.device}")
         self.model = AutoModelForCausalLM.from_pretrained(model_name).to(self.device)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
 
@@ -39,6 +44,7 @@ class LLMQuerier:
 
         # Perform element-wise comparison and create attention mask tensor
         attention_mask = (inputs.input_ids != self.tokenizer.pad_token_id).long()
+        logger.info(f"Generating output with max_new_tokens: {max_new_tokens}")
         outputs = self.model.generate(
             inputs.input_ids,
             attention_mask=attention_mask,

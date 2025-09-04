@@ -138,7 +138,7 @@ def main(grid: Grid, context: Context) -> None:
     use_gpu = context.run_config.get("server-llm-use-gpu", False)
     use_gpu = True if use_gpu.lower() == "true" else False
 
-    mirage_file = os.path.join(os.path.dirname(__file__), "../data/mirage.json")
+    mirage_file = os.path.join(os.path.dirname(__file__), "../../data/mirage.json")
     datasets = {key: MirageQA(key, mirage_file) for key in qa_datasets}
 
     llm_querier = LLMQuerier(model_name, use_gpu)

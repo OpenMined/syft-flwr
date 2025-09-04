@@ -6,8 +6,8 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 import json
-import os
 from collections import OrderedDict
+from pathlib import Path
 
 import faiss
 import numpy as np
@@ -15,10 +15,10 @@ import yaml
 from sentence_transformers import SentenceTransformer
 from sentence_transformers import util as st_util
 from tqdm import tqdm
+from typing_extensions import Tuple
 
-DIR_PATH = os.path.dirname(os.path.realpath(__file__))
-FAISS_DEFAULT_CONFIG = os.path.join(DIR_PATH, "retriever.yaml")
-CORPUS_DIR = os.path.join(DIR_PATH, "../data/corpus")
+DIR_PATH = Path(__file__).resolve().parent
+FAISS_DEFAULT_CONFIG = DIR_PATH / "retriever.yaml"
 
 
 class Retriever:
@@ -36,21 +36,18 @@ class Retriever:
         self.emb_dim = self.config["embedding_dimension"]
 
     def build_faiss_index(self, dataset_name, batch_size=32, num_chunks=None):
-        dataset_dir = os.path.join(CORPUS_DIR, f"{dataset_name}")
-        index_path = os.path.join(dataset_dir, "faiss.index")
-        doc_ids_path = os.path.join(dataset_dir, "all_doc_ids.npy")
+        index_path, doc_ids_path, chunk_dir = _get_dataset_dirs(dataset_name)
 
         try:
             # erase previous files whenever
             # index builder is called
-            os.remove(index_path)
-            os.remove(doc_ids_path)
-        except OSError:
+            index_path.unlink()
+            doc_ids_path.unlink()
+        except (OSError, FileNotFoundError):
             pass
 
         all_embeddings, all_doc_ids = [], []
-        chunk_dir = os.path.join(dataset_dir, "chunk")
-        all_files = [f.path for f in os.scandir(chunk_dir)]  # get full paths
+        all_files = list(chunk_dir.glob("*.jsonl"))  # get all jsonl files
         # if chunks is given just load the specified
         # number of chunks; useful for dev and debug purposes
         if num_chunks:
@@ -111,24 +108,22 @@ class Retriever:
         index.add(embeddings)
 
         # Save the index
-        faiss.write_index(index, index_path)
+        faiss.write_index(index, str(index_path))
 
         # Save document IDs
-        np.save(doc_ids_path, np.array(all_doc_ids))
+        np.save(str(doc_ids_path), np.array(all_doc_ids))
 
         return
 
     def query_faiss_index(self, dataset_name, query, knn=8):
-        dataset_dir = os.path.join(CORPUS_DIR, f"{dataset_name}")
-        index_path = os.path.join(dataset_dir, "faiss.index")
-        doc_ids_path = os.path.join(dataset_dir, "all_doc_ids.npy")
+        index_path, doc_ids_path, chunk_dir = _get_dataset_dirs(dataset_name)
 
-        if not os.path.exists(doc_ids_path) or not os.path.exists(index_path):
+        if not doc_ids_path.exists() or not index_path.exists():
             raise RuntimeError("FAISS index is not built yet.")
 
         # 1. Load the FAISS index and document IDs
-        index = faiss.read_index(index_path)
-        doc_ids = np.load(doc_ids_path)
+        index = faiss.read_index(str(index_path))
+        doc_ids = np.load(str(doc_ids_path))
 
         # 2. Generate query embedding
         query_embedding = self.emb_model.encode(query)
@@ -145,12 +140,11 @@ class Retriever:
         retrieved_doc_ids = doc_ids[doc_idx][0]  # flatten ids
 
         # 5. Prepare and return the results
-        chunk_dir = os.path.join(dataset_dir, "chunk")
         final_res = OrderedDict()
         for i, (doc_id, doc_score) in enumerate(zip(retrieved_doc_ids, doc_scores)):
             doc_pref_suf = doc_id.split("_")
             doc_name, snippet_idx = "_".join(doc_pref_suf[:-1]), int(doc_pref_suf[-1])
-            full_file = os.path.join(chunk_dir, doc_name + ".jsonl")
+            full_file = chunk_dir / (doc_name + ".jsonl")
             loaded_snippet = json.loads(
                 open(full_file).read().strip().split("\n")[snippet_idx]
             )
@@ -166,7 +160,28 @@ class Retriever:
 
     @classmethod
     def index_exists(cls, dataset_name):
-        dataset_dir = os.path.join(CORPUS_DIR, f"{dataset_name}")
-        index_path = os.path.join(dataset_dir, "faiss.index")
-        doc_ids_path = os.path.join(dataset_dir, "all_doc_ids.npy")
-        return os.path.exists(index_path) and os.path.exists(doc_ids_path)
+        index_path, doc_ids_path, _ = _get_dataset_dirs(dataset_name)
+        return index_path.exists() and doc_ids_path.exists()
+
+
+def _get_dataset_dirs(dataset_name: str) -> Tuple[Path, Path, Path]:
+    """
+    Return index, doc ids and chunk dirs
+    """
+
+    from syft_flwr.utils import get_syftbox_dataset_path, run_syft_flwr
+
+    if not run_syft_flwr():
+        data_dir = DIR_PATH.parent.parent / "data" / "corpus" / dataset_name
+    else:
+        data_dir = get_syftbox_dataset_path()
+
+    index_path = data_dir / "faiss.index"
+    doc_ids_path = data_dir / "all_doc_ids.npy"
+    chunk_dir = data_dir / "chunk"
+
+    assert index_path.exists(), f"Index path {index_path} does not exist"
+    assert doc_ids_path.exists(), f"Doc ids path {doc_ids_path} does not exist"
+    assert chunk_dir.exists(), f"Chunk directory {chunk_dir} does not exist"
+
+    return index_path, doc_ids_path, chunk_dir
