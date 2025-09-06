@@ -28,7 +28,7 @@ and multiplicative caching for improved performance [\[3\]](#ref3).
 
 The figure below demonstrates an overview of the Federated RAG pipeline.
 
-![image info](_static/FedRAG.png)
+![image info](../images/FedRAG.png)
 
 Given a user query, the server broadcasts the query to each client. Every client retrieves the relevant (top-k)
 documents related to the given query and sends them back to the server. The server merges and ranks the retrieved
