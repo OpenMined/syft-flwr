@@ -14,7 +14,6 @@ from sklearn.metrics import accuracy_score
 
 from fedrag.llm_querier import LLMQuerier
 from fedrag.mirage_qa import MirageQA
-from fedrag.task import index_exists
 
 
 def node_online_loop(grid: Grid) -> list[int]:
@@ -125,10 +124,7 @@ def main(grid: Grid, context: Context) -> None:
     knn = int(context.run_config["k-nn"])
     corpus_names = context.run_config["clients-corpus-names"].split("|")
     corpus_names = [c.lower() for c in corpus_names]  # make them lower case
-    # Before we start the execution of the FedRAG pipeline,
-    # we need to make sure we have downloaded the corpus and
-    # created the respective indices
-    index_exists(corpus_names)
+
     # Create corpus iterator
     corpus_names_iter = cycle(corpus_names)
     qa_datasets = context.run_config["server-qa-datasets"].split("|")

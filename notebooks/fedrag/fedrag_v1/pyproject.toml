@@ -52,10 +52,3 @@ num-supernodes = 2
 num-cpus = 2
 num-gpus = 0
 
-[tool.syft_flwr]
-app_name = "ds@openmined.org_fedrag_1756974230"
-datasites = [
-    "do1@openmined.org",
-    "do2@openmined.org",
-]
-aggregator = "ds@openmined.org"
