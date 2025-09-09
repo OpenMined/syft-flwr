@@ -12,7 +12,7 @@ real-world healthcare deployment where data sharing faces strict legal and ethic
 constraints.
 
 ## Overview
-![overview](./images/fedmedragOverview.png)
+![overview](./images/fedrag-rds-overview.png)
 
 ## Installing Dependencies
 ### `uv` - a fast Python package manager
@@ -189,6 +189,7 @@ User Query → Server → [Client1, Client2, ...] → Local Retrieval
 client_app.py → retriever.py
 server_app.py → {llm_querier.py, mirage_qa.py, task.py}
 ```
+
 
 
 ## References

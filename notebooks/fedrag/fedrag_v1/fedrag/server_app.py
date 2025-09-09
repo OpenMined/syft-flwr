@@ -1,10 +1,10 @@
 """fedrag: A Flower Federated RAG app."""
 
 import hashlib
-import os
 import time
 from collections import defaultdict
 from itertools import cycle
+from pathlib import Path
 from time import sleep
 
 import numpy as np
@@ -134,7 +134,9 @@ def main(grid: Grid, context: Context) -> None:
     use_gpu = context.run_config.get("server-llm-use-gpu", False)
     use_gpu = True if use_gpu.lower() == "true" else False
 
-    mirage_file = os.path.join(os.path.dirname(__file__), "../../data/mirage.json")
+    mirage_file = Path(__file__).parent.parent.parent / "datasets" / "mirage.json"
+    if not mirage_file.exists():
+        raise FileNotFoundError(f"Server: MirageQA dataset not found at {mirage_file}")
     datasets = {key: MirageQA(key, mirage_file) for key in qa_datasets}
 
     llm_querier = LLMQuerier(model_name, use_gpu)
