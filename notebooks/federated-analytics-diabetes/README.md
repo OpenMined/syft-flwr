@@ -21,13 +21,6 @@ Assume that you have python and the [uv](https://docs.astral.sh/uv/) package man
 uv sync
 ```
 
-### Install and run `syftbox` client
-Make sure you have syftbox client running in a terminal:
-1. Install `syftbox`: `curl -fsSL https://syftbox.net/install.sh | sh`
-2. Follow the instructions to start your `syftbox` client
-
-When you have `syftbox` installed and run in the background, you can proceeed and run the notebooks with the installed Python environment in your favorite IDE.
-
 ## Workflow
 
 ### Local Setup
