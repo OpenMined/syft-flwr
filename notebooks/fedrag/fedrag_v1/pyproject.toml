@@ -33,7 +33,7 @@ clientapp = "fedrag.client_app:app"
 
 [tool.flwr.app.config]
 server-qa-datasets = "pubmedqa|bioasq"
-server-qa-num = 10
+server-qa-num = 5
 clients-corpus-names = "statpearls|textbooks"
 k-rrf = 60
 k-nn = 8
@@ -52,10 +52,3 @@ num-supernodes = 2
 num-cpus = 2
 num-gpus = 0
 
-[tool.syft_flwr]
-app_name = "ds@openmined.org_fedrag_1757409758"
-datasites = [
-    "do1@openmined.org",
-    "do2@openmined.org",
-]
-aggregator = "ds@openmined.org"
