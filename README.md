@@ -8,3 +8,4 @@
 Please look at the `notebooks/` folder for example use cases:
 -  [FL diabetes prediction](notebooks/fl-diabetes-prediction/README.md) shows how to train a federated model over distributed machines for multiple rounds
 -  [Federated analytics](notebooks/federated-analytics-diabetes/README.md) shows how to query statistics from private datasets from distributed machines and then aggregate them
+-  [FedRAG (Federated RAG)](notebooks/fedrag/README.md) demonstrates privacy-preserving question answering using Retrieval Augmented Generation across distributed document sources with remote data science workflow
