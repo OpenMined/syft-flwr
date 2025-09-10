@@ -1,0 +1,21 @@
+[project]
+name = "federated-rag"
+version = "0.1.0"
+description = "A federated RAG system combined with general job submission and approval to enable LLMs to leverage distributed knowledge without compromising data privacy, using syft_flwr and SyftBox"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "flwr[simulation]>=1.20.0",
+    "numpy>=2.3.0",
+    "faiss-cpu>=1.10.0",
+    "tqdm>=4.67",
+    "sentence_transformers>=5.0.0",
+    "jupyterlab>=4.4.5",
+    "loguru>=0.7.3",
+    "matplotlib>=3.8.3",
+    "ipywidgets>=8.1.7",
+    "syft-flwr>=0.2.1",
+]
+
+# [tool.uv.sources]
+# syft-flwr = { path = "../../" }  # for development

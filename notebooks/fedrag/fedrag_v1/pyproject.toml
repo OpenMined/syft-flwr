@@ -1,0 +1,54 @@
+[build-system]
+requires = [
+    "hatchling",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "fedrag"
+version = "1.0.0"
+description = ""
+license = "Apache-2.0"
+requires-python = ">=3.11"
+dependencies = [
+    "flwr[simulation]>=1.20.0",
+    "numpy>=2.3.0",
+    "faiss-cpu>=1.10.0",
+    "tqdm>=4.67",
+    "sentence_transformers>=5.0.0",
+    "syft_flwr==0.2.1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    ".",
+]
+
+[tool.flwr.app]
+publisher = "dimitris"
+
+[tool.flwr.app.components]
+serverapp = "fedrag.server_app:app"
+clientapp = "fedrag.client_app:app"
+
+[tool.flwr.app.config]
+server-qa-datasets = "pubmedqa|bioasq"
+server-qa-num = 5
+clients-corpus-names = "statpearls|textbooks"
+k-rrf = 60
+k-nn = 8
+server-llm-hfpath = "HuggingFaceTB/SmolLM2-1.7B-Instruct"
+server-llm-use-gpu = "false"
+partition-id = 0
+num-partitions = 1
+
+[tool.flwr.federations]
+default = "local-simulation"
+
+[tool.flwr.federations.local-simulation.options]
+num-supernodes = 2
+
+[tool.flwr.federations.local-simulation.options.backend.client-resources]
+num-cpus = 2
+num-gpus = 0
+

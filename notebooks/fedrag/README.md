@@ -1,18 +1,16 @@
-# Federated Analytics with `syft_flwr`
+# Federated Retrieval Augmented Generation (FedRAG) via Remote Data Science for Privacy-Preserving Question Answering
+Valuable knowledge is distributed across organizations worldwide, each protecting their data due to privacy regulations and competitive advantages. Traditional AI systems require centralizing all this data, which is often impossible or illegal. Federated RAG solves this by enabling AI systems to search and learn from documents across multiple organizations without moving or exposing the actual data. Crucially, with remote data science workflow, data owners maintain complete sovereignty—they review every computational job submitted to their systems and explicitly approve or reject requests based on their policies. This consent-based approach enables powerful AI assistants that respect data boundaries while allowing organizations to contribute to shared intelligence without compromising their proprietary information.
 
-## Introduction
+![overview](./images/fedrag-rds.gif)
 
-In this tutorial, we will walk through a practical implementation of a federated analyics workflow, e.g. finding mean and historgram of some private datasets and then aggregate them, using [syft_flwr](https://github.com/OpenMined/syft-flwr) — a framework that combines the flexibility of [Flower](https://github.com/adap/flower/) (a popular federated learning framework) with the privacy-preserving networking capabilities of [syftbox](https://www.syftbox.net/).
-
-![FL Training Process](./images/fed-analytics.gif)
 
 ## Set up
 
 ### Clone the project
 ```bash
 git clone https://github.com/OpenMined/syft-flwr.git _tmp \
-		&& mv _tmp/notebooks/federated-analytics-diabetes . \
-		&& rm -rf _tmp && cd federated-analytics-diabetes
+		&& mv _tmp/notebooks/fedrag . \
+		&& rm -rf _tmp && cd fedrag
 ```
 
 ### Setup python virtual environment
@@ -35,13 +33,12 @@ The set of notebooks in `local/` shows how things work with 2 data owners and 1 
 
 Please start with the `do1.ipynb`, then go to the `do2.ipynb`, and finally `ds.ipynb`, and switch hats when necessary when indicated to do so.
 
-### Distributed setup
+### Distributed setup (TODO)
 In the distributed setup in `distributed/`, we have the exact same workflow except that each DO's datasite and the DS's datasite run on different machines, and they communicate using the SyftBox client. There are detailed instructions to install the SyftBox client in the notebooks.
 
 ## References
 - https://syftbox.net
-- https://www.kaggle.com/datasets/uciml/pima-indians-diabetes-database/
 - https://github.com/OpenMined/syftbox
 - https://github.com/OpenMined/syft-flwr
 - https://github.com/adap/flower/
-- https://github.com/OpenMined/rds
+- https://flower.ai/docs/examples/fedrag.html
