@@ -648,7 +648,7 @@ wheels = [
 ]
 
 [[package]]
-name = "federated-rag"
+name = "fedrag"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
