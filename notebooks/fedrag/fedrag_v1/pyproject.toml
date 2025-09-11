@@ -33,7 +33,7 @@ clientapp = "fedrag.client_app:app"
 
 [tool.flwr.app.config]
 server-qa-datasets = "pubmedqa|bioasq"
-server-qa-num = 5
+server-qa-num = 3
 clients-corpus-names = "statpearls|textbooks"
 k-rrf = 60
 k-nn = 8
@@ -51,4 +51,3 @@ num-supernodes = 2
 [tool.flwr.federations.local-simulation.options.backend.client-resources]
 num-cpus = 2
 num-gpus = 0
-

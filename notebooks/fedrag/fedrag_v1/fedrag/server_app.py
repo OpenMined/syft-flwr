@@ -15,6 +15,8 @@ from sklearn.metrics import accuracy_score
 from fedrag.llm_querier import LLMQuerier
 from fedrag.mirage_qa import MirageQA
 
+mirage_file = Path(__file__).parent.parent.parent / "datasets" / "mirage.json"
+
 
 def node_online_loop(grid: Grid) -> list[int]:
     node_ids = []
@@ -134,7 +136,6 @@ def main(grid: Grid, context: Context) -> None:
     use_gpu = context.run_config.get("server-llm-use-gpu", False)
     use_gpu = True if use_gpu.lower() == "true" else False
 
-    mirage_file = Path(__file__).parent.parent.parent / "datasets" / "mirage.json"
     if not mirage_file.exists():
         raise FileNotFoundError(f"Server: MirageQA dataset not found at {mirage_file}")
     datasets = {key: MirageQA(key, mirage_file) for key in qa_datasets}

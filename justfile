@@ -1,12 +1,3 @@
-# Guidelines for new commands
-# - Start with a verb
-# - Keep it short (max. 3 words in a command)
-# - Group commands by context. Include group name in the command name.
-# - Mark things private that are util functions with [private] or _var
-# - Don't over-engineer, keep it simple.
-# - Don't break existing commands
-# - Run just --fmt --unstable after adding new commands
-
 set dotenv-load := true
 
 # ---------------------------------------------------------------------------------------------------------------------
