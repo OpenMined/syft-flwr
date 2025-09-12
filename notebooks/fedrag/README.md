@@ -32,8 +32,7 @@ In the distributed setup in `distributed/`, we have the exact same workflow exce
 
 #### Distributed setup with Docker
 1. Build and run the `syftbox-client` image according to https://github.com/OpenMined/syftbox/blob/main/docker/README.md
-2. `docker exec -u root <syftbox-client-container-name> apk add git vim curl`
-3. Attaching VSCode to the container. If you have 3 different emails, you can run 3 clients in 3 different containers
+2. Attaching VSCode to the container. If you have 3 different emails, you can run 3 clients in 3 different containers
 
 ## References
 - https://syftbox.net
