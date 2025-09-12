@@ -1,5 +1,5 @@
 [project]
-name = "federated-rag"
+name = "fedrag"
 version = "0.1.0"
 description = "A federated RAG system combined with general job submission and approval to enable LLMs to leverage distributed knowledge without compromising data privacy, using syft_flwr and SyftBox"
 readme = "README.md"

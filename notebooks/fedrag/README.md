@@ -17,6 +17,7 @@ git clone https://github.com/OpenMined/syft-flwr.git _tmp \
 Assume that you have python and the [uv](https://docs.astral.sh/uv/) package manager installed. Now let's create a virtual python environment with `jupyter` installed:
 ```bash
 uv sync
+source .venv/bin/activate
 ```
 
 ## Workflow
@@ -28,6 +29,11 @@ Please start with the `do1.ipynb`, then go to the `do2.ipynb`, and finally `ds.i
 
 ### Distributed setup (TODO)
 In the distributed setup in `distributed/`, we have the exact same workflow except that each DO's datasite and the DS's datasite run on different machines, and they communicate using the SyftBox client. There are detailed instructions to install the SyftBox client in the notebooks.
+
+#### Distributed setup with Docker
+1. Build and run the `syftbox-client` image according to https://github.com/OpenMined/syftbox/blob/main/docker/README.md
+2. `docker exec -u root <syftbox-client-container-name> apk add git vim curl`
+3. Attaching VSCode to the container. If you have 3 different emails, you can run 3 clients in 3 different containers
 
 ## References
 - https://syftbox.net
