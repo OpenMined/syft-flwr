@@ -15,6 +15,10 @@ dependencies = [
     "tomli-w>=1.2.0",
 ]
 
+[tool.uv.sources]
+syft-rds = { path = "../syft-data-science" }  # for development
+
+
 [project.scripts]
 syft_flwr = "syft_flwr.cli:main"
 

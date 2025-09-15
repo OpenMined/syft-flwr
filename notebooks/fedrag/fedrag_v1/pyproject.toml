@@ -51,3 +51,11 @@ num-supernodes = 2
 [tool.flwr.federations.local-simulation.options.backend.client-resources]
 num-cpus = 2
 num-gpus = 0
+
+[tool.syft_flwr]
+app_name = "ds@openmined.org_fedrag_1757908815"
+datasites = [
+    "do1@openmined.org",
+    "do2@openmined.org",
+]
+aggregator = "ds@openmined.org"
