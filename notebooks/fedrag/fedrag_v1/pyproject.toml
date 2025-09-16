@@ -11,12 +11,11 @@ description = ""
 license = "Apache-2.0"
 requires-python = ">=3.11"
 dependencies = [
-    "flwr[simulation]>=1.20.0",
     "numpy>=2.3.0",
     "faiss-cpu>=1.10.0",
     "tqdm>=4.67",
     "sentence_transformers>=5.0.0",
-    "syft_flwr==0.2.1",
+    "syft_flwr==0.2.2",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -51,3 +50,11 @@ num-supernodes = 2
 [tool.flwr.federations.local-simulation.options.backend.client-resources]
 num-cpus = 2
 num-gpus = 0
+
+[tool.syft_flwr]
+app_name = "ds@openmined.org_fedrag_1757993985"
+datasites = [
+    "do1@openmined.org",
+    "do2@openmined.org",
+]
+aggregator = "ds@openmined.org"
