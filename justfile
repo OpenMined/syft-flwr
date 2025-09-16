@@ -54,3 +54,21 @@ build:
     @echo "{{ _cyan }}2. Inspect the .whl file with: uvx wheel unpack <path_to_whl_file>{{ _nc }}"
     @echo "{{ _cyan }}3. Install the wheel with: uv pip install <path_to_whl_file> and do some tests if possible, e.g. import syft_flwr and check the version{{ _nc }}"
     @echo "{{ _cyan }}To upload to pypi, run: uvx twine upload ./dist/*{{ _nc }}"
+
+# ---------------------------------------------------------------------------------------------------------------------
+
+# Release syft-flwr to PyPI with automated version bumping
+# Usage: just release patch/minor/major [--dry-run] [--skip-tests] [--no-commit]
+# patch    # 0.2.2 -> 0.2.3
+# minor    # 0.2.2 -> 0.3.0
+# major    # 0.2.2 -> 1.0.0
+[group('release')]
+release bump_type="patch" *args="":
+    @echo "{{ _cyan }}Starting release process...{{ _nc }}"
+    uv run python src/syft_flwr/release.py {{ bump_type }} {{ args }}
+
+# Dry-run release to test without publishing
+[group('release')]
+release-dry bump_type="patch":
+    @echo "{{ _yellow }}Running release in DRY-RUN mode...{{ _nc }}"
+    uv run python src/syft_flwr/release.py {{ bump_type }} --dry-run
