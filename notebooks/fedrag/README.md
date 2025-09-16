@@ -1,4 +1,4 @@
-# Federated Retrieval Augmented Generation (FedRAG) via Remote Data Science for Privacy-Preserving Question Answering
+# Federated Retrieval Augmented Generation (FedRAG) via Remote Data Science (RDS) for Privacy-Preserving Question Answering
 Valuable knowledge is distributed across organizations worldwide, each protecting their data due to privacy regulations and competitive advantages. Traditional AI systems require centralizing all this data, which is often impossible or illegal. Federated RAG solves this by enabling AI systems to search and learn from documents across multiple organizations without moving or exposing the actual data. Crucially, with remote data science workflow, data owners maintain complete sovereignty—they review every computational job submitted to their systems and explicitly approve or reject requests based on their policies. This consent-based approach enables powerful AI assistants that respect data boundaries while allowing organizations to contribute to shared intelligence without compromising their proprietary information.
 
 ![overview](./images/fedrag-rds.gif)
