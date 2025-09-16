@@ -649,7 +649,6 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "faiss-cpu" },
-    { name = "flwr", extra = ["simulation"] },
     { name = "ipywidgets" },
     { name = "jupyterlab" },
     { name = "loguru" },
@@ -663,7 +662,6 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "faiss-cpu", specifier = ">=1.10.0" },
-    { name = "flwr", extras = ["simulation"], specifier = ">=1.20.0" },
     { name = "ipywidgets", specifier = ">=8.1.7" },
     { name = "jupyterlab", specifier = ">=4.4.5" },
     { name = "loguru", specifier = ">=0.7.3" },
@@ -954,7 +952,7 @@ wheels = [
 
 [[package]]
 name = "huggingface-hub"
-version = "0.34.4"
+version = "0.34.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "filelock" },
@@ -966,9 +964,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/45/c9/bdbe19339f76d12985bc03572f330a01a93c04dffecaaea3061bdd7fb892/huggingface_hub-0.34.4.tar.gz", hash = "sha256:a4228daa6fb001be3f4f4bdaf9a0db00e1739235702848df00885c9b5742c85c", size = 459768, upload-time = "2025-08-08T09:14:52.365Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1f/08/306b0d3db3679b3c07cab9ce117a920de77f3ea4dba6ba27646660518619/huggingface_hub-0.34.5.tar.gz", hash = "sha256:f676c6db41bc3fbd4020f520c842a0548f4c9a3f698dbfa6514bd8e41c3ab52a", size = 460006, upload-time = "2025-09-15T14:24:24.734Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/39/7b/bb06b061991107cd8783f300adff3e7b7f284e330fd82f507f2a1417b11d/huggingface_hub-0.34.4-py3-none-any.whl", hash = "sha256:9b365d781739c93ff90c359844221beef048403f1bc1f1c123c191257c3c890a", size = 561452, upload-time = "2025-08-08T09:14:50.159Z" },
+    { url = "https://files.pythonhosted.org/packages/79/3d/55ef77a0539b0124efd47d8b3759bf49e880f57729f7123c0311b41a9bb8/huggingface_hub-0.34.5-py3-none-any.whl", hash = "sha256:fea377adc6e9b6c239c1450e41a1409cbf2c6364d289c04c31d7dbaa222842e3", size = 562219, upload-time = "2025-09-15T14:24:22.851Z" },
 ]
 
 [[package]]
@@ -3045,7 +3043,7 @@ wheels = [
 
 [[package]]
 name = "syft-flwr"
-version = "0.2.1"
+version = "0.2.2"
 source = { directory = "../../" }
 dependencies = [
     { name = "flwr", extra = ["simulation"] },
@@ -3060,11 +3058,11 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "flwr", extras = ["simulation"], specifier = ">=1.20.0" },
+    { name = "flwr", extras = ["simulation"], specifier = "==1.21.0" },
     { name = "flwr-datasets", extras = ["vision"], specifier = ">=0.5.0" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "safetensors", specifier = ">=0.6.2" },
-    { name = "syft-rds", directory = "../../../syft-data-science" },
+    { name = "syft-rds", specifier = ">=0.2.2" },
     { name = "tomli", specifier = ">=2.2.1" },
     { name = "tomli-w", specifier = ">=1.2.0" },
     { name = "typing-extensions", specifier = ">=4.13.0" },
@@ -3086,7 +3084,7 @@ dev = [
 [[package]]
 name = "syft-rds"
 version = "0.2.2"
-source = { directory = "../../../syft-data-science" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ipython" },
     { name = "jinja2" },
@@ -3099,29 +3097,9 @@ dependencies = [
     { name = "typer" },
     { name = "typing-extensions" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "ipython", specifier = ">=8.18.1" },
-    { name = "jinja2", specifier = ">=3.1.6" },
-    { name = "loguru", specifier = ">=0.7.3" },
-    { name = "nh3", specifier = ">=0.3.0" },
-    { name = "pydantic", extras = ["email"], specifier = ">=2.11.9" },
-    { name = "pyyaml", specifier = ">=6.0.2" },
-    { name = "rich", specifier = ">=13.5.0,<14.0.0" },
-    { name = "syft-event", specifier = ">=0.3.0" },
-    { name = "typer", specifier = ">=0.12.5,<0.13.0" },
-    { name = "typing-extensions", specifier = ">=4.14.1" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "jupyter", specifier = ">=1.1.1" },
-    { name = "pandas", specifier = ">=2.3.2" },
-    { name = "pre-commit", specifier = ">=4.3.0" },
-    { name = "pytest", specifier = ">=8.4.2" },
-    { name = "pytest-asyncio", specifier = ">=1.2.0" },
+sdist = { url = "https://files.pythonhosted.org/packages/7b/b1/92011e4b1a7d1078ce9ad2f1986394432bcf5a35be04ae129d2d661dc839/syft_rds-0.2.2.tar.gz", hash = "sha256:16c9ca916f7a4cb4137b07f0ffe4bd159b574e9bbd006f5d89103ce47795006f", size = 170283, upload-time = "2025-09-16T03:00:36.789Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8a/9c/9e3ce40409636c12e76c4f06d4ca01b176e792db5dcfee0cd947a6fd7acc/syft_rds-0.2.2-py3-none-any.whl", hash = "sha256:ef8f63e82fdb3b0dc4d69c5f94d245bf5f548bf53be72f9a35aae68a510eacac", size = 200651, upload-time = "2025-09-16T03:00:34.206Z" },
 ]
 
 [[package]]

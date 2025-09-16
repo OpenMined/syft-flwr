@@ -1,12 +1,12 @@
 [project]
 name = "syft-flwr"
-version = "0.2.1"
+version = "0.2.2"
 description = "syft_flwr is an open source framework that facilitate federated learning projects using Flower over the SyftBox protocol"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "syft-rds>=0.2.1",
-    "flwr[simulation]>=1.20.0",
+    "syft-rds>=0.2.2",
+    "flwr[simulation]==1.21.0",
     "flwr-datasets[vision]>=0.5.0",
     "loguru>=0.7.3",
     "safetensors>=0.6.2",
@@ -15,8 +15,8 @@ dependencies = [
     "tomli-w>=1.2.0",
 ]
 
-[tool.uv.sources]
-syft-rds = { path = "../syft-data-science" }  # for development
+# [tool.uv.sources]
+# syft-rds = { path = "../syft-data-science" }  # for development
 
 
 [project.scripts]
