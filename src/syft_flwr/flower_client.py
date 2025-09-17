@@ -159,10 +159,25 @@ def syftbox_flwr_client(client_app: ClientApp, context: Context, app_name: str):
     """Run the Flower ClientApp with SyftBox."""
     # Setup
     client, encryption_enabled, syft_flwr_app_name = setup_client(app_name)
-    box = SyftEvents(app_name=syft_flwr_app_name, client=client)
+    box = SyftEvents(
+        app_name=syft_flwr_app_name,
+        client=client,
+        cleanup_expiry="1d",  # Keep request/response files for 1 days
+        cleanup_interval="1d",  # Run cleanup daily
+    )
 
     logger.info(f"Started SyftBox Flower Client on: {box.client.email}")
     logger.info(f"syft_flwr app name: {syft_flwr_app_name}")
+
+    # Check if cleanup is running
+    if box.is_cleanup_running():
+        logger.info("Cleanup service is active")
+
+    # Get cleanup statistics (todo: change to use public API from syft_event when available)
+    stats = box._periodic_cleanup.get_stats()
+    logger.info(
+        f"Deleted {stats.requests_deleted} requests and {stats.responses_deleted} responses"
+    )
 
     # Create handlers
     message_handler = MessageHandler(client_app, context, encryption_enabled)

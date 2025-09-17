@@ -15,5 +15,5 @@ dependencies = [
     "seaborn>=0.13.2",
 ]
 
-# [tool.uv.sources]
-# syft-flwr = { path = "../../" }  # for development
+[tool.uv.sources]
+syft-flwr = { path = "../../" }  # for development
