@@ -17,11 +17,8 @@ dependencies = [
     "scikit-learn==1.6.1",
     "loguru",
     "jupyter",
-    "syft_flwr",
+    "syft_flwr==0.2.2",
 ]
-
-# [tool.uv.sources.syft-flwr]
-# path = "../../../"
 
 [tool.hatch.build.targets.wheel]
 packages = [
@@ -46,3 +43,10 @@ default = "local-simulation"
 [tool.flwr.federations.local-simulation.options]
 num-supernodes = 2
 
+[tool.syft_flwr]
+app_name = "khoa@openmined.org_fl-diabetes-prediction_1758078634"
+datasites = [
+    "dkn.work@protonmail.com",
+    "dknguyen.work@gmail.com",
+]
+aggregator = "khoa@openmined.org"
