@@ -26,8 +26,6 @@ alias rj := run-jupyter
 
 [group('utils')]
 run-jupyter jupyter_args="":
-    # uv sync
-
     uv run --frozen --with "jupyterlab" \
         jupyter lab {{ jupyter_args }} --ContentsManager.allow_hidden=True
 
@@ -40,78 +38,117 @@ test:
     bash scripts/test.sh
 
 # ---------------------------------------------------------------------------------------------------------------------
+# Version Management Commands
 
-# Bump version in pyproject.toml, __init__.py, and all notebook dependencies
-# Usage: just bump-version patch/minor/major
+# Show current version
 [group('build')]
-bump-version version_type="patch":
+show-version:
+    @echo "{{ _cyan }}Current syft-flwr version:{{ _nc }}"
+    @grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/'
+
+# Bump version using commitizen
+# Usage: just bump patch/minor/major
+[group('build')]
+bump increment="patch":
     #!/bin/bash
     set -eou pipefail
 
-    # Check if version_type is valid
-    if [[ "{{ version_type }}" != "patch" && "{{ version_type }}" != "minor" && "{{ version_type }}" != "major" ]]; then
-        echo "{{ _red }}Error: Invalid version type '{{ version_type }}'. Use: patch, minor, or major{{ _nc }}"
+    # Check if increment is valid
+    if [[ "{{ increment }}" != "patch" && "{{ increment }}" != "minor" && "{{ increment }}" != "major" ]]; then
+        echo -e "{{ _red }}Error: Invalid increment '{{ increment }}'. Use: patch, minor, or major{{ _nc }}"
         exit 1
     fi
+
+    echo -e "{{ _cyan }}Bumping syft-flwr {{ increment }} version...{{ _nc }}"
+
+    # Bump the version using commitizen
+    uv run cz bump --increment "{{ increment }}" --yes
+
+    if [ $? -eq 0 ]; then
+        echo -e "{{ _green }}✅ Version bumped successfully!{{ _nc }}"
+
+        # Get the new version
+        NEW_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+        echo -e "{{ _green }}New version: $NEW_VERSION{{ _nc }}"
+    else
+        echo -e "{{ _red }}Error: Version bump failed{{ _nc }}"
+        exit 1
+    fi
+
+# Dry run version bump
+# Usage: just bump-dry patch/minor/major
+[group('build')]
+bump-dry increment="patch":
+    @echo "{{ _cyan }}DRY RUN: Bumping syft-flwr {{ increment }} version...{{ _nc }}"
+    @uv run cz bump --increment "{{ increment }}" --yes --dry-run
+
+# Update notebook dependencies to current version
+[group('build')]
+update-notebook-deps:
+    #!/bin/bash
+    set -eou pipefail
 
     # Get current version from pyproject.toml
     CURRENT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
 
-    # Parse version components
-    IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-
-    # Bump version based on type
-    if [[ "{{ version_type }}" == "major" ]]; then
-        NEW_MAJOR=$((MAJOR + 1))
-        NEW_VERSION="${NEW_MAJOR}.0.0"
-    elif [[ "{{ version_type }}" == "minor" ]]; then
-        NEW_MINOR=$((MINOR + 1))
-        NEW_VERSION="${MAJOR}.${NEW_MINOR}.0"
-    else  # patch
-        NEW_PATCH=$((PATCH + 1))
-        NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
-    fi
-
-    # Update version in pyproject.toml
-    sed -i.bak "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml && rm pyproject.toml.bak
-
-    # Update version in __init__.py
-    sed -i.bak "s/^__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" src/syft_flwr/__init__.py && rm src/syft_flwr/__init__.py.bak
+    echo -e "{{ _cyan }}Updating notebook dependencies to syft-flwr>=$CURRENT_VERSION...{{ _nc }}"
 
     # Update syft-flwr dependency in all notebook pyproject.toml files
-    echo -e "{{ _cyan }}Updating notebook dependencies...{{ _nc }}"
     for notebook_config in notebooks/*/pyproject.toml; do
         if [ -f "$notebook_config" ]; then
             notebook_name=$(basename $(dirname "$notebook_config"))
-            # Update syft-flwr dependency to use the new version
-            sed -i.bak "s/\"syft-flwr>=[0-9]\+\.[0-9]\+\.[0-9]\+\"/\"syft-flwr>=$NEW_VERSION\"/" "$notebook_config" && rm "${notebook_config}.bak"
+            # Update syft-flwr dependency to use the current version
+            sed -i.bak "s/\"syft-flwr>=[0-9]\+\.[0-9]\+\.[0-9]\+\"/\"syft-flwr>=$CURRENT_VERSION\"/" "$notebook_config" && rm "${notebook_config}.bak"
             echo "  • Updated $notebook_name"
         fi
     done
 
-    echo ""
-    echo -e "{{ _green }}✓ Version bumped: $CURRENT_VERSION → $NEW_VERSION{{ _nc }}"
-    echo ""
-    echo -e "{{ _cyan }}Updated files:{{ _nc }}"
-    echo "  • pyproject.toml"
-    echo "  • src/syft_flwr/__init__.py"
+    echo -e "{{ _green }}✅ Notebook dependencies updated!{{ _nc }}"
 
-    # List updated notebooks
-    for notebook_config in notebooks/*/pyproject.toml; do
-        if [ -f "$notebook_config" ]; then
-            notebook_name=$(basename $(dirname "$notebook_config"))
-            echo "  • notebooks/$notebook_name/pyproject.toml"
-        fi
-    done
+# Revert a version bump (delete tag and revert version changes)
+[group('build')]
+revert version:
+    #!/bin/bash
+    set -eou pipefail
 
+    if [ -z "{{ version }}" ]; then
+        echo -e "{{ _red }}Error: Version required{{ _nc }}"
+        echo "Usage: just revert <version>"
+        echo "Example: just revert 0.2.3"
+        exit 1
+    fi
+
+    TAG_NAME="v{{ version }}"
+
+    echo -e "{{ _yellow }}⚠️  WARNING: This will revert syft-flwr version {{ version }}{{ _nc }}"
+    echo -e "{{ _yellow }}This will:{{ _nc }}"
+    echo -e "{{ _yellow }}  1. Delete git tag: v{{ version }}{{ _nc }}"
+    echo -e "{{ _yellow }}  2. Revert version in pyproject.toml and __init__.py{{ _nc }}"
     echo ""
-    echo -e "{{ _cyan }}Next steps:{{ _nc }}"
-    echo "  1. just test"
-    echo "  2. git add -A"
-    echo "  3. git commit -m \"Bump version to $NEW_VERSION\""
-    echo "  4. git tag v$NEW_VERSION"
-    echo "  5. git push && git push --tags"
-    echo "  6. just build"
+    read -p "Are you sure you want to continue? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo -e "{{ _cyan }}Operation cancelled{{ _nc }}"
+        exit 0
+    fi
+
+    echo -e "{{ _cyan }}Reverting syft-flwr version {{ version }}...{{ _nc }}"
+
+    # Delete the git tag
+    if git tag -l | grep -q "^v{{ version }}$"; then
+        git tag -d "v{{ version }}"
+        echo -e "{{ _green }}✅ Deleted git tag: v{{ version }}{{ _nc }}"
+    else
+        echo -e "{{ _yellow }}⚠️  Git tag v{{ version }} not found{{ _nc }}"
+    fi
+
+    echo -e "{{ _yellow }}⚠️  Manual steps required:{{ _nc }}"
+    echo -e "{{ _yellow }}  1. Revert version in pyproject.toml{{ _nc }}"
+    echo -e "{{ _yellow }}  2. Revert version in src/syft_flwr/__init__.py{{ _nc }}"
+    echo -e "{{ _yellow }}  3. Revert notebook dependencies if needed{{ _nc }}"
+    echo -e "{{ _yellow }}  4. Commit the changes{{ _nc }}"
+    echo ""
+    echo -e "{{ _cyan }}Use 'just show-version' to check current version{{ _nc }}"
 
 # Build syft-flwr wheel to upload to pypi
 [group('build')]
@@ -120,8 +157,54 @@ build:
     rm -rf dist/
     uv build
     @echo "{{ _green }}Build complete!{{ _nc }}"
-    @echo "{{ _cyan }}Before uploading to pypi, please inspect the build:{{ _nc }}"
-    @echo "{{ _cyan }}1. Go to the build directory and unzip the .tar.gz file to inspect the contents{{ _nc }}"
-    @echo "{{ _cyan }}2. Inspect the .whl file with: uvx wheel unpack <path_to_whl_file>{{ _nc }}"
-    @echo "{{ _cyan }}3. Install the wheel with: uv pip install <path_to_whl_file> and do some tests if possible, e.g. import syft_flwr and check the version{{ _nc }}"
-    @echo "{{ _cyan }}To upload to pypi, run: uvx twine upload ./dist/*{{ _nc }}"
+    @echo "{{ _cyan }}Built packages:{{ _nc }}"
+    @ls -la dist/
+
+# Local release process (runs tests, bumps version, builds)
+[group('build')]
+release increment="patch":
+    #!/bin/bash
+    set -eou pipefail
+
+    echo -e "{{ _cyan }}Starting release process for syft-flwr...{{ _nc }}"
+
+    # Run tests first
+    echo -e "{{ _cyan }}Running tests...{{ _nc }}"
+    just test
+
+    if [ $? -ne 0 ]; then
+        echo -e "{{ _red }}Tests failed! Please fix before releasing.{{ _nc }}"
+        exit 1
+    fi
+
+    # Bump version
+    echo -e "{{ _cyan }}Bumping version...{{ _nc }}"
+    just bump {{ increment }}
+
+    # Update notebook dependencies
+    echo -e "{{ _cyan }}Updating notebook dependencies...{{ _nc }}"
+    just update-notebook-deps
+
+    # Add changes
+    git add -A
+
+    # Amend the commit created by commitizen to include notebook updates
+    git commit --amend --no-edit
+
+    # Build package
+    echo -e "{{ _cyan }}Building package...{{ _nc }}"
+    just build
+
+    # Get the new version
+    NEW_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+
+    echo ""
+    echo -e "{{ _green }}✅ Release preparation complete!{{ _nc }}"
+    echo -e "{{ _cyan }}Version: $NEW_VERSION{{ _nc }}"
+    echo ""
+    echo -e "{{ _yellow }}Next steps to complete the release:{{ _nc }}"
+    echo "  1. Push changes: git push origin main"
+    echo "  2. Push tags: git push --tags"
+    echo "  3. Upload to PyPI: uvx twine upload dist/*"
+    echo ""
+    echo -e "{{ _cyan }}Or use the GitHub Actions workflow to automate the release!{{ _nc }}"
