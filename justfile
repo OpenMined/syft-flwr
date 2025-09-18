@@ -17,19 +17,11 @@ _nc := '\033[0m'
 # ---------------------------------------------------------------------------------------------------------------------
 # Aliases
 
-alias rj := run-jupyter
 
 # ---------------------------------------------------------------------------------------------------------------------
 
 @default:
     just --list
-
-[group('utils')]
-run-jupyter jupyter_args="":
-    uv run --frozen --with "jupyterlab" \
-        jupyter lab {{ jupyter_args }} --ContentsManager.allow_hidden=True
-
-# ---------------------------------------------------------------------------------------------------------------------
 
 # Run tests for syft-flwr
 [group('test')]
@@ -103,62 +95,23 @@ update-notebook-deps:
 
     echo -e "{{ _cyan }}Updating notebook dependencies to syft-flwr>=$CURRENT_VERSION...{{ _nc }}"
 
-    # Update syft-flwr dependency in all notebook pyproject.toml files
-    for notebook_config in notebooks/*/pyproject.toml; do
-        if [ -f "$notebook_config" ]; then
-            notebook_name=$(basename $(dirname "$notebook_config"))
+    # Update syft-flwr dependency in all notebook pyproject.toml files and update lock files
+    for notebook_dir in notebooks/*/; do
+        if [ -d "$notebook_dir" ] && [ -f "$notebook_dir/pyproject.toml" ]; then
+            notebook_name=$(basename "$notebook_dir")
+
             # Update syft-flwr dependency to use the current version (handle both = and >= formats)
-            sed -i.bak -E "s/\"syft-flwr(>=|=)[0-9]+\.[0-9]+\.[0-9]+\"/\"syft-flwr>=$CURRENT_VERSION\"/" "$notebook_config" && rm "${notebook_config}.bak"
-            echo "  • Updated $notebook_name"
+            sed -i.bak -E "s/\"syft-flwr(>=|=)[0-9]+\.[0-9]+\.[0-9]+\"/\"syft-flwr>=$CURRENT_VERSION\"/" "$notebook_dir/pyproject.toml" && rm "${notebook_dir}pyproject.toml.bak"
+            echo "  • Updated $notebook_name/pyproject.toml"
+
+            # Update the uv.lock file for this notebook
+            echo "  • Updating $notebook_name/uv.lock..."
+            (cd "$notebook_dir" && uv lock --upgrade-package syft-flwr)
         fi
     done
 
-    echo -e "{{ _green }}✅ Notebook dependencies updated!{{ _nc }}"
+    echo -e "{{ _green }}✅ Notebook dependencies and lock files updated!{{ _nc }}"
 
-# Revert a version bump (delete tag and revert version changes)
-[group('build')]
-revert version:
-    #!/bin/bash
-    set -eou pipefail
-
-    if [ -z "{{ version }}" ]; then
-        echo -e "{{ _red }}Error: Version required{{ _nc }}"
-        echo "Usage: just revert <version>"
-        echo "Example: just revert 0.2.3"
-        exit 1
-    fi
-
-    TAG_NAME="v{{ version }}"
-
-    echo -e "{{ _yellow }}⚠️  WARNING: This will revert syft-flwr version {{ version }}{{ _nc }}"
-    echo -e "{{ _yellow }}This will:{{ _nc }}"
-    echo -e "{{ _yellow }}  1. Delete git tag: v{{ version }}{{ _nc }}"
-    echo -e "{{ _yellow }}  2. Revert version in pyproject.toml and __init__.py{{ _nc }}"
-    echo ""
-    read -p "Are you sure you want to continue? (y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "{{ _cyan }}Operation cancelled{{ _nc }}"
-        exit 0
-    fi
-
-    echo -e "{{ _cyan }}Reverting syft-flwr version {{ version }}...{{ _nc }}"
-
-    # Delete the git tag
-    if git tag -l | grep -q "^v{{ version }}$"; then
-        git tag -d "v{{ version }}"
-        echo -e "{{ _green }}✅ Deleted git tag: v{{ version }}{{ _nc }}"
-    else
-        echo -e "{{ _yellow }}⚠️  Git tag v{{ version }} not found{{ _nc }}"
-    fi
-
-    echo -e "{{ _yellow }}⚠️  Manual steps required:{{ _nc }}"
-    echo -e "{{ _yellow }}  1. Revert version in pyproject.toml{{ _nc }}"
-    echo -e "{{ _yellow }}  2. Revert version in src/syft_flwr/__init__.py{{ _nc }}"
-    echo -e "{{ _yellow }}  3. Revert notebook dependencies if needed{{ _nc }}"
-    echo -e "{{ _yellow }}  4. Commit the changes{{ _nc }}"
-    echo ""
-    echo -e "{{ _cyan }}Use 'just show-version' to check current version{{ _nc }}"
 
 # Build syft-flwr wheel to upload to pypi
 [group('build')]
