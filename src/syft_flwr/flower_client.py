@@ -173,12 +173,6 @@ def syftbox_flwr_client(client_app: ClientApp, context: Context, app_name: str):
     if box.is_cleanup_running():
         logger.info("Cleanup service is active")
 
-    # Get cleanup statistics (todo: change to use public API from syft_event when available)
-    stats = box._periodic_cleanup.get_stats()
-    logger.info(
-        f"Deleted {stats.requests_deleted} requests and {stats.responses_deleted} responses"
-    )
-
     # Create handlers
     message_handler = MessageHandler(client_app, context, encryption_enabled)
     processor = RequestProcessor(message_handler, box, box.client.email)
