@@ -46,7 +46,7 @@ show-version:
     @echo "{{ _cyan }}Current syft-flwr version:{{ _nc }}"
     @grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/'
 
-# Bump version using commitizen
+# Bump version using commitizen and update notebook dependencies
 # Usage: just bump patch/minor/major
 [group('build')]
 bump increment="patch":
@@ -70,6 +70,16 @@ bump increment="patch":
         # Get the new version
         NEW_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
         echo -e "{{ _green }}New version: $NEW_VERSION{{ _nc }}"
+
+        # Update notebook dependencies
+        echo -e "{{ _cyan }}Updating notebook dependencies...{{ _nc }}"
+        just update-notebook-deps
+
+        # Add notebook changes and amend the commit
+        git add notebooks/*/pyproject.toml
+        git commit --amend --no-edit
+
+        echo -e "{{ _green }}✅ Version and notebook dependencies updated!{{ _nc }}"
     else
         echo -e "{{ _red }}Error: Version bump failed{{ _nc }}"
         exit 1
@@ -159,52 +169,3 @@ build:
     @echo "{{ _green }}Build complete!{{ _nc }}"
     @echo "{{ _cyan }}Built packages:{{ _nc }}"
     @ls -la dist/
-
-# Local release process (runs tests, bumps version, builds)
-[group('build')]
-release increment="patch":
-    #!/bin/bash
-    set -eou pipefail
-
-    echo -e "{{ _cyan }}Starting release process for syft-flwr...{{ _nc }}"
-
-    # Run tests first
-    echo -e "{{ _cyan }}Running tests...{{ _nc }}"
-    just test
-
-    if [ $? -ne 0 ]; then
-        echo -e "{{ _red }}Tests failed! Please fix before releasing.{{ _nc }}"
-        exit 1
-    fi
-
-    # Bump version
-    echo -e "{{ _cyan }}Bumping version...{{ _nc }}"
-    just bump {{ increment }}
-
-    # Update notebook dependencies
-    echo -e "{{ _cyan }}Updating notebook dependencies...{{ _nc }}"
-    just update-notebook-deps
-
-    # Add changes
-    git add -A
-
-    # Amend the commit created by commitizen to include notebook updates
-    git commit --amend --no-edit
-
-    # Build package
-    echo -e "{{ _cyan }}Building package...{{ _nc }}"
-    just build
-
-    # Get the new version
-    NEW_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
-
-    echo ""
-    echo -e "{{ _green }}✅ Release preparation complete!{{ _nc }}"
-    echo -e "{{ _cyan }}Version: $NEW_VERSION{{ _nc }}"
-    echo ""
-    echo -e "{{ _yellow }}Next steps to complete the release:{{ _nc }}"
-    echo "  1. Push changes: git push origin main"
-    echo "  2. Push tags: git push --tags"
-    echo "  3. Upload to PyPI: uvx twine upload dist/*"
-    echo ""
-    echo -e "{{ _cyan }}Or use the GitHub Actions workflow to automate the release!{{ _nc }}"
