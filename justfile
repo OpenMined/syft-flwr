@@ -107,8 +107,8 @@ update-notebook-deps:
     for notebook_config in notebooks/*/pyproject.toml; do
         if [ -f "$notebook_config" ]; then
             notebook_name=$(basename $(dirname "$notebook_config"))
-            # Update syft-flwr dependency to use the current version
-            sed -i.bak "s/\"syft-flwr>=[0-9]\+\.[0-9]\+\.[0-9]\+\"/\"syft-flwr>=$CURRENT_VERSION\"/" "$notebook_config" && rm "${notebook_config}.bak"
+            # Update syft-flwr dependency to use the current version (handle both = and >= formats)
+            sed -i.bak -E "s/\"syft-flwr(>=|=)[0-9]+\.[0-9]+\.[0-9]+\"/\"syft-flwr>=$CURRENT_VERSION\"/" "$notebook_config" && rm "${notebook_config}.bak"
             echo "  • Updated $notebook_name"
         fi
     done
