@@ -17,7 +17,7 @@ dependencies = [
     "scikit-learn==1.6.1",
     "loguru",
     "jupyter",
-    "syft_flwr==0.2.2",
+    "syft_flwr",
 ]
 
 [tool.hatch.build.targets.wheel]

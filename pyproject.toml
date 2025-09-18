@@ -1,11 +1,11 @@
 [project]
 name = "syft-flwr"
-version = "0.2.2"
+version = "0.3.0"
 description = "syft_flwr is an open source framework that facilitate federated learning projects using Flower over the SyftBox protocol"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "syft-rds>=0.2.2",
+    "syft-rds>=0.3.1",
     "flwr[simulation]==1.21.0",
     "flwr-datasets[vision]>=0.5.0",
     "loguru>=0.7.3",
@@ -33,6 +33,7 @@ dev-dependencies = [
     "jupyterlab",
     "pytest-xdist>=3.8.0",
     "pytest-asyncio>=1.1.0",
+    "commitizen>=4.9.1",
 ]
 
 [build-system]
@@ -56,3 +57,13 @@ extend-select = ["I"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/__init__.py" = ["F401"]
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version_provider = "pep621"
+tag_format = "v$version"
+update_changelog_on_bump = false
+version_files = [
+    "pyproject.toml:^version\\s*=\\s*\"(?P<version>.*)\"$",
+    "src/syft_flwr/__init__.py:^__version__\\s*=\\s*\"(?P<version>.*)\"$",
+]

@@ -15,7 +15,7 @@ dependencies = [
     "faiss-cpu>=1.10.0",
     "tqdm>=4.67",
     "sentence_transformers>=5.0.0",
-    "syft_flwr==0.2.2",
+    "syft_flwr",
 ]
 
 [tool.hatch.build.targets.wheel]

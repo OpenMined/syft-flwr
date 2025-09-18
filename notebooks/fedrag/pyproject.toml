@@ -5,7 +5,7 @@ description = "A federated RAG system combined with general job submission and a
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "syft-flwr>=0.2.2",
+    "syft-flwr>=0.3.0",
     "numpy>=2.3.0",
     "faiss-cpu>=1.10.0",
     "tqdm>=4.67",
