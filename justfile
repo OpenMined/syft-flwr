@@ -68,7 +68,7 @@ bump increment="patch":
         just update-notebook-deps
 
         # Add notebook changes and amend the commit
-        git add notebooks/*/pyproject.toml
+        git add notebooks/*/pyproject.toml notebooks/*/uv.lock
         git commit --amend --no-edit
 
         echo -e "{{ _green }}✅ Version and notebook dependencies updated!{{ _nc }}"
