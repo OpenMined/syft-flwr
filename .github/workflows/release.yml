@@ -1,0 +1,316 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      skip_publish:
+        description: 'Skip PyPI publish (for testing)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    name: Release syft-flwr
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: main  # Always use main branch
+        fetch-depth: 0  # Fetch all history for tags
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: true
+
+    - name: Setup git config
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
+        git config user.name "$(gh api /users/${GITHUB_ACTOR} | jq .name -r)"
+
+        if [ $? -ne 0 ]; then
+          echo "Error: Failed to setup git config"
+          exit 1
+        fi
+
+    - name: Pull latest tags
+      run: |
+        git fetch --tags
+
+        if [ $? -ne 0 ]; then
+          echo "Error: Failed to fetch tags"
+          exit 1
+        fi
+
+    - name: Install just
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+
+        if [ $? -ne 0 ]; then
+          echo "Error: Failed to install just"
+          exit 1
+        fi
+
+        # Verify just is installed
+        just --version || { echo "Error: just not found after installation"; exit 1; }
+
+    - name: Install dependencies
+      run: |
+        echo "Installing project dependencies..."
+        uv sync
+
+        if [ $? -ne 0 ]; then
+          echo "Error: Failed to install dependencies"
+          exit 1
+        fi
+
+        # Verify commitizen is installed (it's in dev-dependencies)
+        uv run cz version || { echo "Error: commitizen not found"; exit 1; }
+
+    - name: Run tests first
+      run: |
+        echo "Running tests before version bump..."
+        just test
+
+        if [ $? -ne 0 ]; then
+          echo "Error: Tests failed! Cannot proceed with release."
+          exit 1
+        fi
+
+        echo "All tests passed!"
+
+    - name: Bump version and update dependencies
+      id: version_bump
+      run: |
+        echo "Bumping syft-flwr ${{ inputs.bump_type }} version..."
+
+        # Use just bump which handles everything in one commit
+        just bump ${{ inputs.bump_type }}
+
+        if [ $? -ne 0 ]; then
+          echo "Error: Version bump failed"
+          exit 1
+        fi
+
+        # Get the new version for later use
+        NEW_VERSION=$(git describe --tags --abbrev=0)
+
+        if [ -z "$NEW_VERSION" ]; then
+          echo "Error: Failed to get new version from git tags"
+          exit 1
+        fi
+
+        echo "New version: $NEW_VERSION"
+        echo "version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+
+        echo "✅ Version bumped and dependencies updated!"
+
+    - name: Build package
+      run: |
+        echo "Checking current directory: $(pwd)"
+        rm -rf dist
+
+        echo "Building syft-flwr using just..."
+        just build
+
+        if [ $? -ne 0 ]; then
+          echo "Error: Package build failed!"
+          exit 1
+        fi
+
+        echo "Package built successfully!"
+
+    - name: Test built package
+      run: |
+        echo "Testing built package..."
+
+        # Get the expected version (remove 'v' prefix from tag)
+        EXPECTED_VERSION="${{ steps.version_bump.outputs.version }}"
+        EXPECTED_VERSION=${EXPECTED_VERSION#v}  # Remove 'v' prefix if present
+        echo "Expected version: $EXPECTED_VERSION"
+
+        # Find the wheel file in dist directory
+        WHEEL_FILE=$(ls dist/syft_flwr-$EXPECTED_VERSION*.whl 2>/dev/null | head -n1)
+
+        if [ -z "$WHEEL_FILE" ]; then
+          echo "Error: No wheel file found in dist/"
+          ls -la dist/
+          exit 1
+        fi
+
+        echo "Testing wheel: $WHEEL_FILE"
+
+        # Test the package import from the wheel and capture version
+        ACTUAL_VERSION=$(uv run --with "$WHEEL_FILE" --no-project -- python -c "import syft_flwr; print(syft_flwr.__version__)" 2>/dev/null)
+        EXIT_CODE=$?
+
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "Error: Failed to import package from wheel"
+          echo "Output: $ACTUAL_VERSION"
+          exit 1
+        fi
+
+        echo "Imported syft_flwr version: $ACTUAL_VERSION"
+
+        # Verify the version matches
+        if [ "$ACTUAL_VERSION" != "$EXPECTED_VERSION" ]; then
+          echo "Error: Version mismatch!"
+          echo "  Expected: $EXPECTED_VERSION"
+          echo "  Actual: $ACTUAL_VERSION"
+          exit 1
+        fi
+
+        echo "Package test passed! Version $ACTUAL_VERSION matches expected version."
+
+    - name: Commit and push changes
+      run: |
+        # Add any remaining changes (safety net)
+        git add .
+
+        # Amend the commit to ensure all changes are included
+        git commit --amend --no-edit || echo "No additional changes to commit"
+
+        # Push changes to main
+        git push origin main
+
+        if [ $? -ne 0 ]; then
+          echo "Error: Failed to push changes to main"
+          exit 1
+        fi
+
+        git push origin --tags
+
+        if [ $? -ne 0 ]; then
+          echo "Error: Failed to push tags"
+          exit 1
+        fi
+
+        echo "Successfully pushed changes and tags!"
+
+    - name: Upload to PyPI
+      if: ${{ !inputs.skip_publish }}
+      env:
+        OM_PYPI_TOKEN: ${{ secrets.OM_PYPI_TOKEN }}
+      run: |
+        echo "Uploading syft-flwr to PyPI..."
+
+        # Verify token is set
+        if [ -z "$OM_PYPI_TOKEN" ]; then
+          echo "Error: PyPI token not set"
+          echo "Please add OM_PYPI_TOKEN to repository secrets"
+          exit 1
+        fi
+
+        # Install twine
+        uvx twine --version
+
+        if [ $? -ne 0 ]; then
+          echo "Error: Failed to install/verify twine"
+          exit 1
+        fi
+
+        # Find wheel files to upload
+        WHEEL_FILES=$(ls dist/*.whl 2>/dev/null)
+
+        if [ -z "$WHEEL_FILES" ]; then
+          echo "Error: No wheel files found in dist/"
+          exit 1
+        fi
+
+        echo "Found wheel files to upload: $WHEEL_FILES"
+
+        # Upload the built package
+        uvx twine upload dist/* --username __token__ --password "$OM_PYPI_TOKEN"
+
+        if [ $? -ne 0 ]; then
+          echo "Error: Failed to upload package to PyPI"
+          exit 1
+        fi
+
+        echo "Package uploaded to PyPI successfully!"
+
+    - name: Skip PyPI Upload
+      if: ${{ inputs.skip_publish }}
+      run: |
+        echo "⚠️ Skipping PyPI upload (skip_publish=true)"
+        echo "Built packages:"
+        ls -la dist/
+
+    - name: Create GitHub Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        VERSION="${{ steps.version_bump.outputs.version }}"
+
+        # Create release notes
+        echo "Creating GitHub release for $VERSION..."
+
+        # Get the commit messages since the last tag
+        PREV_TAG=$(git tag -l "v*" --sort=-v:refname | head -n2 | tail -n1)
+
+        if [ -z "$PREV_TAG" ]; then
+          echo "First release!"
+          RELEASE_NOTES="Initial release of syft-flwr $VERSION"
+        else
+          echo "Previous tag: $PREV_TAG"
+          RELEASE_NOTES=$(git log --pretty=format:"- %s" $PREV_TAG..HEAD)
+        fi
+
+        # Create the GitHub release
+        gh release create "$VERSION" \
+          --title "syft-flwr $VERSION" \
+          --notes "$RELEASE_NOTES" \
+          --target "main" \
+          dist/*
+
+        if [ $? -ne 0 ]; then
+          echo "Warning: Failed to create GitHub release, but package was uploaded to PyPI"
+        else
+          echo "GitHub release created successfully!"
+        fi
+
+    - name: Update notebook lock files
+      if: ${{ !inputs.skip_publish }}
+      run: |
+        echo "Waiting for PyPI to index the new version..."
+        sleep 30  # Give PyPI time to index
+
+        echo "Updating notebook lock files with published version..."
+        just update-notebook-locks || {
+          echo "Warning: Failed to update some notebook locks, they may need manual update"
+        }
+
+        # Check if there are changes
+        if git diff --quiet; then
+          echo "No lock file changes needed"
+        else
+          git add notebooks/*/uv.lock
+          git commit -m "chore: update notebook lock files for ${{ steps.version_bump.outputs.version }}
+
+        Updates notebook uv.lock files to use the newly published syft-flwr version from PyPI."
+
+          git push origin main
+
+          echo "✅ Notebook lock files updated and pushed to main"
+        fi

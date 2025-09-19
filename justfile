@@ -38,7 +38,8 @@ show-version:
     @echo "{{ _cyan }}Current syft-flwr version:{{ _nc }}"
     @grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/'
 
-# Bump version using commitizen and update notebook dependencies
+# Bump version using commitizen, update the main project's uv.lock file,
+# update notebook dependencies, which updates their uv.lock files
 # Usage: just bump patch/minor/major
 [group('build')]
 bump increment="patch":
@@ -63,15 +64,17 @@ bump increment="patch":
         NEW_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
         echo -e "{{ _green }}New version: $NEW_VERSION{{ _nc }}"
 
-        # Update notebook dependencies
-        echo -e "{{ _cyan }}Updating notebook dependencies...{{ _nc }}"
-        just update-notebook-deps
+        # Update main project's uv.lock
+        echo -e "{{ _cyan }}Updating main project uv.lock...{{ _nc }}"
+        uv lock
+        echo -e "{{ _green }}✅ Main project uv.lock updated!{{ _nc }}"
 
-        # Add notebook changes and amend the commit
-        git add notebooks/*/pyproject.toml notebooks/*/uv.lock
+        # Add and amend the lock file update to the commit created by cz
+        git add uv.lock
         git commit --amend --no-edit
 
-        echo -e "{{ _green }}✅ Version and notebook dependencies updated!{{ _nc }}"
+        echo -e "{{ _green }}✅ Version bump and lock file updated in single commit!{{ _nc }}"
+        echo -e "{{ _yellow }}Note: Notebook lock files will be updated after publishing to PyPI{{ _nc }}"
     else
         echo -e "{{ _red }}Error: Version bump failed{{ _nc }}"
         exit 1
@@ -95,23 +98,42 @@ update-notebook-deps:
 
     echo -e "{{ _cyan }}Updating notebook dependencies to syft-flwr>=$CURRENT_VERSION...{{ _nc }}"
 
-    # Update syft-flwr dependency in all notebook pyproject.toml files and update lock files
+    # Update syft-flwr dependency in all notebook pyproject.toml files
     for notebook_dir in notebooks/*/; do
         if [ -d "$notebook_dir" ] && [ -f "$notebook_dir/pyproject.toml" ]; then
             notebook_name=$(basename "$notebook_dir")
 
             # Update syft-flwr dependency to use the current version (handle both = and >= formats)
             sed -i.bak -E "s/\"syft-flwr(>=|=)[0-9]+\.[0-9]+\.[0-9]+\"/\"syft-flwr>=$CURRENT_VERSION\"/" "$notebook_dir/pyproject.toml" && rm "${notebook_dir}pyproject.toml.bak"
-            echo "  • Updated $notebook_name/pyproject.toml"
+            echo "  • Updated $notebook_name/pyproject.toml to syft-flwr>=$CURRENT_VERSION"
 
-            # Update the uv.lock file for this notebook
+            # Note: We DON'T update uv.lock here because the new version doesn't exist on PyPI yet
+            echo "  • Note: uv.lock will be updated after publishing to PyPI"
+        fi
+    done
+
+    echo -e "{{ _green }}✅ Notebook pyproject.toml files updated!{{ _nc }}"
+    echo -e "{{ _yellow }}Note: Notebook uv.lock files will be updated after publishing to PyPI{{ _nc }}"
+
+
+# Update notebook lock files after publishing to PyPI
+# This should be run after the new version is available on PyPI
+[group('build')]
+update-notebook-locks:
+    #!/bin/bash
+    set -eou pipefail
+
+    echo -e "{{ _cyan }}Updating notebook uv.lock files with published syft-flwr version...{{ _nc }}"
+
+    for notebook_dir in notebooks/*/; do
+        if [ -d "$notebook_dir" ] && [ -f "$notebook_dir/pyproject.toml" ]; then
+            notebook_name=$(basename "$notebook_dir")
             echo "  • Updating $notebook_name/uv.lock..."
             (cd "$notebook_dir" && uv lock --upgrade-package syft-flwr)
         fi
     done
 
-    echo -e "{{ _green }}✅ Notebook dependencies and lock files updated!{{ _nc }}"
-
+    echo -e "{{ _green }}✅ Notebook lock files updated with published version!{{ _nc }}"
 
 # Build syft-flwr wheel to upload to pypi
 [group('build')]
