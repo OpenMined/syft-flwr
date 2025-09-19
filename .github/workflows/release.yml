@@ -113,16 +113,16 @@ jobs:
           exit 1
         fi
 
-        # Get the new version for later use
-        NEW_VERSION=$(git describe --tags --abbrev=0)
+        # Get the new version from pyproject.toml (most reliable)
+        NEW_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
 
         if [ -z "$NEW_VERSION" ]; then
-          echo "Error: Failed to get new version from git tags"
+          echo "Error: Failed to get new version from pyproject.toml"
           exit 1
         fi
 
-        echo "New version: $NEW_VERSION"
-        echo "version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+        echo "New version: v${NEW_VERSION}"
+        echo "version=v${NEW_VERSION}" >> $GITHUB_OUTPUT
 
         echo "✅ Version bumped and dependencies updated!"
 
@@ -322,7 +322,8 @@ jobs:
           echo "No lock file changes needed"
         else
           git add notebooks/*/uv.lock
-          git commit -m "chore: update notebook lock files for ${{ steps.version_bump.outputs.version }}
+          CURRENT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          git commit -m "chore: update notebook lock files for v${CURRENT_VERSION}
 
         Updates notebook uv.lock files to use the newly published syft-flwr version from PyPI."
 
