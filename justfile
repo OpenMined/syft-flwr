@@ -38,7 +38,8 @@ show-version:
     @echo "{{ _cyan }}Current syft-flwr version:{{ _nc }}"
     @grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/'
 
-# Bump version using commitizen and update notebook dependencies
+# Bump version using commitizen, update the main project's uv.lock file,
+# update notebook dependencies, which updates their uv.lock files
 # Usage: just bump patch/minor/major
 [group('build')]
 bump increment="patch":
@@ -63,15 +64,20 @@ bump increment="patch":
         NEW_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
         echo -e "{{ _green }}New version: $NEW_VERSION{{ _nc }}"
 
+        # Update main project's uv.lock
+        echo -e "{{ _cyan }}Updating main project uv.lock...{{ _nc }}"
+        uv lock
+        echo -e "{{ _green }}✅ Main project uv.lock updated!{{ _nc }}"
+
         # Update notebook dependencies
         echo -e "{{ _cyan }}Updating notebook dependencies...{{ _nc }}"
         just update-notebook-deps
 
-        # Add notebook changes and amend the commit
-        git add notebooks/*/pyproject.toml notebooks/*/uv.lock
+        # Add all changes and amend the commit
+        git add uv.lock notebooks/*/pyproject.toml notebooks/*/uv.lock
         git commit --amend --no-edit
 
-        echo -e "{{ _green }}✅ Version and notebook dependencies updated!{{ _nc }}"
+        echo -e "{{ _green }}✅ Version, lock files, and notebook dependencies updated!{{ _nc }}"
     else
         echo -e "{{ _red }}Error: Version bump failed{{ _nc }}"
         exit 1

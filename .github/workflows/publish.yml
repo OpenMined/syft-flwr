@@ -1,0 +1,252 @@
+name: Publish Release
+
+on:
+  # Manual trigger with tag selection
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g., v0.3.1)'
+        required: true
+        type: string
+
+  # Auto trigger on version tags
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+
+jobs:
+  publish:
+    name: Publish syft-flwr to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+    - name: Determine tag to use
+      id: get_tag
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          TAG="${{ inputs.tag }}"
+        else
+          TAG="${{ github.ref_name }}"
+        fi
+
+        echo "Using tag: $TAG"
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+    - name: Checkout repository at tag
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ steps.get_tag.outputs.tag }}
+        fetch-depth: 0
+
+    - name: Verify tag exists
+      run: |
+        TAG="${{ steps.get_tag.outputs.tag }}"
+
+        # Check if we're on the correct tag
+        CURRENT_TAG=$(git describe --exact-match --tags HEAD 2>/dev/null || echo "")
+
+        if [ "$CURRENT_TAG" != "$TAG" ]; then
+          echo "Error: Not on expected tag"
+          echo "Expected: $TAG"
+          echo "Current: $CURRENT_TAG"
+          exit 1
+        fi
+
+        echo "✅ Verified: On tag $TAG"
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: true
+
+    - name: Install just
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+        just --version || { echo "Error: just not found after installation"; exit 1; }
+
+    - name: Install dependencies
+      run: |
+        echo "Installing project dependencies..."
+        uv sync
+
+        if [ $? -ne 0 ]; then
+          echo "Error: Failed to install dependencies"
+          exit 1
+        fi
+
+    - name: Build package
+      run: |
+        echo "Building syft-flwr..."
+        rm -rf dist
+        just build
+
+        if [ $? -ne 0 ]; then
+          echo "Error: Package build failed!"
+          exit 1
+        fi
+
+        echo "Package built successfully!"
+        ls -la dist/
+
+    - name: Verify package version
+      id: verify
+      run: |
+        # Get version from tag (remove 'v' prefix)
+        EXPECTED_VERSION="${{ steps.get_tag.outputs.tag }}"
+        EXPECTED_VERSION=${EXPECTED_VERSION#v}
+
+        echo "Expected version: $EXPECTED_VERSION"
+
+        # Find the wheel file
+        WHEEL_FILE=$(ls dist/syft_flwr-$EXPECTED_VERSION*.whl 2>/dev/null | head -n1)
+
+        if [ -z "$WHEEL_FILE" ]; then
+          echo "Error: No wheel file found for version $EXPECTED_VERSION"
+          ls -la dist/
+          exit 1
+        fi
+
+        echo "Testing wheel: $WHEEL_FILE"
+
+        # Test the package
+        ACTUAL_VERSION=$(uv run --with "$WHEEL_FILE" --no-project -- python -c "import syft_flwr; print(syft_flwr.__version__)" 2>/dev/null)
+
+        if [ "$ACTUAL_VERSION" != "$EXPECTED_VERSION" ]; then
+          echo "Error: Version mismatch!"
+          echo "  Expected: $EXPECTED_VERSION"
+          echo "  Actual: $ACTUAL_VERSION"
+          exit 1
+        fi
+
+        echo "✅ Package version verified: $ACTUAL_VERSION"
+        echo "version=$ACTUAL_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Check with twine
+      run: |
+        echo "Validating package with twine..."
+        uvx twine check dist/*
+
+        if [ $? -ne 0 ]; then
+          echo "Error: Package validation failed!"
+          exit 1
+        fi
+
+        echo "✅ Package validation passed!"
+
+    - name: Upload to PyPI
+      env:
+        OM_PYPI_TOKEN: ${{ secrets.OM_PYPI_TOKEN }}
+      run: |
+        echo "Uploading syft-flwr to PyPI..."
+
+        # Verify token is set
+        if [ -z "$OM_PYPI_TOKEN" ]; then
+          echo "Error: PyPI token not set"
+          echo "Please add OM_PYPI_TOKEN to repository secrets"
+          exit 1
+        fi
+
+        # List files to upload
+        echo "Files to upload:"
+        ls -la dist/
+
+        # Upload to PyPI
+        uvx twine upload dist/* \
+          --username __token__ \
+          --password "$OM_PYPI_TOKEN" \
+          --verbose
+
+        if [ $? -ne 0 ]; then
+          echo "Error: Failed to upload package to PyPI"
+          exit 1
+        fi
+
+        echo "✅ Package uploaded to PyPI successfully!"
+
+    - name: Create GitHub Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        TAG="${{ steps.get_tag.outputs.tag }}"
+        VERSION="${{ steps.verify.outputs.version }}"
+
+        echo "Creating GitHub release for $TAG..."
+
+        # Get the previous tag for changelog
+        PREV_TAG=$(git tag -l "v*" --sort=-v:refname | grep -A1 "^${TAG}$" | tail -n1)
+
+        if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "$TAG" ]; then
+          echo "This appears to be the first release or unable to find previous tag"
+          RELEASE_NOTES="## syft-flwr ${VERSION}
+
+        Initial release of syft-flwr ${VERSION}
+
+        ### Installation
+        \`\`\`bash
+        pip install syft-flwr==${VERSION}
+        \`\`\`"
+        else
+          echo "Generating changelog from $PREV_TAG to $TAG"
+
+          # Generate changelog
+          COMMITS=$(git log --pretty=format:"- %s" "$PREV_TAG".."$TAG")
+
+          RELEASE_NOTES="## syft-flwr ${VERSION}
+
+        ### Changes since ${PREV_TAG}
+
+        ${COMMITS}
+
+        ### Installation
+        \`\`\`bash
+        pip install syft-flwr==${VERSION}
+        \`\`\`"
+        fi
+
+        # Check if release already exists
+        if gh release view "$TAG" > /dev/null 2>&1; then
+          echo "Release $TAG already exists, updating it..."
+          gh release edit "$TAG" \
+            --title "syft-flwr $TAG" \
+            --notes "$RELEASE_NOTES"
+
+          # Upload dist files if not already attached
+          gh release upload "$TAG" dist/* --clobber
+        else
+          # Create new release
+          gh release create "$TAG" \
+            --title "syft-flwr $TAG" \
+            --notes "$RELEASE_NOTES" \
+            --verify-tag \
+            dist/*
+        fi
+
+        if [ $? -eq 0 ]; then
+          echo "✅ GitHub release created/updated successfully!"
+        else
+          echo "⚠️ Warning: Failed to create GitHub release, but package was uploaded to PyPI"
+        fi
+
+    - name: Create summary
+      if: always()
+      run: |
+        echo "## 🚀 Release Published" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Tag**: ${{ steps.get_tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version**: ${{ steps.verify.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **PyPI**: https://pypi.org/project/syft-flwr/${{ steps.verify.outputs.version }}/" >> $GITHUB_STEP_SUMMARY
+        echo "- **GitHub Release**: https://github.com/${{ github.repository }}/releases/tag/${{ steps.get_tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Installation" >> $GITHUB_STEP_SUMMARY
+        echo '```bash' >> $GITHUB_STEP_SUMMARY
+        echo "pip install syft-flwr==${{ steps.verify.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
