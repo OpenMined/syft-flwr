@@ -2,7 +2,7 @@
 
 `syft_flwr` is an open source framework that facilitate federated learning (FL) projects using [Flower](https://github.com/adap/flower) over the [SyftBox](https://github.com/OpenMined/syftbox) protocol
 
-![FL Training Process](notebooks/fl-diabetes-prediction/images/fltraining.gif)
+![FL Training Process](https://github.com/OpenMined/syft-flwr/raw/main/notebooks/fl-diabetes-prediction/images/fltraining.gif)
 
 ## Example Usages
 Please look at the `notebooks/` folder for example use cases:
