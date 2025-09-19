@@ -27,11 +27,18 @@ The workflow will automatically:
 
 ## Testing a Release
 
-To test the release process without publishing to PyPI:
+To test the release process without making any permanent changes:
 
 1. Set **skip_publish** to `true` (check the box)
-2. The workflow will do everything except upload to PyPI
-3. Review the built artifacts and ensure everything looks correct
+2. The workflow will:
+   - ✅ Test version bumping and dependency updates
+   - ✅ Build and validate the package
+   - ❌ Skip git commits/pushes (no permanent changes)
+   - ❌ Skip PyPI upload
+   - ❌ Skip GitHub release creation
+   - ❌ Skip notebook lock file updates
+3. Review the workflow logs to ensure everything works correctly
+4. **No cleanup needed** - no permanent changes are made
 
 ## What the Workflow Does
 

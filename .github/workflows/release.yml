@@ -145,9 +145,8 @@ jobs:
       run: |
         echo "Testing built package..."
 
-        # Get the expected version (remove 'v' prefix from tag)
-        EXPECTED_VERSION="${{ steps.version_bump.outputs.version }}"
-        EXPECTED_VERSION=${EXPECTED_VERSION#v}  # Remove 'v' prefix if present
+        # Get the expected version from pyproject.toml (most reliable)
+        EXPECTED_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
         echo "Expected version: $EXPECTED_VERSION"
 
         # Find the wheel file in dist directory
@@ -184,6 +183,7 @@ jobs:
         echo "Package test passed! Version $ACTUAL_VERSION matches expected version."
 
     - name: Commit and push changes
+      if: ${{ !inputs.skip_publish }}
       run: |
         # Add any remaining changes (safety net)
         git add .
@@ -207,6 +207,14 @@ jobs:
         fi
 
         echo "Successfully pushed changes and tags!"
+
+    - name: Skip push (test mode)
+      if: ${{ inputs.skip_publish }}
+      run: |
+        echo "⚠️ Skipping git push (skip_publish=true)"
+        echo "Would push:"
+        git log --oneline -1
+        git tag --list | tail -1
 
     - name: Upload to PyPI
       if: ${{ !inputs.skip_publish }}
@@ -258,6 +266,7 @@ jobs:
         ls -la dist/
 
     - name: Create GitHub Release
+      if: ${{ !inputs.skip_publish }}
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
@@ -289,6 +298,13 @@ jobs:
         else
           echo "GitHub release created successfully!"
         fi
+
+    - name: Skip GitHub Release (test mode)
+      if: ${{ inputs.skip_publish }}
+      run: |
+        echo "⚠️ Skipping GitHub release creation (skip_publish=true)"
+        echo "Would create release with these files:"
+        ls -la dist/
 
     - name: Update notebook lock files
       if: ${{ !inputs.skip_publish }}
