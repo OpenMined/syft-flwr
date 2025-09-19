@@ -578,7 +578,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.3.0" },
     { name = "ray", specifier = ">=2.48.0" },
     { name = "scikit-learn", specifier = "==1.7.1" },
-    { name = "syft-flwr", specifier = ">=0.3.1" },
+    { name = "syft-flwr", specifier = ">=0.3.2" },
     { name = "torch", specifier = ">=2.8.0" },
 ]
 
@@ -2687,7 +2687,7 @@ wheels = [
 
 [[package]]
 name = "syft-flwr"
-version = "0.3.1"
+version = "0.3.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "flwr" },
@@ -2699,9 +2699,9 @@ dependencies = [
     { name = "tomli-w" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2e/2e/340a5c859ca05df4df4501c833162d5d8ffb2b8dad43dca0e454c7a9fccd/syft_flwr-0.3.1.tar.gz", hash = "sha256:81480dc5064ffe7da1c534e09897948f8c1e05ac50353ae4e93f5ea998c94b17", size = 22778, upload-time = "2025-09-19T05:18:44.176Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/55/06/c124117ed103959d48bbc03b487718093fd3f4fb175f42fad7bfd4fe5530/syft_flwr-0.3.2.tar.gz", hash = "sha256:bcda0b2b6440964c8c1e0adc00ec57ad43acd0648cfdda557669c0600b4c58ff", size = 22794, upload-time = "2025-09-19T05:28:59.003Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/04/25/2d6770f5e6234daca5911fefec8c403e221021a6a26493e086336c17abb3/syft_flwr-0.3.1-py3-none-any.whl", hash = "sha256:2fa9030a4682a2193a1b767825f811fcae0c3c839d0860646654b1367f18f0ff", size = 27208, upload-time = "2025-09-19T05:18:42.975Z" },
+    { url = "https://files.pythonhosted.org/packages/82/4f/30c8a2b8cc2acdfa208ef0c7640dc8e86157b559fd4086751efc7d2df6bc/syft_flwr-0.3.2-py3-none-any.whl", hash = "sha256:21f2e54d95126dc2342b27e51d1222555e4e1ee027b037d18ab6d0d951cdc47b", size = 27223, upload-time = "2025-09-19T05:28:57.99Z" },
 ]
 
 [[package]]
