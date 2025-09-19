@@ -11,11 +11,11 @@ on:
           - patch
           - minor
           - major
-      branch:
-        description: 'Branch name to checkout'
-        required: true
-        type: string
-        default: 'main'
+      skip_publish:
+        description: 'Skip PyPI publish (for testing)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   release:
@@ -29,7 +29,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        ref: ${{ inputs.branch }}
+        ref: main  # Always use main branch
         fetch-depth: 0  # Fetch all history for tags
 
     - name: Set up Python
@@ -100,11 +100,12 @@ jobs:
 
         echo "All tests passed!"
 
-    - name: Bump version and update notebooks
+    - name: Bump version and update dependencies
       id: version_bump
       run: |
         echo "Bumping syft-flwr ${{ inputs.bump_type }} version..."
-        # This now also updates notebook dependencies automatically
+
+        # Use just bump which handles everything in one commit
         just bump ${{ inputs.bump_type }}
 
         if [ $? -ne 0 ]; then
@@ -123,12 +124,14 @@ jobs:
         echo "New version: $NEW_VERSION"
         echo "version=${NEW_VERSION}" >> $GITHUB_OUTPUT
 
+        echo "✅ Version bumped and dependencies updated!"
+
     - name: Build package
       run: |
         echo "Checking current directory: $(pwd)"
         rm -rf dist
 
-        echo "Building syft-flwr..."
+        echo "Building syft-flwr using just..."
         just build
 
         if [ $? -ne 0 ]; then
@@ -180,13 +183,19 @@ jobs:
 
         echo "Package test passed! Version $ACTUAL_VERSION matches expected version."
 
-    - name: Push changes and tags
+    - name: Commit and push changes
       run: |
-        # Push changes (the bump command already created the commit)
-        git push origin ${{ inputs.branch }}
+        # Add any remaining changes (safety net)
+        git add .
+
+        # Amend the commit to ensure all changes are included
+        git commit --amend --no-edit || echo "No additional changes to commit"
+
+        # Push changes to main
+        git push origin main
 
         if [ $? -ne 0 ]; then
-          echo "Error: Failed to push changes to branch"
+          echo "Error: Failed to push changes to main"
           exit 1
         fi
 
@@ -200,6 +209,7 @@ jobs:
         echo "Successfully pushed changes and tags!"
 
     - name: Upload to PyPI
+      if: ${{ !inputs.skip_publish }}
       env:
         OM_PYPI_TOKEN: ${{ secrets.OM_PYPI_TOKEN }}
       run: |
@@ -222,15 +232,13 @@ jobs:
 
         # Find wheel files to upload
         WHEEL_FILES=$(ls dist/*.whl 2>/dev/null)
-        TAR_FILES=$(ls dist/*.tar.gz 2>/dev/null)
 
-        if [ -z "$WHEEL_FILES" ] && [ -z "$TAR_FILES" ]; then
-          echo "Error: No distribution files found in dist/"
+        if [ -z "$WHEEL_FILES" ]; then
+          echo "Error: No wheel files found in dist/"
           exit 1
         fi
 
-        echo "Found distribution files to upload:"
-        ls -la dist/
+        echo "Found wheel files to upload: $WHEEL_FILES"
 
         # Upload the built package
         uvx twine upload dist/* --username __token__ --password "$OM_PYPI_TOKEN"
@@ -241,6 +249,13 @@ jobs:
         fi
 
         echo "Package uploaded to PyPI successfully!"
+
+    - name: Skip PyPI Upload
+      if: ${{ inputs.skip_publish }}
+      run: |
+        echo "⚠️ Skipping PyPI upload (skip_publish=true)"
+        echo "Built packages:"
+        ls -la dist/
 
     - name: Create GitHub Release
       env:
@@ -266,11 +281,36 @@ jobs:
         gh release create "$VERSION" \
           --title "syft-flwr $VERSION" \
           --notes "$RELEASE_NOTES" \
-          --target "${{ inputs.branch }}" \
+          --target "main" \
           dist/*
 
         if [ $? -ne 0 ]; then
           echo "Warning: Failed to create GitHub release, but package was uploaded to PyPI"
         else
           echo "GitHub release created successfully!"
+        fi
+
+    - name: Update notebook lock files
+      if: ${{ !inputs.skip_publish }}
+      run: |
+        echo "Waiting for PyPI to index the new version..."
+        sleep 30  # Give PyPI time to index
+
+        echo "Updating notebook lock files with published version..."
+        just update-notebook-locks || {
+          echo "Warning: Failed to update some notebook locks, they may need manual update"
+        }
+
+        # Check if there are changes
+        if git diff --quiet; then
+          echo "No lock file changes needed"
+        else
+          git add notebooks/*/uv.lock
+          git commit -m "chore: update notebook lock files for ${{ steps.version_bump.outputs.version }}
+
+        Updates notebook uv.lock files to use the newly published syft-flwr version from PyPI."
+
+          git push origin main
+
+          echo "✅ Notebook lock files updated and pushed to main"
         fi
