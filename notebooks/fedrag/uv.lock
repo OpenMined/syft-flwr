@@ -668,7 +668,7 @@ requires-dist = [
     { name = "matplotlib", specifier = ">=3.8.3" },
     { name = "numpy", specifier = ">=2.3.0" },
     { name = "sentence-transformers", specifier = ">=5.0.0" },
-    { name = "syft-flwr", specifier = ">=0.3.0" },
+    { name = "syft-flwr", specifier = ">=0.3.1" },
     { name = "tqdm", specifier = ">=4.67" },
 ]
 
@@ -3043,7 +3043,7 @@ wheels = [
 
 [[package]]
 name = "syft-flwr"
-version = "0.3.0"
+version = "0.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "flwr", extra = ["simulation"] },
@@ -3055,9 +3055,9 @@ dependencies = [
     { name = "tomli-w" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/83/91/91970968abfb3f163297226d9c740b38cad1c4b52033c5a3cd08ed05122a/syft_flwr-0.3.0.tar.gz", hash = "sha256:6a8bf3dc98504a721a86a420d5a9d0295a90c61d7df0f8d4c0ebdbb592fc7d3f", size = 22711, upload-time = "2025-09-18T08:28:05.985Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2e/2e/340a5c859ca05df4df4501c833162d5d8ffb2b8dad43dca0e454c7a9fccd/syft_flwr-0.3.1.tar.gz", hash = "sha256:81480dc5064ffe7da1c534e09897948f8c1e05ac50353ae4e93f5ea998c94b17", size = 22778, upload-time = "2025-09-19T05:18:44.176Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b7/a9/2ffb80355f20c61245832453ee79960cb00c8e7ac50f4f9cb47487e3324f/syft_flwr-0.3.0-py3-none-any.whl", hash = "sha256:10d8aaba1a7b008f5795f28337a3e6476951466ac3799ef5ad30ea2b9c2023b5", size = 27159, upload-time = "2025-09-18T08:28:04.994Z" },
+    { url = "https://files.pythonhosted.org/packages/04/25/2d6770f5e6234daca5911fefec8c403e221021a6a26493e086336c17abb3/syft_flwr-0.3.1-py3-none-any.whl", hash = "sha256:2fa9030a4682a2193a1b767825f811fcae0c3c839d0860646654b1367f18f0ff", size = 27208, upload-time = "2025-09-19T05:18:42.975Z" },
 ]
 
 [[package]]
