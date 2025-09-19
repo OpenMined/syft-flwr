@@ -69,15 +69,12 @@ bump increment="patch":
         uv lock
         echo -e "{{ _green }}✅ Main project uv.lock updated!{{ _nc }}"
 
-        # Update notebook dependencies
-        echo -e "{{ _cyan }}Updating notebook dependencies...{{ _nc }}"
-        just update-notebook-deps
-
-        # Add and amend everything into the single commit created by cz
-        git add uv.lock notebooks/*/pyproject.toml
+        # Add and amend the lock file update to the commit created by cz
+        git add uv.lock
         git commit --amend --no-edit
 
-        echo -e "{{ _green }}✅ Version bump and all dependencies updated in single commit!{{ _nc }}"
+        echo -e "{{ _green }}✅ Version bump and lock file updated in single commit!{{ _nc }}"
+        echo -e "{{ _yellow }}Note: Notebook lock files will be updated after publishing to PyPI{{ _nc }}"
     else
         echo -e "{{ _red }}Error: Version bump failed{{ _nc }}"
         exit 1

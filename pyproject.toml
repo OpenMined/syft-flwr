@@ -66,4 +66,5 @@ update_changelog_on_bump = false
 version_files = [
     "pyproject.toml:^version\\s*=\\s*\"(?P<version>.*)\"$",
     "src/syft_flwr/__init__.py:^__version__\\s*=\\s*\"(?P<version>.*)\"$",
+    "notebooks/*/pyproject.toml:\"syft-flwr>=(?P<version>[^\"]+)\"",
 ]
