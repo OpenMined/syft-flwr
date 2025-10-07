@@ -30,6 +30,48 @@ test:
     bash scripts/test.sh
 
 # ---------------------------------------------------------------------------------------------------------------------
+
+[group('utils')]
+clean:
+    #!/bin/sh
+    echo "{{ _cyan }}Cleaning up local files and directories...{{ _nc }}"
+
+    # Function to remove directories by name pattern
+    remove_dirs() {
+        dir_name=$1
+        dirs=$(find . -type d -name "$dir_name" 2>/dev/null)
+        if [ -n "$dirs" ]; then
+            echo "$dirs" | while read -r dir; do
+                echo "  {{ _red }}✗{{ _nc }} Removing $dir"
+                rm -rf "$dir"
+            done
+        fi
+    }
+
+    # Remove root directories if they exist
+    for dir in ./.clients ./dist ./.e2e ./.logs ./.pytest_cache; do
+        if [ -d "$dir" ]; then
+            echo "  {{ _red }}✗{{ _nc }} Removing $dir"
+            rm -rf "$dir"
+        fi
+    done
+
+    # Remove directories by name pattern
+    remove_dirs ".server"
+    remove_dirs ".clients"
+    remove_dirs ".syftbox"
+    remove_dirs "local_syftbox_network"
+
+    # Remove __pycache__ directories
+    pycache_count=$(find . -type d -name "__pycache__" 2>/dev/null | wc -l)
+    if [ "$pycache_count" -gt 0 ]; then
+        echo "  {{ _red }}✗{{ _nc }} Removing $pycache_count __pycache__ directories"
+        find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+    fi
+
+    echo "{{ _green }}✓ Clean complete!{{ _nc }}"
+
+# ---------------------------------------------------------------------------------------------------------------------
 # Version Management Commands
 
 # Show current version
