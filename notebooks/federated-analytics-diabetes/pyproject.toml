@@ -16,4 +16,4 @@ dependencies = [
 ]
 
 # [tool.uv.sources]
-# syft-flwr = { path = "../../" }  # for development
+# syft-flwr = { path = "../../", editable = true }  # for development
