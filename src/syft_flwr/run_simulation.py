@@ -1,19 +1,41 @@
 import asyncio
 import os
+import shutil
 import sys
 import tempfile
 from pathlib import Path
+from typing import TypeAlias
 
 from loguru import logger
 from syft_core import Client
 from syft_crypto import did_path, ensure_bootstrap, get_did_document, private_key_path
 from syft_rds.client.rds_client import RDSClient
-from syft_rds.orchestra import SingleRDSStack, remove_rds_stack_dir
+from syft_rds.orchestra import SingleRDSStack
 from typing_extensions import Optional, Union
 
 from syft_flwr.config import load_flwr_pyproject
 from syft_flwr.consts import SYFT_FLWR_ENCRYPTION_ENABLED
 from syft_flwr.utils import create_temp_client
+
+PathLike: TypeAlias = Union[str, os.PathLike, Path]
+
+
+def remove_rds_stack_dir(
+    key: str = "shared_client_dir", root_dir: Optional[PathLike] = None
+) -> None:
+    root_path = (
+        Path(root_dir).resolve() / key if root_dir else Path(tempfile.gettempdir(), key)
+    )
+
+    if not root_path.exists():
+        logger.warning(f"⚠️ Skipping removal, as path {root_path} does not exist")
+        return None
+
+    try:
+        shutil.rmtree(root_path)
+        logger.info(f"✅ Successfully removed directory {root_path}")
+    except Exception as e:
+        logger.error(f"❌ Failed to remove directory {root_path}: {e}")
 
 
 def _setup_mock_rds_clients(

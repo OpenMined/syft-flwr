@@ -4152,7 +4152,7 @@ requires-dist = [
     { name = "flwr-datasets", extras = ["vision"], specifier = ">=0.5.0" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "safetensors", specifier = ">=0.6.2" },
-    { name = "syft-rds", specifier = ">=0.4.0" },
+    { name = "syft-rds", editable = "../syft-rds" },
     { name = "tomli", specifier = ">=2.2.1" },
     { name = "tomli-w", specifier = ">=1.2.0" },
     { name = "typing-extensions", specifier = ">=4.13.0" },
@@ -4174,8 +4174,8 @@ dev = [
 
 [[package]]
 name = "syft-rds"
-version = "0.4.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.4.1"
+source = { editable = "../syft-rds" }
 dependencies = [
     { name = "ipython", version = "8.37.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "ipython", version = "9.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -4189,9 +4189,29 @@ dependencies = [
     { name = "typer" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6b/65/3cf2c2764268a77814aa08960419ca493a5eb547a0991042d1428aa94970/syft_rds-0.4.0.tar.gz", hash = "sha256:5e04f9e9d5ed5861ecaed4ec819e2121ac1405331855bac33a579f0511d13cd9", size = 173543, upload-time = "2025-10-08T05:27:30.652Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/22/60/e2d703c45b3a6ee49a8b8b1a2d106eab7b19a4ee85f507aded4ae9ef66dc/syft_rds-0.4.0-py3-none-any.whl", hash = "sha256:76104348f09fa980533d63820025a5dcf1013665d261662b520a89aaa6e1b979", size = 207016, upload-time = "2025-10-08T05:27:27.856Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "ipython", specifier = ">=8.18.1" },
+    { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "loguru", specifier = ">=0.7.3" },
+    { name = "nh3", specifier = ">=0.3.1" },
+    { name = "pydantic", extras = ["email"], specifier = ">=2.12.0" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "rich", specifier = ">=13.5.0,<14.0.0" },
+    { name = "syft-event", specifier = ">=0.4.1" },
+    { name = "typer", specifier = ">=0.12.5,<0.13.0" },
+    { name = "typing-extensions", specifier = ">=4.15.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "jupyter", specifier = ">=1.1.1" },
+    { name = "pandas", specifier = ">=2.3.2" },
+    { name = "pre-commit", specifier = ">=4.3.0" },
+    { name = "pytest", specifier = ">=8.4.2" },
+    { name = "pytest-asyncio", specifier = ">=1.2.0" },
 ]
 
 [[package]]

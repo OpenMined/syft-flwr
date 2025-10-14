@@ -7,6 +7,7 @@ build-backend = "hatchling.build"
 [project]
 name = "fl-diabetes-prediction"
 version = "1.0.0"
+requires-python = ">=3.12"
 description = "Federated Learning for Diabetes Prediction"
 license = "Apache-2.0"
 dependencies = [
@@ -17,8 +18,13 @@ dependencies = [
     "scikit-learn==1.6.1",
     "loguru",
     "jupyter",
-    "syft_flwr",
+    "freezegun==1.5.5",
+    "syft_flwr==0.4.0",
 ]
+
+[tool.uv.sources.syft-flwr]
+path = "/Users/khoaguin/Desktop/projects/OpenMined/syft-flwr"
+editable = true
 
 [tool.hatch.build.targets.wheel]
 packages = [
@@ -33,7 +39,7 @@ serverapp = "fl_diabetes_prediction.server_app:app"
 clientapp = "fl_diabetes_prediction.client_app:app"
 
 [tool.flwr.app.config]
-num-server-rounds = 3
+num-server-rounds = 2
 partition-id = 0
 num-partitions = 1
 
@@ -44,9 +50,9 @@ default = "local-simulation"
 num-supernodes = 2
 
 [tool.syft_flwr]
-app_name = "khoa@openmined.org_fl-diabetes-prediction_1758078634"
+app_name = "ds@openmined.org_fl-diabetes-prediction_1760437649"
 datasites = [
-    "dkn.work@protonmail.com",
-    "dknguyen.work@gmail.com",
+    "do1@openmined.org",
+    "do2@openmined.org",
 ]
-aggregator = "khoa@openmined.org"
+aggregator = "ds@openmined.org"
