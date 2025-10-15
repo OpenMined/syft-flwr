@@ -49,7 +49,9 @@ class MessageHandler:
         error_reply = create_flwr_message(
             content=RecordDict(),
             reply_to=message,
-            message_type=message.metadata.message_type if message else MessageType.TASK,
+            message_type=message.metadata.message_type
+            if message
+            else MessageType.SYSTEM,
             dst_node_id=message.metadata.src_node_id if message else 0,
             group_id=message.metadata.group_id if message else "",
             error=error,
