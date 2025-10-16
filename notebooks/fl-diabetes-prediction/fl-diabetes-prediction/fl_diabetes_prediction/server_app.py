@@ -1,5 +1,7 @@
 """fltabular: Flower Example on Adult Census Income Tabular Dataset."""
 
+import os
+
 from flwr.common import Context, ndarrays_to_parameters
 from flwr.server import ServerApp, ServerAppComponents, ServerConfig
 
@@ -32,17 +34,38 @@ def server_fn(context: Context) -> ServerAppComponents:
 
     from syft_flwr.strategy import FedAvgWithModelSaving
 
-    save_path = Path(__file__).parent.parent.parent / "weights"
+    # Always use RDS job output directory
+    output_dir = os.getenv("OUTPUT_DIR")
+    if output_dir is None:
+        output_dir = Path.home() / ".syftbox/rds/"
+        output_dir.mkdir(parents=True, exist_ok=True)
+    save_path = Path(output_dir) / "weights"
+
+    # Fault tolerance configuration
+    # With 4 total clients, system can tolerate 50% failure (2 clients)
+    # and still have 2 clients for training
+    min_available_clients = context.run_config.get("min-available-clients", 1)
+    min_fit_clients = context.run_config.get("min-fit-clients", 1)
+    min_evaluate_clients = context.run_config.get("min-evaluate-clients", 1)
+    fraction_fit = context.run_config.get("fraction-fit", 1)
+    fraction_evaluate = context.run_config.get("fraction-evaluate", 1)
+
     print("⚙️ CONFIGURING STRATEGY")
     print("   Strategy: FedAvgWithModelSaving")
     print(f"   Model save path: {save_path}")
-    print("   Min available clients: 2")
+    print(f"   Min available clients: {min_available_clients}")
+    print(f"   Min fit clients: {min_fit_clients}")
+    print(f"   Min evaluate clients: {min_evaluate_clients}")
+    print(f"   Fraction fit: {fraction_fit}")
+    print(f"   Fraction evaluate: {fraction_evaluate}")
 
     strategy = FedAvgWithModelSaving(
         save_path=save_path,
-        fraction_fit=1.0,
-        fraction_evaluate=1.0,
-        min_available_clients=2,
+        fraction_fit=fraction_fit,
+        fraction_evaluate=fraction_evaluate,
+        min_available_clients=min_available_clients,
+        min_fit_clients=min_fit_clients,
+        min_evaluate_clients=min_evaluate_clients,
         initial_parameters=params,
         evaluate_metrics_aggregation_fn=weighted_average,
     )

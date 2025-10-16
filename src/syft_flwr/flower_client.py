@@ -153,7 +153,6 @@ class RequestProcessor:
             error = Error(
                 code=ErrorCode.CLIENT_APP_RAISED_EXCEPTION, reason=error_message
             )
-            self.box._stop_event.set()
             return self.message_handler.create_error_reply(message, error)
 
 

@@ -169,16 +169,19 @@ class SyftGrid(Grid):
 
         return message_ids
 
-    def pull_messages(self, message_ids: List[str]) -> Dict[str, Message]:
+    def pull_messages(self, message_ids: List[str]) -> Tuple[Dict[str, Message], set]:
         """Pull response messages from clients using future IDs.
 
         Args:
             message_ids: List of future IDs from push_messages()
 
         Returns:
-            Dict mapping message_id to Flower Message response
+            Tuple of:
+            - Dict mapping message_id to Flower Message response (includes both successes and client errors)
+            - Set of message_ids that are completed (got response, deserialized successfully, or permanently failed)
         """
         messages = {}
+        completed_ids = set()
 
         for msg_id in message_ids:
             try:
@@ -194,9 +197,15 @@ class SyftGrid(Grid):
                 # Process the response
                 message = self._process_response(response, msg_id)
 
+                # Always delete the future once we get a response (success or error)
+                # This prevents retrying failed messages indefinitely
+                rpc_db.delete_future(future_id=msg_id, client=self._client)
+
+                # Mark as completed regardless of success/failure
+                completed_ids.add(msg_id)
+
                 if message:
                     messages[msg_id] = message
-                    rpc_db.delete_future(future_id=msg_id, client=self._client)
 
             except Exception as e:
                 logger.error(f"❌ Unexpected error pulling message {msg_id}: {e}")
@@ -205,7 +214,7 @@ class SyftGrid(Grid):
         # Log summary
         self._log_pull_summary(messages, message_ids)
 
-        return messages
+        return messages, completed_ids
 
     def send_and_receive(
         self,
@@ -448,9 +457,10 @@ class SyftGrid(Grid):
 
         while pending_ids and (timeout is None or time.time() < end_time):
             # Pull available messages
-            batch = self.pull_messages(pending_ids)
+            batch, completed = self.pull_messages(list(pending_ids))
             responses.update(batch)
-            pending_ids.difference_update(batch.keys())
+            # Remove all completed IDs (both successes and failures)
+            pending_ids.difference_update(completed)
 
             if pending_ids:
                 time.sleep(poll_interval)  # Configurable polling interval
@@ -487,25 +497,25 @@ class SyftGrid(Grid):
             )
             return None
 
-        # Check for errors in message
+        # Check for errors in message (but still return it so Flower can handle the failure)
         if message.has_error():
             error = message.error
             logger.error(
                 f"❌ Message {msg_id} returned error with code={error.code}, "
-                f"reason={error.reason}"
+                f"reason={error.reason}. Returning error message to Flower for proper failure handling."
             )
-            return None
+        else:
+            # Log successful pull only if no error
+            encryption_status = (
+                "🔐 ENCRYPTED" if self._encryption_enabled else "📥 PLAINTEXT"
+            )
+            logger.debug(
+                f"{encryption_status} Pulled message from {response.url} "
+                f"with metadata: {message.metadata}, "
+                f"size: {len(response_body) / 1024 / 1024:.2f} MB"
+            )
 
-        # Log successful pull
-        encryption_status = (
-            "🔐 ENCRYPTED" if self._encryption_enabled else "📥 PLAINTEXT"
-        )
-        logger.debug(
-            f"{encryption_status} Pulled message from {response.url} "
-            f"with metadata: {message.metadata}, "
-            f"size: {len(response_body) / 1024 / 1024:.2f} MB"
-        )
-
+        # Always return the message (even with errors) so Flower's strategy can handle failures
         return message
 
     def _try_decrypt_response(self, body: bytes, msg_id: str) -> bytes:
@@ -545,14 +555,26 @@ class SyftGrid(Grid):
             )
 
     def _get_timeout(self, timeout: Optional[float]) -> Optional[float]:
-        """Get timeout value from environment or parameter."""
+        """Get timeout value from environment or parameter.
+
+        Priority:
+        1. Explicit timeout parameter
+        2. SYFT_FLWR_MSG_TIMEOUT environment variable
+        3. Default: 120 seconds (to prevent indefinite waiting)
+        """
+        # First check explicit parameter
+        if timeout is not None:
+            logger.debug(f"Message timeout: {timeout}s (from parameter)")
+            return timeout
+
+        # Then check environment variable
         env_timeout = os.environ.get(SYFT_FLWR_MSG_TIMEOUT)
         if env_timeout is not None:
             timeout = float(env_timeout)
+            logger.debug(f"Message timeout: {timeout}s (from env var)")
+            return timeout
 
-        if timeout is not None:
-            logger.debug(f"Message timeout: {timeout}s")
-        else:
-            logger.debug("No timeout - will wait indefinitely for replies")
-
-        return timeout
+        # Default to 120 seconds to prevent indefinite waiting
+        default_timeout = 120.0
+        logger.debug(f"Message timeout: {default_timeout}s (default)")
+        return default_timeout
