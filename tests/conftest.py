@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 from syft_core import Client
-from syft_rds.orchestra import SingleRDSStack
+from syft_rds import init_session
 from typing_extensions import Generator
 
 from syft_flwr.utils import create_temp_client
@@ -31,59 +31,29 @@ def temp_workspace() -> Generator[Path, None, None]:
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-# Helper functions for creating RDS server stacks
-def _setup_single_rds_server(email: str, temp_workspace: Path):
-    client: Client = create_temp_client(email, temp_workspace)
-    stack = SingleRDSStack(client)
-
-    return stack
-
-
 @pytest.fixture
 def ds_client(temp_workspace):
     """Get just the DS client for simple tests."""
-    return _setup_single_rds_server(DS_EMAIL, temp_workspace).client
+    syftbox_client: Client = create_temp_client(DS_EMAIL, temp_workspace)
+    rds_client = init_session(
+        host=DS_EMAIL,
+        email=DS_EMAIL,
+        syftbox_client=syftbox_client,
+        start_syft_event_server=True,
+    )
+    yield syftbox_client
+    rds_client.stop_server()
 
 
 @pytest.fixture
 def do1_client(temp_workspace):
     """Get just the DO1 client for simple tests."""
-    return _setup_single_rds_server(DO1_EMAIL, temp_workspace).client
-
-
-def _create_participant_info(email: str, stack):
-    """Helper to create participant info dict."""
-    return {
-        "email": email,
-        "stack": stack,
-        "client": stack.client,
-    }
-
-
-def _cleanup_stacks(*stacks):
-    """Helper to cleanup multiple stacks."""
-    for stack in stacks:
-        if stack:
-            stack.stop()
-
-
-@pytest.fixture
-def full_fl_network(temp_workspace) -> Generator[dict, None, None]:
-    """
-    Setup a complete FL network with 1 DS (aggregator) and 2 DOs.
-    This fixture sets up the full RDS stack for each participant.
-    """
-    # Setup all three RDS server stacks using helper function
-    ds_stack = _setup_single_rds_server(DS_EMAIL, temp_workspace)
-    do1_stack = _setup_single_rds_server(DO1_EMAIL, temp_workspace)
-    do2_stack = _setup_single_rds_server(DO2_EMAIL, temp_workspace)
-
-    yield {
-        "ds": _create_participant_info(DS_EMAIL, ds_stack),
-        "do1": _create_participant_info(DO1_EMAIL, do1_stack),
-        "do2": _create_participant_info(DO2_EMAIL, do2_stack),
-        "root_dir": temp_workspace,
-    }
-
-    # Cleanup using helper function
-    _cleanup_stacks(ds_stack, do1_stack, do2_stack)
+    syftbox_client: Client = create_temp_client(DO1_EMAIL, temp_workspace)
+    rds_client = init_session(
+        host=DO1_EMAIL,
+        email=DO1_EMAIL,
+        syftbox_client=syftbox_client,
+        start_syft_event_server=True,
+    )
+    yield syftbox_client
+    rds_client.stop_server()

@@ -9,8 +9,8 @@ from typing import TypeAlias
 from loguru import logger
 from syft_core import Client
 from syft_crypto import did_path, ensure_bootstrap, get_did_document, private_key_path
+from syft_rds import init_session
 from syft_rds.client.rds_client import RDSClient
-from syft_rds.orchestra import SingleRDSStack
 from typing_extensions import Optional, Union
 
 from syft_flwr.config import load_flwr_pyproject
@@ -48,16 +48,18 @@ def _setup_mock_rds_clients(
     ds_syftbox_client = create_temp_client(
         email=aggregator, workspace_dir=simulated_syftbox_network_dir
     )
-    ds_stack = SingleRDSStack(client=ds_syftbox_client)
-    ds_rds_client = ds_stack.init_session(host=aggregator)
+    ds_rds_client = init_session(
+        host=aggregator, email=aggregator, syftbox_client=ds_syftbox_client
+    )
 
     do_rds_clients = []
     for datasite in datasites:
         do_syftbox_client = create_temp_client(
             email=datasite, workspace_dir=simulated_syftbox_network_dir
         )
-        do_stack = SingleRDSStack(client=do_syftbox_client)
-        do_rds_client = do_stack.init_session(host=datasite)
+        do_rds_client = init_session(
+            host=datasite, email=datasite, syftbox_client=do_syftbox_client
+        )
         do_rds_clients.append(do_rds_client)
 
     return simulated_syftbox_network_dir, do_rds_clients, ds_rds_client
