@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-syft-rds = { path = "/Users/khoaguin/Desktop/projects/OpenMined/syft-rds", editable = true }  # for development
+syft-rds = { git = "https://github.com/OpenMined/syft-rds/", branch = "feature/python-runtime-uv-envs" }  # for development
 
 [project.scripts]
 syft_flwr = "syft_flwr.cli:main"

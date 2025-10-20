@@ -4072,7 +4072,7 @@ wheels = [
 
 [[package]]
 name = "syft-core"
-version = "0.2.8"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic", extra = ["email"] },
@@ -4080,9 +4080,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wcmatch" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/41/63/a68eb1c684dee2e10799152a8ce4e6420f5035e40eaddeae4ea001ec1178/syft_core-0.2.8.tar.gz", hash = "sha256:834319e51786ce4448382a8e15c20e923fb713e8ecf9925f064df58208622df1", size = 16231, upload-time = "2025-07-12T21:08:24.555Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/51/11/b8d839523c6dff526b11d238796858bf70b4c6d4c20f41259c2296a7d252/syft_core-0.3.0.tar.gz", hash = "sha256:aee35660c3b5190add2cc8c5af655c03af8d413dd30e060eefcd54baa98eeb58", size = 17509, upload-time = "2025-10-12T04:54:13.682Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4a/fc/88818d165b201352759f5bb6da47f4f9204b53d0222919216a0f39812802/syft_core-0.2.8-py3-none-any.whl", hash = "sha256:7c3511b7dfef9cc5bff6f72e24d7e5aa66bd02dcee8e088d852755c017063444", size = 14500, upload-time = "2025-07-12T21:08:23.308Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/3f/54732f87c6fff25abdc690348a681a7fd1583ba058c61e625259adaf1f8d/syft_core-0.3.0-py3-none-any.whl", hash = "sha256:407362c44c5a028f012db99c720bdcaa497908bcf40fa18b67a4fb4e0702f51e", size = 14570, upload-time = "2025-10-12T04:54:12.628Z" },
 ]
 
 [[package]]
@@ -4103,7 +4103,7 @@ wheels = [
 
 [[package]]
 name = "syft-event"
-version = "0.4.1"
+version = "0.4.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "loguru" },
@@ -4112,9 +4112,9 @@ dependencies = [
     { name = "syft-rpc" },
     { name = "watchdog" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0b/99/37f57aa066716614afeb6edea82f58a76f6c328ba933de2ae090fa3b8093/syft_event-0.4.1.tar.gz", hash = "sha256:c865ff8e197757b5bb8278cdd8c66886ae69d5c289659141fd961bae9b95f942", size = 15580, upload-time = "2025-09-18T07:02:24.098Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f2/a5/0f5b552cea10d03ffa3f9095b970cc3fd6254dfab5e87b7be59df8bb4359/syft_event-0.4.2.tar.gz", hash = "sha256:9fe8df2d2fcd41e487f9084a6bb067d693c276d050b1d1500dd386abe360fd52", size = 16109, upload-time = "2025-10-14T14:01:17.84Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/62/a9/45443ad5f5eafa81bca48ff9e1ab49da9c7dc479819e83985bc87d5fcab2/syft_event-0.4.1-py3-none-any.whl", hash = "sha256:cd62c7f16f8d56fa699b19d8d19bba437aa19276fd95a0969bcac89edb34ddb8", size = 17512, upload-time = "2025-09-18T07:02:22.802Z" },
+    { url = "https://files.pythonhosted.org/packages/03/3f/8cf3379983da454f2a668f05d60d7e34f15b12f9d9d7235a9b02128d911d/syft_event-0.4.2-py3-none-any.whl", hash = "sha256:bc3467950c72813e14933d1c9f87df68aeff30f305f7285d782fb4fc0129f884", size = 18057, upload-time = "2025-10-14T14:01:16.848Z" },
 ]
 
 [[package]]
@@ -4152,7 +4152,7 @@ requires-dist = [
     { name = "flwr-datasets", extras = ["vision"], specifier = ">=0.5.0" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "safetensors", specifier = ">=0.6.2" },
-    { name = "syft-rds", editable = "../syft-rds" },
+    { name = "syft-rds", git = "https://github.com/OpenMined/syft-rds/?branch=feature%2Fpython-runtime-uv-envs" },
     { name = "tomli", specifier = ">=2.2.1" },
     { name = "tomli-w", specifier = ">=1.2.0" },
     { name = "typing-extensions", specifier = ">=4.13.0" },
@@ -4175,7 +4175,7 @@ dev = [
 [[package]]
 name = "syft-rds"
 version = "0.4.1"
-source = { editable = "../syft-rds" }
+source = { git = "https://github.com/OpenMined/syft-rds/?branch=feature%2Fpython-runtime-uv-envs#490525394f0b0f6d1fe2119ce358ec5466d822f7" }
 dependencies = [
     { name = "ipython", version = "8.37.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "ipython", version = "9.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -4188,30 +4188,6 @@ dependencies = [
     { name = "syft-event" },
     { name = "typer" },
     { name = "typing-extensions" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ipython", specifier = ">=8.18.1" },
-    { name = "jinja2", specifier = ">=3.1.6" },
-    { name = "loguru", specifier = ">=0.7.3" },
-    { name = "nh3", specifier = ">=0.3.1" },
-    { name = "pydantic", extras = ["email"], specifier = ">=2.12.0" },
-    { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "rich", specifier = ">=13.5.0,<14.0.0" },
-    { name = "syft-event", specifier = ">=0.4.1" },
-    { name = "typer", specifier = ">=0.12.5,<0.13.0" },
-    { name = "typing-extensions", specifier = ">=4.15.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "jupyter", specifier = ">=1.1.1" },
-    { name = "pandas", specifier = ">=2.3.2" },
-    { name = "pre-commit", specifier = ">=4.3.0" },
-    { name = "pytest", specifier = ">=8.4.2" },
-    { name = "pytest-asyncio", specifier = ">=1.2.0" },
 ]
 
 [[package]]
