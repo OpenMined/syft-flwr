@@ -3,7 +3,7 @@ name = "syft-flwr"
 version = "0.4.0"
 description = "syft_flwr is an open source framework that facilitate federated learning projects using Flower over the SyftBox protocol"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "syft-rds>=0.4.0",
     "flwr[simulation]==1.21.0",
@@ -17,6 +17,7 @@ dependencies = [
 
 [tool.uv.sources]
 syft-rds = { git = "https://github.com/OpenMined/syft-rds/", branch = "feature/python-runtime-uv-envs" }  # for development
+# syft-rds = { path = "../syft-rds", editable = true }  # for development
 
 [project.scripts]
 syft_flwr = "syft_flwr.cli:main"
