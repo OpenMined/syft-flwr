@@ -129,11 +129,21 @@ class RequestProcessor:
             logger.error(
                 f"❌ Failed to deserialize message from {original_sender}: {e}"
             )
-            error = Error(
-                code=ErrorCode.CLIENT_APP_RAISED_EXCEPTION,
-                reason=f"Message deserialization failed: {e}",
+            logger.debug(
+                f"Request body preview (first 200 bytes): {str(request.body[:200])}"
             )
-            return self.message_handler.create_error_reply(None, error)
+
+            # Try to send error back, but don't crash if we can't
+            try:
+                error = Error(
+                    code=ErrorCode.CLIENT_APP_RAISED_EXCEPTION,
+                    reason=f"Message deserialization failed: {e}",
+                )
+                return self.message_handler.create_error_reply(None, error)
+            except Exception as reply_error:
+                logger.error(f"Failed to create error reply: {reply_error}")
+                # Return None to skip sending response (better than crashing)
+                return None
 
         # Handle message
         try:

@@ -104,8 +104,19 @@ def create_flwr_message(
             return Message(reply_to=reply_to, error=error)
         return Message(content=content, reply_to=reply_to)
     else:
+        # Allow standalone error messages when we can't parse the original message
         if error is not None:
-            raise ValueError("Error and reply_to cannot both be None")
+            logger.warning(
+                "Creating error message without reply_to (failed to parse request)"
+            )
+            return Message(
+                content=RecordDict(),
+                dst_node_id=dst_node_id,
+                message_type=message_type,
+                ttl=ttl,
+                group_id=group_id,
+                error=error,
+            )
         return Message(
             content=content,
             dst_node_id=dst_node_id,
