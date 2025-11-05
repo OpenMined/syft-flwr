@@ -17,8 +17,8 @@ dependencies = [
     "ray>=2.48.0",
 ]
 
-# [tool.uv.sources]  # for development
-# syft-flwr = { path = "../../" }
+[tool.uv.sources]
+syft-flwr = { path = "/Users/khoaguin/Desktop/projects/OpenMined/syft-flwr" , editable = true }  # for development
 
 [tool.uv]
 package = false

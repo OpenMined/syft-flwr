@@ -101,5 +101,5 @@ def bootstrap(
     __copy_main_py(flwr_project_dir)
 
     logger.info(
-        f"Successfully bootstrapped syft-flwr project at {flwr_project_dir} with datasites {datasites} and aggregator {aggregator} ✅"
+        f"Successfully bootstrapped syft-flwr project at {flwr_project_dir} with datasites {datasites} and aggregator '{aggregator}' ✅"
     )

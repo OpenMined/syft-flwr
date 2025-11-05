@@ -1,5 +1,4 @@
 import os
-import sys
 from pathlib import Path
 
 from syft_core import Client
@@ -21,11 +20,8 @@ is_server = client.email in config["tool"]["syft_flwr"]["aggregator"]
 if is_client:
     # run by each DO
     syftbox_run_flwr_client(flower_project_dir)
-    sys.exit(0)  # Exit cleanly after client work completes
 elif is_server:
     # run by the DS
     syftbox_run_flwr_server(flower_project_dir)
-    sys.exit(0)  # Exit cleanly after server work completes
 else:
     raise ValueError(f"{client.email} is not in config.datasites or config.aggregator")
-    sys.exit(1)  # Exit with error code

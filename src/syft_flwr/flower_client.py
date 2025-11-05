@@ -49,7 +49,9 @@ class MessageHandler:
         error_reply = create_flwr_message(
             content=RecordDict(),
             reply_to=message,
-            message_type=message.metadata.message_type if message else MessageType.TASK,
+            message_type=message.metadata.message_type
+            if message
+            else MessageType.SYSTEM,
             dst_node_id=message.metadata.src_node_id if message else 0,
             group_id=message.metadata.group_id if message else "",
             error=error,
@@ -127,11 +129,15 @@ class RequestProcessor:
             logger.error(
                 f"❌ Failed to deserialize message from {original_sender}: {e}"
             )
-            error = Error(
-                code=ErrorCode.CLIENT_APP_RAISED_EXCEPTION,
-                reason=f"Message deserialization failed: {e}",
+            logger.debug(
+                f"Request body preview (first 200 bytes): {str(request.body[:200])}"
             )
-            return self.message_handler.create_error_reply(None, error)
+
+            # Can't create error reply without valid message - skip response
+            logger.warning(
+                "Skipping error reply (cannot create without valid parsed message)"
+            )
+            return None
 
         # Handle message
         try:
@@ -151,7 +157,6 @@ class RequestProcessor:
             error = Error(
                 code=ErrorCode.CLIENT_APP_RAISED_EXCEPTION, reason=error_message
             )
-            self.box._stop_event.set()
             return self.message_handler.create_error_reply(message, error)
 
 
