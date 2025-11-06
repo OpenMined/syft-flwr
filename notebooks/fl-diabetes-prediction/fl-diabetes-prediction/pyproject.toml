@@ -18,13 +18,8 @@ dependencies = [
     "scikit-learn==1.6.1",
     "loguru",
     "jupyter",
-    "freezegun==1.5.5",
-    "syft_flwr==0.4.0",
+    "syft_flwr",
 ]
-
-[tool.uv.sources.syft-flwr]
-path = "/Users/khoaguin/Desktop/projects/OpenMined/syft-flwr"
-editable = true
 
 [tool.hatch.build.targets.wheel]
 packages = [
@@ -55,7 +50,7 @@ default = "local-simulation"
 num-supernodes = 2
 
 [tool.syft_flwr]
-app_name = "ds@openmined.org_fl-diabetes-prediction_1760595439"
+app_name = "ds@openmined.org_fl-diabetes-prediction_1762397349"
 datasites = [
     "do1@openmined.org",
     "do2@openmined.org",
