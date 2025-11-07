@@ -14,7 +14,7 @@ dependencies = [
     "ipywidgets>=8.1.7",
     "scikit-learn==1.7.1",
     "torch>=2.8.0",
-    "ray==2.31.0",
+    "ray==2.50.0",
 ]
 
 # [tool.uv.sources]
