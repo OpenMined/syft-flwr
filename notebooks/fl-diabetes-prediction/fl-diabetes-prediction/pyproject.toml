@@ -21,6 +21,10 @@ dependencies = [
     "syft_flwr",
 ]
 
+# [tool.uv.sources.syft-flwr]
+# path = ""
+# editable = true
+
 [tool.hatch.build.targets.wheel]
 packages = [
     ".",
@@ -49,10 +53,3 @@ default = "local-simulation"
 [tool.flwr.federations.local-simulation.options]
 num-supernodes = 2
 
-[tool.syft_flwr]
-app_name = "ds@openmined.org_fl-diabetes-prediction_1762397349"
-datasites = [
-    "do1@openmined.org",
-    "do2@openmined.org",
-]
-aggregator = "ds@openmined.org"

@@ -3276,7 +3276,7 @@ requires-dist = [
     { name = "flwr-datasets", extras = ["vision"], specifier = ">=0.5.0" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "safetensors", specifier = ">=0.6.2" },
-    { name = "syft-rds", specifier = ">=0.4.2" },
+    { name = "syft-rds", specifier = ">=0.5.0" },
     { name = "tomli", specifier = ">=2.3.0" },
     { name = "tomli-w", specifier = ">=1.2.0" },
     { name = "typing-extensions", specifier = ">=4.13.0" },
@@ -3298,7 +3298,7 @@ dev = [
 
 [[package]]
 name = "syft-rds"
-version = "0.4.2"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ipython" },
@@ -3312,9 +3312,9 @@ dependencies = [
     { name = "typer" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5d/a1/098a3835a612c4b5dc34ca5bbae176f3c0982e3d26193217d40bb911b6e5/syft_rds-0.4.2.tar.gz", hash = "sha256:3c1c370da44dc820b1a30fd67289a2ca7acb486e3965864528e4f7c85b0bc531", size = 184326, upload-time = "2025-11-05T03:27:01.594Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/de/66/afb2abc9616194ff818fab54033468239fb19606b12b81c82b0c690e43dd/syft_rds-0.5.0.tar.gz", hash = "sha256:cfff8978919f705690b86a59e81ca7765c9c8582e20b4e14837fecf6a87b5cf9", size = 185683, upload-time = "2025-11-07T04:17:54.255Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3f/d3/fad0a7f5c55118ca33eed73b7dc7c4df0f606a03a79a5dcff523ca2c5929/syft_rds-0.4.2-py3-none-any.whl", hash = "sha256:0a9206a1d64b1b5c593220df46226e99aad5002538174197ac0b08618a5b917d", size = 218852, upload-time = "2025-11-05T03:26:59.816Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/3e/8b258be7b2232c6196630e80d6e31a20db45ef49fd982a63c6ae7e9e09fb/syft_rds-0.5.0-py3-none-any.whl", hash = "sha256:4b93236b74a2ee3873013c98310237698199378f925ff3c2788e02fbfbf7f96f", size = 220434, upload-time = "2025-11-07T04:17:52.367Z" },
 ]
 
 [[package]]
