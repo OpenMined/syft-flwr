@@ -5,7 +5,7 @@ description = "Workspace for diabetes prediction using federated learning with F
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "syft-flwr>=0.4.1",
+    "syft-flwr>=0.4.2",
     "flwr-datasets>=0.5.0",
     "imblearn>=0.0",
     "jupyterlab>=4.4.4",
