@@ -3238,7 +3238,7 @@ wheels = [
 
 [[package]]
 name = "syft-flwr"
-version = "0.4.2"
+version = "0.4.3"
 source = { editable = "." }
 dependencies = [
     { name = "flwr", extra = ["simulation"] },
