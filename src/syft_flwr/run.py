@@ -2,7 +2,7 @@ import warnings
 from pathlib import Path
 from uuid import uuid4
 
-from flwr.client.client_app import LoadClientAppError
+from flwr.clientapp.client_app import LoadClientAppError
 from flwr.common import Context
 from flwr.common.object_ref import load_app
 from flwr.common.record import RecordDict

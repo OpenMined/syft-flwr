@@ -89,9 +89,6 @@ def bootstrap(
     if not is_valid_datasite(aggregator):
         raise ValueError(f"'{aggregator}' is not a valid datasite")
 
-    if len(datasites) < 2:
-        raise ValueError("You must provide at least two datasites as Flower clients")
-
     for ds in datasites:
         if not is_valid_datasite(ds):
             raise ValueError(f"{ds} is not a valid datasite")
