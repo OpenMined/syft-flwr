@@ -17,7 +17,8 @@ dependencies = [
     "tomli-w>=1.2.0",
 ]
 
-# [tool.uv.sources]
+[tool.uv.sources]
+syft-client = { path = "../syft-client", editable = true }  # for development
 # syft-rds = { git = "https://github.com/OpenMined/syft-rds/", branch = "feature/python-runtime-uv-envs" }  # for development
 # syft-rds = { path = "../syft-rds", editable = true }  # for development
 

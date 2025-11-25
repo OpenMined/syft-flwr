@@ -38,11 +38,18 @@ from pathlib import Path
 from time import sleep
 
 import pytest
+import tomli
 from dotenv import load_dotenv
 from google_auth_oauthlib.flow import InstalledAppFlow
 from huggingface_hub import snapshot_download
 from loguru import logger
 from syft_client.sync.syftbox_manager import SyftboxManager
+from typing_extensions import Any
+
+import syft_flwr
+
+# Event message filename prefix used by syft-client for file sync events
+SYFT_EVENT_MESSAGE_PREFIX = "syfteventsmessagev3_"
 
 # ==============================================================================
 # Configuration and Setup
@@ -73,7 +80,7 @@ def create_token(cred_path: Path, token_path: Path, scopes: list):
 def remove_syftboxes_from_drive(
     email_do1, email_do2, email_ds, token_path_do1, token_path_do2, token_path_ds
 ):
-    """Clean up Google Drive by deleting all SyftBox folders for all 3 participants."""
+    """Clean up Google Drive by deleting all SyftBox folders and event messages for all 3 participants."""
     logger.info("Cleaning up SyftBoxes from Google Drive...")
 
     # Clean DO1 + DS
@@ -106,10 +113,79 @@ def remove_syftboxes_from_drive(
 
     logger.success("✅ All SyftBoxes cleaned up from Google Drive")
 
+    # Clean up event messages (syfteventsmessagev3_*) from all participants' Drives
+    logger.info("Cleaning up syft event messages from Google Drive...")
+
+    # Get drive_service from each manager's connection
+    do1_drive = do1_manager.connection_router.connections[0].drive_service
+    do2_drive = do2_manager.connection_router.connections[0].drive_service
+    ds_drive = ds_manager1.connection_router.connections[0].drive_service
+
+    do1_count = delete_event_messages_from_drive(do1_drive)
+    logger.info(f"  ✅ Deleted {do1_count} event message(s) from DO1's Drive")
+
+    do2_count = delete_event_messages_from_drive(do2_drive)
+    logger.info(f"  ✅ Deleted {do2_count} event message(s) from DO2's Drive")
+
+    ds_count = delete_event_messages_from_drive(ds_drive)
+    logger.info(f"  ✅ Deleted {ds_count} event message(s) from DS's Drive")
+
+    total = do1_count + do2_count + ds_count
+    logger.success(f"✅ Cleaned up {total} event message(s) total")
+
 
 def has_file(root_dir, filename):
     """Check if a file exists anywhere in the directory tree."""
     return any(p.name == filename for p in Path(root_dir).rglob("*"))
+
+
+def delete_event_messages_from_drive(drive_service: Any) -> int:
+    """
+    Delete all syfteventsmessagev3_* files from Google Drive.
+
+    These files are created by syft-client for P2P file sync events and can
+    accumulate in Google Drive during testing.
+
+    Args:
+        drive_service: Google Drive API service instance
+
+    Returns:
+        Number of files deleted
+    """
+    query = f"name contains '{SYFT_EVENT_MESSAGE_PREFIX}' and trashed=false"
+    deleted_count = 0
+
+    try:
+        page_token = None
+        while True:
+            results = (
+                drive_service.files()
+                .list(
+                    q=query,
+                    fields="nextPageToken, files(id, name)",
+                    pageSize=100,
+                    pageToken=page_token,
+                )
+                .execute()
+            )
+
+            files = results.get("files", [])
+            for file in files:
+                try:
+                    drive_service.files().delete(fileId=file["id"]).execute()
+                    logger.debug(f"    Deleted event message: {file['name']}")
+                    deleted_count += 1
+                except Exception as e:
+                    logger.warning(f"    Failed to delete {file['name']}: {e}")
+
+            page_token = results.get("nextPageToken")
+            if not page_token:
+                break
+
+    except Exception as e:
+        logger.error(f"Error searching for event messages: {e}")
+
+    return deleted_count
 
 
 # ==============================================================================
@@ -370,24 +446,6 @@ def syft_managers(cleanup_drive, validate_environment):
     logger.info(f"  - DS: {env['EMAIL_DS']}")
     logger.info(f"  - DS peers (initial): {[p.email for p in ds_manager.peers]}")
 
-    # Phase 2.5: Sync all managers to establish peer connections
-    logger.info("Phase 2.5: Syncing all managers to establish peer connections...")
-
-    logger.info("  Syncing DO1...")
-    do1_manager.sync()
-    logger.info(f"    DO1 peers after sync: {[p.email for p in do1_manager.peers]}")
-
-    logger.info("  Syncing DO2...")
-    do2_manager.sync()
-    logger.info(f"    DO2 peers after sync: {[p.email for p in do2_manager.peers]}")
-
-    logger.info("  Syncing DS...")
-    ds_manager.sync()
-    logger.info(f"    DS peers after sync: {[p.email for p in ds_manager.peers]}")
-
-    # Wait for sync operations to complete
-    sleep(2)
-
     # Verify DS has both DOs as peers
     ds_peer_emails = [p.email for p in ds_manager.peers]
     assert (
@@ -396,9 +454,8 @@ def syft_managers(cleanup_drive, validate_environment):
     assert (
         env["EMAIL_DO2"] in ds_peer_emails
     ), f"DO2 not in DS peers after sync: {ds_peer_emails}"
-    logger.success(f"✅ DS has {len(ds_manager.peers)} peers: {ds_peer_emails}")
 
-    logger.success("✅ Phase 2.5 complete: All peer connections established")
+    logger.success(f"✅ DS has {len(ds_manager.peers)} peers: {ds_peer_emails}")
 
     return {
         "ds": ds_manager,
@@ -488,13 +545,6 @@ def test_phase_04_ds_discovers_datasets(syft_managers):
     ds_manager = syft_managers["ds"]
     env = syft_managers["env"]
 
-    # DS syncs to receive dataset metadata from peers
-    logger.info("DS syncing to receive dataset metadata from peers...")
-    ds_manager.sync()
-
-    # Wait for sync
-    sleep(2)
-
     # Verify peers are still connected (should be from Phase 2.5)
     peers = ds_manager.peers
     peer_emails = [p.email for p in peers]
@@ -507,6 +557,11 @@ def test_phase_04_ds_discovers_datasets(syft_managers):
     assert env["EMAIL_DO1"] in peer_emails, f"DO1 not in peers: {peer_emails}"
     assert env["EMAIL_DO2"] in peer_emails, f"DO2 not in peers: {peer_emails}"
     logger.success(f"✅ DS has {len(peers)} peers: {peer_emails}")
+
+    # DS syncs to receive dataset metadata from peers
+    logger.info("DS syncing to receive dataset metadata from peers...")
+    ds_manager.sync()
+    sleep(2)
 
     # Discover datasets from DO1
     logger.info(f"Discovering datasets from DO1 ({env['EMAIL_DO1']})...")
@@ -547,136 +602,137 @@ def test_phase_04_ds_discovers_datasets(syft_managers):
 # Phase 5: Prepare FL Training Code with syft_flwr.bootstrap()
 # ==============================================================================
 
-# @pytest.fixture(scope="module")
-# def fl_project_bootstrapped(syft_managers):
-#     """Phase 5: Bootstrap FL project using syft_flwr for P2P federated learning."""
-#     logger.info("Phase 5: Bootstrapping FL project for distributed execution...")
 
-#     env = syft_managers["env"]
-#     ds_email = env["EMAIL_DS"]
-#     do_emails = [env["EMAIL_DO1"], env["EMAIL_DO2"]]
+@pytest.fixture(scope="module")
+def fl_project_bootstrapped(syft_managers):
+    """Phase 5: Bootstrap FL project using syft_flwr for P2P federated learning."""
+    logger.info("Phase 5: Bootstrapping FL project for distributed execution...")
 
-#     # Create temp directory for FL code
-#     temp_project = Path(tempfile.mkdtemp()) / "fl-diabetes-prediction"
+    env = syft_managers["env"]
+    ds_email = env["EMAIL_DS"]
+    do_emails = [env["EMAIL_DO1"], env["EMAIL_DO2"]]
 
-#     try:
-#         # Copy FL project
-#         shutil.copytree(FL_PROJECT_DIR, temp_project)
-#         logger.info(f"Copied FL project to {temp_project}")
+    # Create temp directory for FL code
+    fl_temp_project = Path(tempfile.mkdtemp()) / "fl-diabetes-prediction"
 
-#         # Bootstrap the project with syft_flwr
-#         # This will:
-#         # 1. Create main.py entry point that routes to client/server based on email
-#         # 2. Update pyproject.toml with syft_flwr config
-#         syft_flwr.bootstrap(
-#             temp_project,
-#             aggregator=ds_email,
-#             datasites=do_emails
-#         )
-#         logger.info(f"Bootstrapped project with:")
-#         logger.info(f"  - Aggregator (DS): {ds_email}")
-#         logger.info(f"  - Datasites (DOs): {do_emails}")
+    try:
+        # Copy FL project
+        shutil.copytree(FL_PROJECT_DIR, fl_temp_project)
+        logger.info(f"Copied FL project to {fl_temp_project}")
 
-#         # Verify bootstrapped structure
-#         assert (temp_project / "main.py").exists(), "main.py should be created by bootstrap()"
-#         assert (temp_project / "fl_diabetes_prediction" / "task.py").exists()
-#         assert (temp_project / "pyproject.toml").exists()
+        # Remove existing main.py if it exists (bootstrap() will create a new one)
+        existing_main_py = fl_temp_project / "main.py"
+        if existing_main_py.exists():
+            existing_main_py.unlink()
+            logger.info("Removed existing main.py (bootstrap will create new one)")
 
-#         # Verify bootstrap updated pyproject.toml
-#         with open(temp_project / "pyproject.toml", "rb") as f:
-#             pyproject = tomli.load(f)
-#         assert "syft_flwr" in pyproject["tool"], "Bootstrap should add [tool.syft_flwr] section"
-#         assert pyproject["tool"]["syft_flwr"]["aggregator"] == ds_email
-#         assert set(pyproject["tool"]["syft_flwr"]["datasites"]) == set(do_emails)
+        # Bootstrap the project with syft_flwr
+        # This will:
+        # 1. Create main.py entry point that routes to client/server based on email
+        # 2. Update pyproject.toml with syft_flwr config
+        syft_flwr.bootstrap(fl_temp_project, aggregator=ds_email, datasites=do_emails)
+        logger.info("Bootstrapped project with:")
+        logger.info(f"  - Aggregator (DS): {ds_email}")
+        logger.info(f"  - Datasites (DOs): {do_emails}")
 
-#         logger.success("✅ FL project bootstrapped and validated")
-#         logger.info(f"Project path: {temp_project}")
+        # Verify bootstrapped structure
+        assert (
+            fl_temp_project / "main.py"
+        ).exists(), "main.py should be created by bootstrap()"
+        assert (fl_temp_project / "fl_diabetes_prediction" / "task.py").exists()
+        assert (fl_temp_project / "pyproject.toml").exists()
 
-#         yield temp_project
+        # Verify bootstrap updated pyproject.toml
+        with open(fl_temp_project / "pyproject.toml", "rb") as f:
+            pyproject = tomli.load(f)
+        assert (
+            "syft_flwr" in pyproject["tool"]
+        ), "Bootstrap should add [tool.syft_flwr] section"
+        assert pyproject["tool"]["syft_flwr"]["aggregator"] == ds_email
+        assert set(pyproject["tool"]["syft_flwr"]["datasites"]) == set(do_emails)
 
-#     finally:
-#         # Cleanup
-#         if temp_project.parent.exists():
-#             shutil.rmtree(temp_project.parent, ignore_errors=True)
-#             logger.info("✅ FL code temp directory cleaned up")
+        logger.success("✅ FL project bootstrapped and validated")
+        logger.info(f"Project path: {fl_temp_project}")
 
+        yield fl_temp_project
 
-# # ==============================================================================
-# # Phase 6: Submit Jobs to Data Owners
-# # ==============================================================================
-
-# def test_phase_06_submit_jobs(syft_managers, fl_training_code):
-#     """Phase 6: DS submits FL training jobs to both DOs."""
-#     logger.info("Phase 6: Submitting jobs to data owners...")
-
-#     ds_manager = syft_managers["ds"]
-#     env = syft_managers["env"]
-#     main_py_path = fl_training_code / "main.py"
-
-#     # Submit job to DO1
-#     logger.info(f"Submitting job to {env['EMAIL_DO1']}...")
-#     ds_manager.submit_python_job(
-#         user=env["EMAIL_DO1"],
-#         code_path=str(main_py_path),
-#         job_name="diabetes-fl-training.job",
-#     )
-#     logger.success(f"✅ Job submitted to DO1")
-
-#     # Submit job to DO2
-#     logger.info(f"Submitting job to {env['EMAIL_DO2']}...")
-#     ds_manager.submit_python_job(
-#         user=env["EMAIL_DO2"],
-#         code_path=str(main_py_path),
-#         job_name="diabetes-fl-training.job",
-#     )
-#     logger.success(f"✅ Job submitted to DO2")
-
-#     # Wait for jobs to propagate (implicit in submit_python_job, but add small buffer)
-#     sleep(2)
-
-#     logger.success("✅ Phase 6 complete: Jobs submitted to both DOs")
+    finally:
+        # Cleanup
+        if fl_temp_project.parent.exists():
+            shutil.rmtree(fl_temp_project.parent, ignore_errors=True)
+            logger.info("✅ FL code temp directory cleaned up")
 
 
-# # ==============================================================================
-# # Phase 7: DOs Review and Approve Jobs
-# # ==============================================================================
+# ==============================================================================
+# Phase 6: Submit Jobs to Data Owners
+# ==============================================================================
 
-# def test_phase_07_dos_approve_jobs(syft_managers):
-#     """Phase 7: DOs review and approve jobs from DS."""
-#     logger.info("Phase 7: DOs approving jobs...")
 
-#     do1_manager = syft_managers["do1"]
-#     do2_manager = syft_managers["do2"]
+def test_phase_06_submit_jobs(syft_managers, fl_project_bootstrapped):
+    """Phase 6: DS submits FL training jobs to both DOs."""
+    logger.info("Phase 6: Submitting jobs to data owners...")
 
-#     # DO1 syncs to receive job
-#     logger.info("DO1 syncing to receive jobs...")
-#     do1_manager.sync()
-#     sleep(1)
+    ds_manager = syft_managers["ds"]
+    env = syft_managers["env"]
+    main_py_path = fl_project_bootstrapped / "main.py"
 
-#     do1_jobs = do1_manager.job_client.jobs
-#     assert len(do1_jobs) > 0, "No jobs received by DO1"
-#     logger.info(f"✅ DO1 received {len(do1_jobs)} job(s)")
+    # Submit job to DO1
+    logger.info(f"Submitting job to {env['EMAIL_DO1']}...")
+    ds_manager.submit_python_job(
+        user=env["EMAIL_DO1"],
+        code_path=str(main_py_path),
+        job_name="diabetes-fl-training.job",
+    )
+    logger.success("✅ Job submitted to DO1")
 
-#     # DO1 approves first job
-#     job_to_approve = do1_jobs[0]
-#     logger.info(f"DO1 approving job: {job_to_approve.name}")
-#     job_to_approve.approve()
-#     logger.success("✅ DO1 approved job")
+    # Submit job to DO2
+    logger.info(f"Submitting job to {env['EMAIL_DO2']}...")
+    ds_manager.submit_python_job(
+        user=env["EMAIL_DO2"],
+        code_path=str(main_py_path),
+        job_name="diabetes-fl-training.job",
+    )
+    logger.success("✅ Job submitted to DO2")
 
-#     # DO2 syncs to receive job
-#     logger.info("DO2 syncing to receive jobs...")
-#     do2_manager.sync()
-#     sleep(1)
+    # Wait for jobs to propagate (implicit in submit_python_job, but add small buffer)
+    sleep(2)
 
-#     do2_jobs = do2_manager.job_client.jobs
-#     assert len(do2_jobs) > 0, "No jobs received by DO2"
-#     logger.info(f"✅ DO2 received {len(do2_jobs)} job(s)")
+    logger.success("✅ Phase 6 complete: Jobs submitted to both DOs")
 
-#     # DO2 approves
-#     do2_jobs[0].approve()
-#     logger.success("✅ DO2 approved job")
 
-#     logger.success("✅ Phase 7 complete: Both DOs approved jobs")
+# ==============================================================================
+# Phase 7: DOs Review and Approve Jobs
+# ==============================================================================
+
+
+def test_phase_07_dos_approve_jobs(syft_managers):
+    """Phase 7: DOs review and approve jobs from DS."""
+    logger.info("Phase 7: DOs approving jobs...")
+
+    do1_manager = syft_managers["do1"]
+    do2_manager = syft_managers["do2"]
+
+    logger.info("DO1 getting jobs...")
+    do1_jobs = do1_manager.jobs
+    assert len(do1_jobs) > 0, "No jobs received by DO1"
+    logger.info(f"✅ DO1 received {len(do1_jobs)} job(s)")
+
+    # DO1 approves first job
+    job_to_approve = do1_jobs[0]
+    logger.info(f"DO1 approving job: {job_to_approve.name}")
+    job_to_approve.approve()
+    logger.success("✅ DO1 approved job")
+
+    logger.info("DO2 getting jobs...")
+    do2_jobs = do2_manager.jobs
+    assert len(do2_jobs) > 0, "No jobs received by DO2"
+    logger.info(f"✅ DO2 received {len(do2_jobs)} job(s)")
+
+    # DO2 approves
+    do2_jobs[0].approve()
+    logger.success("✅ DO2 approved job")
+
+    logger.success("✅ Phase 7 complete: Both DOs approved jobs")
 
 
 # # ==============================================================================
