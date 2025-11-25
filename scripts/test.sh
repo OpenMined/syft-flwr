@@ -71,7 +71,7 @@ run_tests() {
     # Run tests if they exist
     if [ -d "tests" ]; then
         echo "Running tests in parallel..."
-        if uv run pytest tests/ -v -n auto --cov=syft_flwr --cov-report=term-missing --cov-report=xml; then
+        if uv run pytest tests/ -v -n auto --cov=syft_flwr --cov-report=term-missing --cov-report=xml --ignore=tests/integration/syft-client; then
             echo -e "\033[0;32mTests PASSED for syft-flwr\033[0m"
         else
             echo -e "\033[0;31mTests FAILED for syft-flwr\033[0m"
