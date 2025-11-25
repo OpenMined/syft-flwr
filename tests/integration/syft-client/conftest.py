@@ -233,33 +233,40 @@ def syft_managers(cleanup_drive, validate_environment):
 
     env = validate_environment
 
-    # Create DO1 + DS pair
+    # Create DO1 + DS pair WITHOUT auto-adding peers
+    # We add peers manually AFTER all managers are created to ensure symmetric setup
     ds_manager, do1_manager = SyftboxManager.pair_with_google_drive_testing_connection(
         do_email=env["EMAIL_DO1"],
         ds_email=env["EMAIL_DS"],
         do_token_path=env["token_path_do1"],
         ds_token_path=env["token_path_ds"],
         use_in_memory_cache=False,  # CRITICAL: Must be False for file access
-        add_peers=True,  # Establishes DS <-> DO1 connection
+        add_peers=False,  # Don't auto-add peers (we add manually below)
         load_peers=False,
         clear_caches=True,
     )
     logger.info(f"   Created DO1 ({env['EMAIL_DO1']}) + DS ({env['EMAIL_DS']}) pair")
 
-    # Create DO2 manager (WITHOUT creating new DS manager)
+    # Create DO2 manager
     _, do2_manager = SyftboxManager.pair_with_google_drive_testing_connection(
         do_email=env["EMAIL_DO2"],
         ds_email=env["EMAIL_DS"],
         do_token_path=env["token_path_do2"],
         ds_token_path=env["token_path_ds"],
         use_in_memory_cache=False,
-        add_peers=False,  # DON'T auto-add peers (would create new DS manager)
+        add_peers=False,
         load_peers=False,
         clear_caches=True,
     )
     logger.info(f"   Created DO2 ({env['EMAIL_DO2']}) manager")
 
-    # Manually establish DS <-> DO2 peer connection
+    # Add ALL peers manually AFTER all managers created
+    # This ensures symmetric setup for both DOs (fixes dataset discovery issue)
+    logger.info("Adding DO1 as peer to DS...")
+    ds_manager.add_peer(env["EMAIL_DO1"])
+    do1_manager.add_peer(env["EMAIL_DS"])
+    logger.info("   DS <-> DO1 peer connection established")
+
     logger.info("Adding DO2 as peer to DS...")
     ds_manager.add_peer(env["EMAIL_DO2"])
     do2_manager.add_peer(env["EMAIL_DS"])
