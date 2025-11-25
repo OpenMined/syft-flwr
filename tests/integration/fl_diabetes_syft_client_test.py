@@ -38,7 +38,6 @@ from pathlib import Path
 from time import sleep
 
 import pytest
-import tomli
 from dotenv import load_dotenv
 from google_auth_oauthlib.flow import InstalledAppFlow
 from huggingface_hub import snapshot_download
@@ -46,10 +45,9 @@ from loguru import logger
 from syft_client.sync.syftbox_manager import SyftboxManager
 from typing_extensions import Any
 
-import syft_flwr
-
-# Event message filename prefix used by syft-client for file sync events
+# Event message filename prefixes used by syft-client for file sync events
 SYFT_EVENT_MESSAGE_PREFIX = "syfteventsmessagev3_"
+SYFT_EVENT_MESSAGE_PREFIX_V2 = "msgv2_"  # Older format
 
 # ==============================================================================
 # Configuration and Setup
@@ -141,7 +139,7 @@ def has_file(root_dir, filename):
 
 def delete_event_messages_from_drive(drive_service: Any) -> int:
     """
-    Delete all syfteventsmessagev3_* files from Google Drive.
+    Delete all syft event message files (v2 and v3) from Google Drive.
 
     These files are created by syft-client for P2P file sync events and can
     accumulate in Google Drive during testing.
@@ -152,7 +150,11 @@ def delete_event_messages_from_drive(drive_service: Any) -> int:
     Returns:
         Number of files deleted
     """
-    query = f"name contains '{SYFT_EVENT_MESSAGE_PREFIX}' and trashed=false"
+    # Search for both v2 (msgv2_*) and v3 (syfteventsmessagev3_*) message formats
+    query = (
+        f"(name contains '{SYFT_EVENT_MESSAGE_PREFIX}' or "
+        f"name contains '{SYFT_EVENT_MESSAGE_PREFIX_V2}') and trashed=false"
+    )
     deleted_count = 0
 
     try:
@@ -507,6 +509,10 @@ def test_phase_03_upload_datasets(syft_managers, prepare_datasets):
     assert do1_datasets[0].name == "pima-indians-diabetes-database"
     logger.success(f"✅ DO1 dataset uploaded: {do1_datasets[0].name}")
 
+    # QUICK FIX: Sync to propagate dataset metadata to peers
+    logger.info("DO1 syncing dataset to peers...")
+    do1_manager.sync()
+
     # DO2 uploads partition 1
     partition_1 = dataset_dir / "pima-indians-diabetes-database-1"
 
@@ -528,9 +534,13 @@ def test_phase_03_upload_datasets(syft_managers, prepare_datasets):
     assert do2_datasets[0].name == "pima-indians-diabetes-database"
     logger.success(f"✅ DO2 dataset uploaded: {do2_datasets[0].name}")
 
-    # Wait for sync to propagate
-    sleep(2)
-    logger.success("✅ Phase 3 complete: Both datasets uploaded")
+    # QUICK FIX: Sync to propagate dataset metadata to peers
+    logger.info("DO2 syncing dataset to peers...")
+    do2_manager.sync()
+
+    # Wait for sync to propagate through Google Drive
+    sleep(3)
+    logger.success("✅ Phase 3 complete: Both datasets uploaded and synced")
 
 
 # ==============================================================================
@@ -558,23 +568,41 @@ def test_phase_04_ds_discovers_datasets(syft_managers):
     assert env["EMAIL_DO2"] in peer_emails, f"DO2 not in peers: {peer_emails}"
     logger.success(f"✅ DS has {len(peers)} peers: {peer_emails}")
 
-    # DS syncs to receive dataset metadata from peers
-    logger.info("DS syncing to receive dataset metadata from peers...")
-    ds_manager.sync()
-    sleep(2)
+    # DS syncs to receive dataset metadata from peers (with retry)
+    # Dataset sync can take time due to Google Drive propagation delays
+    max_retries = 3
+    retry_delay = 3  # seconds
 
-    # Discover datasets from DO1
-    logger.info(f"Discovering datasets from DO1 ({env['EMAIL_DO1']})...")
-    do1_datasets = ds_manager.datasets.get_all(datasite=env["EMAIL_DO1"])
-    logger.info(f"Found {len(do1_datasets)} dataset(s) from DO1")
+    do1_datasets = []
+    do2_datasets = []
+
+    for attempt in range(max_retries):
+        logger.info(
+            f"DS syncing to receive dataset metadata (attempt {attempt + 1}/{max_retries})..."
+        )
+        ds_manager.sync()
+        sleep(retry_delay)
+
+        # Discover datasets from DO1
+        logger.info(f"Discovering datasets from DO1 ({env['EMAIL_DO1']})...")
+        do1_datasets = ds_manager.datasets.get_all(datasite=env["EMAIL_DO1"])
+        logger.info(f"Found {len(do1_datasets)} dataset(s) from DO1")
+
+        # Discover datasets from DO2
+        logger.info(f"Discovering datasets from DO2 ({env['EMAIL_DO2']})...")
+        do2_datasets = ds_manager.datasets.get_all(datasite=env["EMAIL_DO2"])
+        logger.info(f"Found {len(do2_datasets)} dataset(s) from DO2")
+
+        if len(do1_datasets) > 0 and len(do2_datasets) > 0:
+            break
+
+        if attempt < max_retries - 1:
+            logger.warning(f"Datasets not yet synced, retrying in {retry_delay}s...")
+
     assert len(do1_datasets) > 0, f"No datasets found from DO1. DS peers: {peer_emails}"
     assert do1_datasets[0].name == "pima-indians-diabetes-database"
     logger.success(f"✅ DS discovered dataset from DO1: {do1_datasets[0].name}")
 
-    # Discover datasets from DO2
-    logger.info(f"Discovering datasets from DO2 ({env['EMAIL_DO2']})...")
-    do2_datasets = ds_manager.datasets.get_all(datasite=env["EMAIL_DO2"])
-    logger.info(f"Found {len(do2_datasets)} dataset(s) from DO2")
     assert len(do2_datasets) > 0, f"No datasets found from DO2. DS peers: {peer_emails}"
     assert do2_datasets[0].name == "pima-indians-diabetes-database"
     logger.success(f"✅ DS discovered dataset from DO2: {do2_datasets[0].name}")
@@ -599,68 +627,127 @@ def test_phase_04_ds_discovers_datasets(syft_managers):
 
 
 # ==============================================================================
-# Phase 5: Prepare FL Training Code with syft_flwr.bootstrap()
+# Phase 5: Prepare Job Script
 # ==============================================================================
 
 
 @pytest.fixture(scope="module")
-def fl_project_bootstrapped(syft_managers):
-    """Phase 5: Bootstrap FL project using syft_flwr for P2P federated learning."""
-    logger.info("Phase 5: Bootstrapping FL project for distributed execution...")
+def simple_job_script():
+    """Create a simple Python script that processes the diabetes dataset."""
+    logger.info("Phase 5: Creating simple job script for testing...")
 
-    env = syft_managers["env"]
-    ds_email = env["EMAIL_DS"]
-    do_emails = [env["EMAIL_DO1"], env["EMAIL_DO2"]]
+    script_content = """
+import pandas as pd
+import syft_client as sc
 
-    # Create temp directory for FL code
-    fl_temp_project = Path(tempfile.mkdtemp()) / "fl-diabetes-prediction"
+# Use syft:// URL to access private data
+# The resolve_path function uses SYFTBOX_FOLDER env var set by job runner
+# Structure: syft://private/syft_datasets/<dataset_name>/<filename>
+data_path = "syft://private/syft_datasets/pima-indians-diabetes-database/train.csv"
 
-    try:
-        # Copy FL project
-        shutil.copytree(FL_PROJECT_DIR, fl_temp_project)
-        logger.info(f"Copied FL project to {fl_temp_project}")
+try:
+    resolved_path = sc.resolve_path(data_path)
+    print(f"Resolved path: {resolved_path}")
+except Exception as e:
+    print(f"ERROR: Failed to resolve path: {e}")
+    exit(1)
 
-        # Remove existing main.py if it exists (bootstrap() will create a new one)
-        existing_main_py = fl_temp_project / "main.py"
-        if existing_main_py.exists():
-            existing_main_py.unlink()
-            logger.info("Removed existing main.py (bootstrap will create new one)")
+if not resolved_path.exists():
+    print(f"ERROR: train.csv not found at {resolved_path}")
+    exit(1)
 
-        # Bootstrap the project with syft_flwr
-        # This will:
-        # 1. Create main.py entry point that routes to client/server based on email
-        # 2. Update pyproject.toml with syft_flwr config
-        syft_flwr.bootstrap(fl_temp_project, aggregator=ds_email, datasites=do_emails)
-        logger.info("Bootstrapped project with:")
-        logger.info(f"  - Aggregator (DS): {ds_email}")
-        logger.info(f"  - Datasites (DOs): {do_emails}")
+# Load and print data summary
+df = pd.read_csv(resolved_path)
 
-        # Verify bootstrapped structure
-        assert (
-            fl_temp_project / "main.py"
-        ).exists(), "main.py should be created by bootstrap()"
-        assert (fl_temp_project / "fl_diabetes_prediction" / "task.py").exists()
-        assert (fl_temp_project / "pyproject.toml").exists()
+# Print data summary
+print("=" * 50)
+print("DIABETES DATASET SUMMARY")
+print("=" * 50)
+print(f"Dataset path: {resolved_path}")
+print(f"Shape: {df.shape}")
+print(f"Columns: {list(df.columns)}")
+print(f"Data types:")
+print(df.dtypes)
+print("=" * 50)
+print("RESULT: SUCCESS")
+"""
 
-        # Verify bootstrap updated pyproject.toml
-        with open(fl_temp_project / "pyproject.toml", "rb") as f:
-            pyproject = tomli.load(f)
-        assert (
-            "syft_flwr" in pyproject["tool"]
-        ), "Bootstrap should add [tool.syft_flwr] section"
-        assert pyproject["tool"]["syft_flwr"]["aggregator"] == ds_email
-        assert set(pyproject["tool"]["syft_flwr"]["datasites"]) == set(do_emails)
+    # Write to temp file
+    temp_dir = Path(tempfile.mkdtemp())
+    script_path = temp_dir / "analyze_diabetes.py"
+    script_path.write_text(script_content)
 
-        logger.success("✅ FL project bootstrapped and validated")
-        logger.info(f"Project path: {fl_temp_project}")
+    logger.success(f"✅ Created simple job script at {script_path}")
 
-        yield fl_temp_project
+    yield script_path
 
-    finally:
-        # Cleanup
-        if fl_temp_project.parent.exists():
-            shutil.rmtree(fl_temp_project.parent, ignore_errors=True)
-            logger.info("✅ FL code temp directory cleaned up")
+    # Cleanup
+    shutil.rmtree(temp_dir, ignore_errors=True)
+    logger.info("✅ Job script temp directory cleaned up")
+
+
+# NOTE: fl_project_bootstrapped fixture is commented out for now because
+# submit_python_job only accepts single files (folders are temporarily disabled).
+# Uncomment when syft-client supports folder uploads for FL training.
+#
+# @pytest.fixture(scope="module")
+# def fl_project_bootstrapped(syft_managers):
+#     """Phase 5: Bootstrap FL project using syft_flwr for P2P federated learning."""
+#     logger.info("Phase 5: Bootstrapping FL project for distributed execution...")
+#
+#     env = syft_managers["env"]
+#     ds_email = env["EMAIL_DS"]
+#     do_emails = [env["EMAIL_DO1"], env["EMAIL_DO2"]]
+#
+#     # Create temp directory for FL code
+#     fl_temp_project = Path(tempfile.mkdtemp()) / "fl-diabetes-prediction"
+#
+#     try:
+#         # Copy FL project
+#         shutil.copytree(FL_PROJECT_DIR, fl_temp_project)
+#         logger.info(f"Copied FL project to {fl_temp_project}")
+#
+#         # Remove existing main.py if it exists (bootstrap() will create a new one)
+#         existing_main_py = fl_temp_project / "main.py"
+#         if existing_main_py.exists():
+#             existing_main_py.unlink()
+#             logger.info("Removed existing main.py (bootstrap will create new one)")
+#
+#         # Bootstrap the project with syft_flwr
+#         # This will:
+#         # 1. Create main.py entry point that routes to client/server based on email
+#         # 2. Update pyproject.toml with syft_flwr config
+#         syft_flwr.bootstrap(fl_temp_project, aggregator=ds_email, datasites=do_emails)
+#         logger.info("Bootstrapped project with:")
+#         logger.info(f"  - Aggregator (DS): {ds_email}")
+#         logger.info(f"  - Datasites (DOs): {do_emails}")
+#
+#         # Verify bootstrapped structure
+#         assert (
+#             fl_temp_project / "main.py"
+#         ).exists(), "main.py should be created by bootstrap()"
+#         assert (fl_temp_project / "fl_diabetes_prediction" / "task.py").exists()
+#         assert (fl_temp_project / "pyproject.toml").exists()
+#
+#         # Verify bootstrap updated pyproject.toml
+#         with open(fl_temp_project / "pyproject.toml", "rb") as f:
+#             pyproject = tomli.load(f)
+#         assert (
+#             "syft_flwr" in pyproject["tool"]
+#         ), "Bootstrap should add [tool.syft_flwr] section"
+#         assert pyproject["tool"]["syft_flwr"]["aggregator"] == ds_email
+#         assert set(pyproject["tool"]["syft_flwr"]["datasites"]) == set(do_emails)
+#
+#         logger.success("✅ FL project bootstrapped and validated")
+#         logger.info(f"Project path: {fl_temp_project}")
+#
+#         yield fl_temp_project
+#
+#     finally:
+#         # Cleanup
+#         if fl_temp_project.parent.exists():
+#             shutil.rmtree(fl_temp_project.parent, ignore_errors=True)
+#             logger.info("✅ FL code temp directory cleaned up")
 
 
 # ==============================================================================
@@ -668,20 +755,20 @@ def fl_project_bootstrapped(syft_managers):
 # ==============================================================================
 
 
-def test_phase_06_submit_jobs(syft_managers, fl_project_bootstrapped):
-    """Phase 6: DS submits FL training jobs to both DOs."""
+def test_phase_06_submit_jobs(syft_managers, simple_job_script):
+    """Phase 6: DS submits simple analysis jobs to both DOs."""
     logger.info("Phase 6: Submitting jobs to data owners...")
 
     ds_manager = syft_managers["ds"]
     env = syft_managers["env"]
-    main_py_path = fl_project_bootstrapped / "main.py"
 
     # Submit job to DO1
     logger.info(f"Submitting job to {env['EMAIL_DO1']}...")
     ds_manager.submit_python_job(
         user=env["EMAIL_DO1"],
-        code_path=str(main_py_path),
-        job_name="diabetes-fl-training.job",
+        code_path=str(simple_job_script),
+        job_name="diabetes-analysis",
+        dependencies=["pandas", "syft-client"],
     )
     logger.success("✅ Job submitted to DO1")
 
@@ -689,12 +776,13 @@ def test_phase_06_submit_jobs(syft_managers, fl_project_bootstrapped):
     logger.info(f"Submitting job to {env['EMAIL_DO2']}...")
     ds_manager.submit_python_job(
         user=env["EMAIL_DO2"],
-        code_path=str(main_py_path),
-        job_name="diabetes-fl-training.job",
+        code_path=str(simple_job_script),
+        job_name="diabetes-analysis",
+        dependencies=["pandas", "syft-client"],
     )
     logger.success("✅ Job submitted to DO2")
 
-    # Wait for jobs to propagate (implicit in submit_python_job, but add small buffer)
+    # Wait for jobs to propagate
     sleep(2)
 
     logger.success("✅ Phase 6 complete: Jobs submitted to both DOs")
@@ -735,106 +823,187 @@ def test_phase_07_dos_approve_jobs(syft_managers):
     logger.success("✅ Phase 7 complete: Both DOs approved jobs")
 
 
-# # ==============================================================================
-# # Phase 8: Execute FL Training
-# # ==============================================================================
-
-# def test_phase_08_execute_fl_training(syft_managers):
-#     """Phase 8: DOs execute approved FL training jobs on their private data."""
-#     logger.info("Phase 8: Executing FL training jobs...")
-
-#     do1_manager = syft_managers["do1"]
-#     do2_manager = syft_managers["do2"]
-
-#     # DO1 processes approved jobs (SYNCHRONOUS - blocks until complete)
-#     logger.info("DO1 processing approved jobs...")
-#     import time
-#     start_time_do1 = time.time()
-#     do1_manager.job_runner.process_approved_jobs()
-#     duration_do1 = time.time() - start_time_do1
-#     logger.success(f"✅ DO1 completed job in {duration_do1:.1f}s")
-
-#     # DO2 processes approved jobs
-#     logger.info("DO2 processing approved jobs...")
-#     start_time_do2 = time.time()
-#     do2_manager.job_runner.process_approved_jobs()
-#     duration_do2 = time.time() - start_time_do2
-#     logger.success(f"✅ DO2 completed job in {duration_do2:.1f}s")
-
-#     logger.success(f"✅ Phase 8 complete: Both DOs executed jobs (DO1: {duration_do1:.1f}s, DO2: {duration_do2:.1f}s)")
+# ==============================================================================
+# Phase 8: Execute Jobs
+# ==============================================================================
 
 
-# # ==============================================================================
-# # Phase 9: Verify Training Results
-# # ==============================================================================
+def test_phase_08_execute_jobs(syft_managers):
+    """Phase 8: DOs execute approved jobs on their private data."""
+    logger.info("Phase 8: Executing jobs...")
+    import time
 
+    from googleapiclient.errors import HttpError
+
+    do1_manager = syft_managers["do1"]
+    do2_manager = syft_managers["do2"]
+
+    # Helper function to process jobs with retry for transient Google API errors
+    def process_with_retry(manager, name, max_retries=3):
+        for attempt in range(max_retries):
+            try:
+                start_time = time.time()
+                manager.process_approved_jobs()
+                duration = time.time() - start_time
+                return duration
+            except HttpError as e:
+                if e.resp.status in [500, 502, 503, 504] and attempt < max_retries - 1:
+                    logger.warning(
+                        f"{name} got transient Google API error (attempt {attempt + 1}/{max_retries}), retrying..."
+                    )
+                    sleep(2)
+                else:
+                    raise
+        return 0
+
+    # DO1 processes approved jobs (SYNCHRONOUS - blocks until complete)
+    logger.info("DO1 processing approved jobs...")
+    duration_do1 = process_with_retry(do1_manager, "DO1")
+    logger.success(f"✅ DO1 completed job in {duration_do1:.1f}s")
+
+    # DO2 processes approved jobs
+    logger.info("DO2 processing approved jobs...")
+    duration_do2 = process_with_retry(do2_manager, "DO2")
+    logger.success(f"✅ DO2 completed job in {duration_do2:.1f}s")
+
+    logger.success(
+        f"✅ Phase 8 complete: Both DOs executed jobs (DO1: {duration_do1:.1f}s, DO2: {duration_do2:.1f}s)"
+    )
+
+
+# ==============================================================================
+# Phase 9: Verify Job Results
+# ==============================================================================
+
+
+def test_phase_09_verify_results(syft_managers):
+    """Phase 9: Verify job results - check that the simple analysis job ran successfully."""
+    logger.info("Phase 9: Verifying job results...")
+
+    do1_manager = syft_managers["do1"]
+    do2_manager = syft_managers["do2"]
+
+    # Get DO1 job results
+    do1_jobs = do1_manager.jobs
+    assert len(do1_jobs) > 0, "No jobs found for DO1"
+    do1_job = do1_jobs[0]
+
+    # Read DO1 stdout
+    logger.info("Reading DO1 job stdout...")
+    do1_stdout = str(do1_job.stdout)
+    logger.info(f"\nDO1 Output:\n{do1_stdout}\n")
+
+    # Verify DO1 job succeeded
+    assert (
+        "RESULT: SUCCESS" in do1_stdout
+    ), f"DO1 job did not succeed. Output: {do1_stdout}"
+    assert (
+        "Shape:" in do1_stdout
+    ), f"DO1 job did not print dataset shape. Output: {do1_stdout}"
+    assert "DIABETES DATASET SUMMARY" in do1_stdout, "DO1 job missing summary header"
+    logger.success("✅ DO1 job completed successfully")
+
+    # Get DO2 job results
+    do2_jobs = do2_manager.jobs
+    assert len(do2_jobs) > 0, "No jobs found for DO2"
+    do2_job = do2_jobs[0]
+
+    # Read DO2 stdout
+    logger.info("Reading DO2 job stdout...")
+    do2_stdout = str(do2_job.stdout)
+    logger.info(f"\nDO2 Output:\n{do2_stdout}\n")
+
+    # Verify DO2 job succeeded
+    assert (
+        "RESULT: SUCCESS" in do2_stdout
+    ), f"DO2 job did not succeed. Output: {do2_stdout}"
+    assert (
+        "Shape:" in do2_stdout
+    ), f"DO2 job did not print dataset shape. Output: {do2_stdout}"
+    assert "DIABETES DATASET SUMMARY" in do2_stdout, "DO2 job missing summary header"
+    logger.success("✅ DO2 job completed successfully")
+
+    # Log final summary
+    logger.info("\n" + "=" * 60)
+    logger.info("JOB RESULTS SUMMARY")
+    logger.info("=" * 60)
+    logger.info("DO1: Job executed successfully - dataset summary printed")
+    logger.info("DO2: Job executed successfully - dataset summary printed")
+    logger.info("=" * 60)
+
+    logger.success("✅ Phase 9 complete: Job results verified!")
+
+
+# NOTE: Commented out FL training verification test - uncomment when syft-client supports
+# folder uploads and fl_project_bootstrapped fixture is re-enabled.
+#
 # def test_phase_09_verify_training_results(syft_managers):
 #     """Phase 9: Verify training results meet quality criteria."""
 #     logger.info("Phase 9: Verifying training results...")
-
+#
 #     do1_manager = syft_managers["do1"]
 #     do2_manager = syft_managers["do2"]
 #     ds_manager = syft_managers["ds"]
-
+#
 #     # Sync results back to DS
 #     do1_manager.sync()
 #     do2_manager.sync()
 #     sleep(2)
 #     ds_manager.sync()
-
+#
 #     # Get DO1 job results
 #     do1_jobs = do1_manager.job_client.jobs
 #     assert len(do1_jobs) > 0
 #     do1_job = do1_jobs[0]
-
+#
 #     # Read DO1 stdout - THIS IS THE CRITICAL FIX
 #     logger.info("Reading DO1 job stdout...")
 #     do1_stdout = str(do1_job.stdout)
 #     logger.info(f"\nDO1 Output:\n{do1_stdout}\n")
-
+#
 #     # Parse DO1 results from stdout
 #     # Looking for: "RESULT: test_accuracy=0.xxxx, test_loss=0.xxxx"
 #     do1_acc_match = re.search(r"test_accuracy=([\d.]+)", do1_stdout)
 #     do1_loss_match = re.search(r"test_loss=([\d.]+)", do1_stdout)
-
+#
 #     assert do1_acc_match, "Could not find test_accuracy in DO1 output"
 #     assert do1_loss_match, "Could not find test_loss in DO1 output"
-
+#
 #     do1_accuracy = float(do1_acc_match.group(1))
 #     do1_loss = float(do1_loss_match.group(1))
-
+#
 #     logger.success(f"DO1 Results: accuracy={do1_accuracy:.4f}, loss={do1_loss:.4f}")
-
+#
 #     # Get DO2 job results
 #     do2_jobs = do2_manager.job_client.jobs
 #     assert len(do2_jobs) > 0
 #     do2_job = do2_jobs[0]
-
+#
 #     logger.info("Reading DO2 job stdout...")
 #     do2_stdout = str(do2_job.stdout)
 #     logger.info(f"\nDO2 Output:\n{do2_stdout}\n")
-
+#
 #     # Parse DO2 results
 #     do2_acc_match = re.search(r"test_accuracy=([\d.]+)", do2_stdout)
 #     do2_loss_match = re.search(r"test_loss=([\d.]+)", do2_stdout)
-
+#
 #     assert do2_acc_match, "Could not find test_accuracy in DO2 output"
 #     assert do2_loss_match, "Could not find test_loss in DO2 output"
-
+#
 #     do2_accuracy = float(do2_acc_match.group(1))
 #     do2_loss = float(do2_loss_match.group(1))
-
+#
 #     logger.success(f"DO2 Results: accuracy={do2_accuracy:.4f}, loss={do2_loss:.4f}")
-
+#
 #     # Verify accuracy is reasonable for binary classification
 #     # Diabetes dataset is imbalanced, so accuracy > 0.5 is reasonable
 #     assert do1_accuracy > 0.5, f"DO1 accuracy too low: {do1_accuracy}"
 #     assert do2_accuracy > 0.5, f"DO2 accuracy too low: {do2_accuracy}"
-
+#
 #     # Verify loss is finite and reasonable
 #     assert 0 < do1_loss < 10, f"DO1 loss out of range: {do1_loss}"
 #     assert 0 < do2_loss < 10, f"DO2 loss out of range: {do2_loss}"
-
+#
 #     # Log final summary
 #     logger.info("\n" + "="*60)
 #     logger.info("TRAINING RESULTS SUMMARY")
@@ -842,5 +1011,5 @@ def test_phase_07_dos_approve_jobs(syft_managers):
 #     logger.info(f"DO1: accuracy={do1_accuracy:.4f}, loss={do1_loss:.4f}")
 #     logger.info(f"DO2: accuracy={do2_accuracy:.4f}, loss={do2_loss:.4f}")
 #     logger.info("="*60)
-
+#
 #     logger.success("✅ Phase 9 complete: Training results verified!")
