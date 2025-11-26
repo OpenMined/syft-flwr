@@ -152,18 +152,16 @@ def test_phase_06_submit_fl_jobs(syft_managers):
     assert fl_project is not None, "FL project not bootstrapped - run phase 5 first"
     assert fl_project.exists(), f"FL project not found: {fl_project}"
 
-    # NOTE: submit_python_job currently only accepts single files (folders are temporarily disabled)
-    # For now, we submit the main.py entry point
-    main_py = fl_project / "main.py"
-    assert main_py.exists(), f"main.py not found: {main_py}"
+    # Submit entire FL project folder (dependencies auto-parsed from pyproject.toml)
+    # The folder contains: main.py (entry point), pyproject.toml, and fl_diabetes_prediction/
+    logger.info(f"FL project folder: {fl_project}")
 
     # Submit job to DO1
     logger.info(f"Submitting FL job to {env['EMAIL_DO1']}...")
     ds_manager.submit_python_job(
         user=env["EMAIL_DO1"],
-        code_path=str(main_py),
+        code_path=str(fl_project),
         job_name="fl-diabetes-training",
-        dependencies=["flwr", "torch", "pandas", "scikit-learn", "syft-flwr"],
     )
     logger.success("✅ FL job submitted to DO1")
 
@@ -171,9 +169,8 @@ def test_phase_06_submit_fl_jobs(syft_managers):
     logger.info(f"Submitting FL job to {env['EMAIL_DO2']}...")
     ds_manager.submit_python_job(
         user=env["EMAIL_DO2"],
-        code_path=str(main_py),
+        code_path=str(fl_project),
         job_name="fl-diabetes-training",
-        dependencies=["flwr", "torch", "pandas", "scikit-learn", "syft-flwr"],
     )
     logger.success("✅ FL job submitted to DO2")
 
