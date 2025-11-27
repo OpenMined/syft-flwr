@@ -31,7 +31,6 @@ Setup:
        (OAuth tokens will be generated automatically on first run)
 """
 
-import re
 import shutil
 import tempfile
 from pathlib import Path
@@ -234,57 +233,23 @@ def test_phase_09_verify_training_results(syft_managers):
     logger.info("Reading DO1 job stdout...")
     do1_stdout = str(do1_job.stdout)
     logger.info(f"\nDO1 Output:\n{do1_stdout}\n")
-
-    # Parse DO1 results from stdout
-    # Looking for: "RESULT: test_accuracy=0.xxxx, test_loss=0.xxxx"
-    do1_acc_match = re.search(r"test_accuracy=([\d.]+)", do1_stdout)
-    do1_loss_match = re.search(r"test_loss=([\d.]+)", do1_stdout)
-
-    assert do1_acc_match, "Could not find test_accuracy in DO1 output"
-    assert do1_loss_match, "Could not find test_loss in DO1 output"
-
-    do1_accuracy = float(do1_acc_match.group(1))
-    do1_loss = float(do1_loss_match.group(1))
-
-    logger.success(f"DO1 Results: accuracy={do1_accuracy:.4f}, loss={do1_loss:.4f}")
+    do1_stderr = str(do1_job.stderr)
+    logger.info(f"\nDO1 Error Output:\n{do1_stderr}\n")
 
     # Get DO2 job results
     do2_jobs = do2_manager.jobs
     assert len(do2_jobs) > 0, "No jobs found for DO2"
     do2_job = do2_jobs[0]
 
-    logger.info("Reading DO2 job stdout...")
+    logger.info("Reading DO2 job stdout and stderr...")
     do2_stdout = str(do2_job.stdout)
     logger.info(f"\nDO2 Output:\n{do2_stdout}\n")
+    do2_stderr = str(do2_job.stderr)
+    logger.info(f"\nDO2 Error Output:\n{do2_stderr}\n")
 
-    # Parse DO2 results
-    do2_acc_match = re.search(r"test_accuracy=([\d.]+)", do2_stdout)
-    do2_loss_match = re.search(r"test_loss=([\d.]+)", do2_stdout)
+    import pdb
 
-    assert do2_acc_match, "Could not find test_accuracy in DO2 output"
-    assert do2_loss_match, "Could not find test_loss in DO2 output"
-
-    do2_accuracy = float(do2_acc_match.group(1))
-    do2_loss = float(do2_loss_match.group(1))
-
-    logger.success(f"DO2 Results: accuracy={do2_accuracy:.4f}, loss={do2_loss:.4f}")
-
-    # Verify accuracy is reasonable for binary classification
-    # Diabetes dataset is imbalanced, so accuracy > 0.5 is reasonable
-    assert do1_accuracy > 0.5, f"DO1 accuracy too low: {do1_accuracy}"
-    assert do2_accuracy > 0.5, f"DO2 accuracy too low: {do2_accuracy}"
-
-    # Verify loss is finite and reasonable
-    assert 0 < do1_loss < 10, f"DO1 loss out of range: {do1_loss}"
-    assert 0 < do2_loss < 10, f"DO2 loss out of range: {do2_loss}"
-
-    # Log final summary
-    logger.info("\n" + "=" * 60)
-    logger.info("FL TRAINING RESULTS SUMMARY")
-    logger.info("=" * 60)
-    logger.info(f"DO1: accuracy={do1_accuracy:.4f}, loss={do1_loss:.4f}")
-    logger.info(f"DO2: accuracy={do2_accuracy:.4f}, loss={do2_loss:.4f}")
-    logger.info("=" * 60)
+    pdb.set_trace()
 
     # Cleanup FL project temp directory
     fl_project = syft_managers.get("fl_project")

@@ -2693,16 +2693,16 @@ name = "ray"
 version = "2.31.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "aiosignal" },
-    { name = "click" },
-    { name = "filelock" },
-    { name = "frozenlist" },
-    { name = "jsonschema" },
-    { name = "msgpack" },
-    { name = "packaging" },
-    { name = "protobuf" },
-    { name = "pyyaml" },
-    { name = "requests" },
+    { name = "aiosignal", marker = "python_full_version < '3.13'" },
+    { name = "click", marker = "python_full_version < '3.13'" },
+    { name = "filelock", marker = "python_full_version < '3.13'" },
+    { name = "frozenlist", marker = "python_full_version < '3.13'" },
+    { name = "jsonschema", marker = "python_full_version < '3.13'" },
+    { name = "msgpack", marker = "python_full_version < '3.13'" },
+    { name = "packaging", marker = "python_full_version < '3.13'" },
+    { name = "protobuf", marker = "python_full_version < '3.13'" },
+    { name = "pyyaml", marker = "python_full_version < '3.13'" },
+    { name = "requests", marker = "python_full_version < '3.13'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/32/2f/58332dbd9eb607bfbeec0d94bab562cf5e2e65882321c1e3e4ec6a00b64e/ray-2.31.0-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:2a1349315a491ac754913fc603cbf9bf39f1dfe8576daba20c4c967f8abb7330", size = 67228942, upload-time = "2024-06-26T21:47:05.713Z" },
@@ -3216,6 +3216,7 @@ dependencies = [
     { name = "pandas" },
     { name = "pydantic" },
     { name = "pyyaml" },
+    { name = "tomli" },
 ]
 
 [package.metadata]
@@ -3223,6 +3224,7 @@ requires-dist = [
     { name = "pandas" },
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "tomli", specifier = ">=2.3.0" },
 ]
 
 [[package]]

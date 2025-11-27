@@ -14,8 +14,9 @@ from loguru import logger
 from syft_core import Client
 from syft_crypto import EncryptedPayload, decrypt_message
 from syft_rpc import SyftResponse, rpc, rpc_db
-from typing_extensions import Dict, Iterable, List, Optional, Tuple, cast
+from typing_extensions import Dict, Iterable, List, Optional, Tuple, Union, cast
 
+from syft_flwr.client import SyftFlwrClient, create_client
 from syft_flwr.consts import SYFT_FLWR_ENCRYPTION_ENABLED
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
 from syft_flwr.utils import check_reply_to_field, create_flwr_message, str_to_int
@@ -33,7 +34,7 @@ class SyftGrid(Grid):
         self,
         app_name: str,
         datasites: list[str] = [],
-        client: Client = None,
+        client: Union[Client, SyftFlwrClient, None] = None,
     ) -> None:
         """
         SyftGrid is the server-side message orchestrator for federated learning in syft_flwr.
@@ -50,8 +51,29 @@ class SyftGrid(Grid):
         - push_messages(): Sends messages to clients via syft_rpc, returns future IDs
         - pull_messages(): Retrieves responses using futures
         - send_and_receive(): Combines push/pull with timeout handling
+
+        Note:
+            SyftGrid requires syft_core.Client for RPC/crypto operations.
+            It does NOT support syft_client (Google Drive sync) mode.
         """
-        self._client = Client.load() if client is None else client
+        if client is None:
+            flwr_client = create_client()
+            native_client = flwr_client.get_client()
+            if native_client is None:
+                raise RuntimeError(
+                    "SyftGrid requires syft_core.Client for RPC/crypto operations. "
+                    "Google Drive sync (syft_client) mode is not supported for server-side FL."
+                )
+            self._client = native_client
+        elif isinstance(client, SyftFlwrClient):
+            native_client = client.get_client()
+            if native_client is None:
+                raise RuntimeError(
+                    "SyftGrid requires syft_core.Client for RPC/crypto operations."
+                )
+            self._client = native_client
+        else:
+            self._client = client
         self._run: Optional[Run] = None
         self.node = Node(node_id=AGGREGATOR_NODE_ID)
         self.datasites = datasites

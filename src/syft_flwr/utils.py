@@ -9,8 +9,9 @@ from flwr.common.record import RecordDict
 from loguru import logger
 from syft_core import Client, SyftClientConfig
 from syft_crypto.x3dh_bootstrap import ensure_bootstrap
-from typing_extensions import Optional, Tuple
+from typing_extensions import Optional, Tuple, Union
 
+from syft_flwr.client import SyftFlwrClient, create_client
 from syft_flwr.consts import SYFT_FLWR_ENCRYPTION_ENABLED
 
 EMAIL_REGEX = r"^[^@]+@[^@]+\.[^@]+$"
@@ -62,26 +63,41 @@ def create_temp_client(email: str, workspace_dir: Path) -> Client:
     return Client(config)
 
 
-def setup_client(app_name: str) -> Tuple[Client, bool, str]:
-    """Setup SyftBox client and encryption."""
-    client = Client.load()
+def setup_client(app_name: str) -> Tuple[Union[Client, SyftFlwrClient], bool, str]:
+    """Setup SyftBox client and encryption.
+
+    Returns:
+        Tuple of (client, encryption_enabled, app_path)
+        - client: SyftFlwrClient (or native Client if encryption bootstrap needed)
+        - encryption_enabled: Whether encryption is enabled
+        - app_path: Path for the app (e.g., "flwr/{app_name}")
+    """
+    syftbox_client = create_client()
+    syftbox_client = syftbox_client.get_client()
 
     # Check encryption setting
     encryption_enabled = (
         os.environ.get(SYFT_FLWR_ENCRYPTION_ENABLED, "true").lower() != "false"
     )
 
-    # Bootstrap encryption if needed
-    if encryption_enabled:
-        client = ensure_bootstrap(client)
+    # Bootstrap encryption if needed (only for syft_core - has RPC/crypto stack)
+    if encryption_enabled and syftbox_client is not None:
+        syftbox_client = ensure_bootstrap(syftbox_client)
         logger.info("🔐 End-to-end encryption is ENABLED for FL messages")
+        # Return native client for RPC/crypto operations
+        return syftbox_client, encryption_enabled, f"flwr/{app_name}"
+    elif syftbox_client is None:
+        # syft_client (Google Drive) - no encryption needed
+        logger.info(
+            "📁 Running via syft_client (Google Drive sync) - encryption handled by transport"
+        )
+        return syftbox_client, False, f"flwr/{app_name}"
     else:
         logger.warning("⚠️ Encryption disabled - skipping client key bootstrap")
         logger.warning(
             "⚠️ End-to-end encryption is DISABLED for FL messages (development mode / insecure)"
         )
-
-    return client, encryption_enabled, f"flwr/{app_name}"
+        return syftbox_client, encryption_enabled, f"flwr/{app_name}"
 
 
 def check_reply_to_field(metadata: Metadata) -> bool:

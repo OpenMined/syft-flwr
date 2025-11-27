@@ -4,10 +4,11 @@ from pathlib import Path
 
 import tomli
 from loguru import logger
-from syft_core import Client
 from syft_rds.models import DockerMount, JobConfig
 from syft_rds.syft_runtime.mounts import MountProvider
 from typing_extensions import List
+
+from syft_flwr.client import create_client
 
 
 class SyftFlwrMountProvider(MountProvider):
@@ -25,12 +26,21 @@ class SyftFlwrMountProvider(MountProvider):
                 json.dump(modified_config, fp)
 
     def get_mounts(self, job_config: JobConfig) -> List[DockerMount]:
-        client = Client.load()
-        client_email = client.email
-        flwr_app_data = client.app_data("flwr")
+        flwr_client = create_client()
+        native_client = flwr_client.get_client()
 
-        config_path = client.config_path
-        simplified_dir = client.config_path.parent / ".simplified_configs"
+        # MountProvider requires syft_core.Client for Docker operations
+        if native_client is None:
+            raise RuntimeError(
+                "SyftFlwrMountProvider requires syft_core.Client (traditional SyftBox). "
+                "Docker mounts are not supported in syft_client (Google Drive sync) mode."
+            )
+
+        client_email = flwr_client.email
+        flwr_app_data = flwr_client.app_data("flwr")
+
+        config_path = native_client.config_path
+        simplified_dir = native_client.config_path.parent / ".simplified_configs"
         simplified_dir.mkdir(parents=True, exist_ok=True)
         simplified_config_path = simplified_dir / f"{client_email}.config.json"
         self._simplify_config(config_path, simplified_config_path)

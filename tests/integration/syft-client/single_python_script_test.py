@@ -182,6 +182,10 @@ def test_phase_08_verify_results(syft_managers):
     do2_stdout = str(do2_job.stdout)
     logger.info(f"\nDO2 Output:\n{do2_stdout}\n")
 
+    import pdb
+
+    pdb.set_trace()
+
     # Verify DO2 job succeeded
     assert (
         "RESULT: SUCCESS" in do2_stdout
