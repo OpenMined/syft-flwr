@@ -247,10 +247,6 @@ def test_phase_09_verify_training_results(syft_managers):
     do2_stderr = str(do2_job.stderr)
     logger.info(f"\nDO2 Error Output:\n{do2_stderr}\n")
 
-    import pdb
-
-    pdb.set_trace()
-
     # Cleanup FL project temp directory
     fl_project = syft_managers.get("fl_project")
     if fl_project and fl_project.parent.exists():

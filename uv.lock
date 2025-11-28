@@ -3041,7 +3041,7 @@ wheels = [
 [[package]]
 name = "syft-client"
 version = "0.1.93"
-source = { editable = "../syft-client" }
+source = { git = "https://github.com/OpenMined/syft-client/?branch=khoa%2Fpython_job_folder_submission#6c2e645d497bdd78dbb41a83ed4b8439afc6ad0c" }
 dependencies = [
     { name = "google-api-python-client" },
     { name = "google-auth" },
@@ -3052,37 +3052,6 @@ dependencies = [
     { name = "syft-dataset" },
     { name = "syft-job" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "black", marker = "extra == 'test'", specifier = ">=23.0.0" },
-    { name = "coverage", marker = "extra == 'test'", specifier = ">=7.0.0" },
-    { name = "flake8", marker = "extra == 'test'", specifier = ">=6.0.0" },
-    { name = "google-api-python-client", specifier = ">=2.95.0" },
-    { name = "google-auth", specifier = ">=2.22.0" },
-    { name = "google-auth-oauthlib", specifier = ">=1.0.0" },
-    { name = "ipython", marker = "extra == 'dev'", specifier = ">=8.0.0" },
-    { name = "isort", marker = "extra == 'test'", specifier = ">=5.12.0" },
-    { name = "jupyter", marker = "extra == 'dev'", specifier = ">=1.0.0" },
-    { name = "mypy", marker = "extra == 'test'", specifier = ">=1.0.0" },
-    { name = "notebook", marker = "extra == 'dev'", specifier = ">=6.5.0" },
-    { name = "pandas" },
-    { name = "pydantic-settings", specifier = ">=2.11.0" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=7.0.0" },
-    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.21.0" },
-    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.0.0" },
-    { name = "pytest-mock", marker = "extra == 'test'", specifier = ">=3.10.0" },
-    { name = "pytest-xdist", marker = "extra == 'test'", specifier = ">=3.0.0" },
-    { name = "rich", specifier = ">=13.0.0" },
-    { name = "syft-client", extras = ["test", "dev", "job"], marker = "extra == 'all'" },
-    { name = "syft-dataset", editable = "../syft-client/packages/syft-datasets" },
-    { name = "syft-job", editable = "../syft-client/packages/syft-job" },
-    { name = "tqdm", marker = "extra == 'dev'", specifier = ">=4.64.0" },
-]
-provides-extras = ["test", "dev", "all"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "pre-commit", specifier = ">=4.3.0" }]
 
 [[package]]
 name = "syft-core"
@@ -3118,20 +3087,11 @@ wheels = [
 [[package]]
 name = "syft-dataset"
 version = "0.1.4"
-source = { editable = "../syft-client/packages/syft-datasets" }
+source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-datasets&branch=khoa%2Fpython_job_folder_submission#6c2e645d497bdd78dbb41a83ed4b8439afc6ad0c" }
 dependencies = [
     { name = "pyyaml" },
     { name = "syft-notebook-ui" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "syft-notebook-ui", editable = "../syft-client/packages/syft-notebook-ui" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "ipykernel", specifier = ">=7.1.0" }]
 
 [[package]]
 name = "syft-event"
@@ -3187,7 +3147,7 @@ requires-dist = [
     { name = "huggingface-hub", specifier = ">=1.1.4" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "safetensors", specifier = ">=0.7.0" },
-    { name = "syft-client", editable = "../syft-client" },
+    { name = "syft-client", git = "https://github.com/OpenMined/syft-client/?branch=khoa%2Fpython_job_folder_submission" },
     { name = "syft-rds", specifier = ">=0.5.0" },
     { name = "tomli", specifier = ">=2.3.0" },
     { name = "tomli-w", specifier = ">=1.2.0" },
@@ -3211,7 +3171,7 @@ dev = [
 [[package]]
 name = "syft-job"
 version = "0.1.22"
-source = { editable = "../syft-client/packages/syft-job" }
+source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-job&branch=khoa%2Fpython_job_folder_submission#6c2e645d497bdd78dbb41a83ed4b8439afc6ad0c" }
 dependencies = [
     { name = "pandas" },
     { name = "pydantic" },
@@ -3219,18 +3179,10 @@ dependencies = [
     { name = "tomli" },
 ]
 
-[package.metadata]
-requires-dist = [
-    { name = "pandas" },
-    { name = "pydantic", specifier = ">=2.11.7" },
-    { name = "pyyaml", specifier = ">=6.0" },
-    { name = "tomli", specifier = ">=2.3.0" },
-]
-
 [[package]]
 name = "syft-notebook-ui"
 version = "0.1.1"
-source = { editable = "../syft-client/packages/syft-notebook-ui" }
+source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-notebook-ui&branch=khoa%2Fpython_job_folder_submission#6c2e645d497bdd78dbb41a83ed4b8439afc6ad0c" }
 dependencies = [
     { name = "ipython" },
     { name = "jinja2" },
@@ -3238,16 +3190,6 @@ dependencies = [
     { name = "nh3" },
     { name = "pydantic", extra = ["email"] },
     { name = "rich" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ipython", specifier = ">=7.34.0" },
-    { name = "jinja2", specifier = ">=3.1.6" },
-    { name = "loguru", specifier = ">=0.7.3" },
-    { name = "nh3", specifier = ">=0.2.21" },
-    { name = "pydantic", extras = ["email"], specifier = ">=2.10.4" },
-    { name = "rich", specifier = ">=13.9.4" },
 ]
 
 [[package]]

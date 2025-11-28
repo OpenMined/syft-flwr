@@ -12,10 +12,12 @@ workflow-specific phases (e.g., FL bootstrap, result verification).
 """
 
 import time
+from pathlib import Path
 from time import sleep
 
 from googleapiclient.errors import HttpError
 from loguru import logger
+from syft_client.sync.syftbox_manager import SyftboxManager
 from utils import has_file
 
 # ==============================================================================
@@ -23,8 +25,49 @@ from utils import has_file
 # ==============================================================================
 
 
+def do_upload_dataset(
+    do_manager: SyftboxManager,
+    dataset_dir: Path,
+    partition_index: int,
+    do_name: str = "DO",
+):
+    """Single DO uploads their dataset partition.
+
+    Args:
+        do_manager: Data Owner's SyftboxManager
+        dataset_dir: Path to directory containing dataset partitions
+        partition_index: Which partition to upload (0 or 1)
+        do_name: Name for logging (e.g., "DO1", "DO2")
+    """
+    partition_dir = dataset_dir / f"pima-indians-diabetes-database-{partition_index}"
+
+    logger.info(
+        f"{do_name} uploading partition {partition_index} from {partition_dir}..."
+    )
+    do_manager.create_dataset(
+        name="pima-indians-diabetes-database",
+        mock_path=partition_dir / "mock",
+        private_path=partition_dir / "private",
+        summary=f"Diabetes partition {partition_index} for {do_name}",
+        readme_path=partition_dir / "README.md",
+        tags=["diabetes", "fl", "healthcare"],
+    )
+
+    # Verify DO can see dataset
+    do_datasets = do_manager.datasets.get_all()
+    assert (
+        len(do_datasets) == 1
+    ), f"Expected 1 dataset for {do_name}, got {len(do_datasets)}"
+    assert do_datasets[0].name == "pima-indians-diabetes-database"
+    logger.success(f"✅ {do_name} dataset uploaded: {do_datasets[0].name}")
+
+    # Sync to propagate dataset metadata to peers
+    logger.info(f"{do_name} syncing dataset to peers...")
+    do_manager.sync()
+
+
 def dos_upload_datasets(syft_managers, dataset_dir):
-    """DOs upload their dataset partitions.
+    """DOs upload their dataset partitions (convenience wrapper for 2 DOs).
 
     Args:
         syft_managers: Dict with 'ds', 'do1', 'do2', 'env' managers
@@ -40,58 +83,21 @@ def dos_upload_datasets(syft_managers, dataset_dir):
     ), f"DS should have 2 peers before upload, got {len(ds_peer_emails)}: {ds_peer_emails}"
     logger.info("✅ Verified DS has 2 peers before dataset upload")
 
-    do1_manager = syft_managers["do1"]
-    do2_manager = syft_managers["do2"]
-
     # DO1 uploads partition 0
-    partition_0 = dataset_dir / "pima-indians-diabetes-database-0"
-
-    logger.info(f"DO1 uploading partition 0 from {partition_0}...")
-    do1_manager.create_dataset(
-        name="pima-indians-diabetes-database",
-        mock_path=partition_0 / "mock",
-        private_path=partition_0 / "private",
-        summary="Diabetes partition 0 for DO1",
-        readme_path=partition_0 / "README.md",
-        tags=["diabetes", "fl", "healthcare"],
+    do_upload_dataset(
+        do_manager=syft_managers["do1"],
+        dataset_dir=dataset_dir,
+        partition_index=0,
+        do_name="DO1",
     )
-
-    # Verify DO1 can see dataset
-    do1_datasets = do1_manager.datasets.get_all()
-    assert (
-        len(do1_datasets) == 1
-    ), f"Expected 1 dataset for DO1, got {len(do1_datasets)}"
-    assert do1_datasets[0].name == "pima-indians-diabetes-database"
-    logger.success(f"✅ DO1 dataset uploaded: {do1_datasets[0].name}")
-
-    # Sync to propagate dataset metadata to peers
-    logger.info("DO1 syncing dataset to peers...")
-    do1_manager.sync()
 
     # DO2 uploads partition 1
-    partition_1 = dataset_dir / "pima-indians-diabetes-database-1"
-
-    logger.info(f"DO2 uploading partition 1 from {partition_1}...")
-    do2_manager.create_dataset(
-        name="pima-indians-diabetes-database",
-        mock_path=partition_1 / "mock",
-        private_path=partition_1 / "private",
-        summary="Diabetes partition 1 for DO2",
-        readme_path=partition_1 / "README.md",
-        tags=["diabetes", "fl", "healthcare"],
+    do_upload_dataset(
+        do_manager=syft_managers["do2"],
+        dataset_dir=dataset_dir,
+        partition_index=1,
+        do_name="DO2",
     )
-
-    # Verify DO2 can see dataset
-    do2_datasets = do2_manager.datasets.get_all()
-    assert (
-        len(do2_datasets) == 1
-    ), f"Expected 1 dataset for DO2, got {len(do2_datasets)}"
-    assert do2_datasets[0].name == "pima-indians-diabetes-database"
-    logger.success(f"✅ DO2 dataset uploaded: {do2_datasets[0].name}")
-
-    # Sync to propagate dataset metadata to peers
-    logger.info("DO2 syncing dataset to peers...")
-    do2_manager.sync()
 
     # Wait for sync to propagate through Google Drive
     sleep(3)
@@ -103,8 +109,54 @@ def dos_upload_datasets(syft_managers, dataset_dir):
 # ==============================================================================
 
 
+def ds_discover_dataset_from_do(
+    ds_manager: SyftboxManager,
+    do_email: str,
+    do_name: str = "DO",
+    max_retries: int = 5,
+    retry_delay: int = 5,
+):
+    """DS discovers dataset from a single DO.
+
+    Args:
+        ds_manager: Data Scientist's SyftboxManager
+        do_email: Data Owner's email address
+        do_name: Name for logging (e.g., "DO1", "DO2")
+        max_retries: Number of sync retries
+        retry_delay: Delay between retries in seconds
+
+    Returns:
+        List of discovered datasets from the DO
+    """
+    datasets = []
+
+    for attempt in range(max_retries):
+        logger.info(
+            f"DS syncing to receive dataset metadata from {do_name} "
+            f"(attempt {attempt + 1}/{max_retries})..."
+        )
+        ds_manager.sync()
+        sleep(retry_delay)
+
+        logger.info(f"Discovering datasets from {do_name} ({do_email})...")
+        datasets = ds_manager.datasets.get_all(datasite=do_email)
+        logger.info(f"Found {len(datasets)} dataset(s) from {do_name}")
+
+        if len(datasets) > 0:
+            break
+
+        if attempt < max_retries - 1:
+            logger.warning(f"Datasets not yet synced, retrying in {retry_delay}s...")
+
+    assert len(datasets) > 0, f"No datasets found from {do_name} ({do_email})"
+    assert datasets[0].name == "pima-indians-diabetes-database"
+    logger.success(f"✅ DS discovered dataset from {do_name}: {datasets[0].name}")
+
+    return datasets
+
+
 def ds_discover_datasets(syft_managers):
-    """DS discovers datasets from DOs.
+    """DS discovers datasets from DOs (convenience wrapper for 2 DOs).
 
     Args:
         syft_managers: Dict with 'ds', 'do1', 'do2', 'env' managers
@@ -127,44 +179,9 @@ def ds_discover_datasets(syft_managers):
     assert env["EMAIL_DO2"] in peer_emails, f"DO2 not in peers: {peer_emails}"
     logger.success(f"✅ DS has {len(peers)} peers: {peer_emails}")
 
-    # DS syncs to receive dataset metadata from peers (with retry)
-    # Dataset sync can take time due to Google Drive propagation delays
-    max_retries = 5
-    retry_delay = 5  # seconds
-
-    do1_datasets = []
-    do2_datasets = []
-
-    for attempt in range(max_retries):
-        logger.info(
-            f"DS syncing to receive dataset metadata (attempt {attempt + 1}/{max_retries})..."
-        )
-        ds_manager.sync()
-        sleep(retry_delay)
-
-        # Discover datasets from DO1
-        logger.info(f"Discovering datasets from DO1 ({env['EMAIL_DO1']})...")
-        do1_datasets = ds_manager.datasets.get_all(datasite=env["EMAIL_DO1"])
-        logger.info(f"Found {len(do1_datasets)} dataset(s) from DO1")
-
-        # Discover datasets from DO2
-        logger.info(f"Discovering datasets from DO2 ({env['EMAIL_DO2']})...")
-        do2_datasets = ds_manager.datasets.get_all(datasite=env["EMAIL_DO2"])
-        logger.info(f"Found {len(do2_datasets)} dataset(s) from DO2")
-
-        if len(do1_datasets) > 0 and len(do2_datasets) > 0:
-            break
-
-        if attempt < max_retries - 1:
-            logger.warning(f"Datasets not yet synced, retrying in {retry_delay}s...")
-
-    assert len(do1_datasets) > 0, f"No datasets found from DO1. DS peers: {peer_emails}"
-    assert do1_datasets[0].name == "pima-indians-diabetes-database"
-    logger.success(f"✅ DS discovered dataset from DO1: {do1_datasets[0].name}")
-
-    assert len(do2_datasets) > 0, f"No datasets found from DO2. DS peers: {peer_emails}"
-    assert do2_datasets[0].name == "pima-indians-diabetes-database"
-    logger.success(f"✅ DS discovered dataset from DO2: {do2_datasets[0].name}")
+    # Discover datasets from both DOs
+    ds_discover_dataset_from_do(ds_manager, env["EMAIL_DO1"], "DO1")
+    ds_discover_dataset_from_do(ds_manager, env["EMAIL_DO2"], "DO2")
 
     # Verify DS can access mock data
     do1_dataset = ds_manager.datasets.get(
@@ -189,36 +206,40 @@ def ds_discover_datasets(syft_managers):
 # ==============================================================================
 
 
+def do_approve_jobs(do_manager: SyftboxManager, do_name: str = "DO"):
+    """Single DO reviews and approves jobs from DS.
+
+    Args:
+        do_manager: Data Owner's SyftboxManager
+        do_name: Name for logging (e.g., "DO1", "DO2")
+
+    Returns:
+        List of approved jobs
+    """
+    logger.info(f"{do_name} getting jobs...")
+    jobs = do_manager.jobs
+    assert len(jobs) > 0, f"No jobs received by {do_name}"
+    logger.info(f"✅ {do_name} received {len(jobs)} job(s)")
+
+    # Approve first job
+    job_to_approve = jobs[0]
+    logger.info(f"{do_name} approving job: {job_to_approve.name}")
+    job_to_approve.approve()
+    logger.success(f"✅ {do_name} approved job")
+
+    return jobs
+
+
 def dos_approve_jobs(syft_managers):
-    """DOs review and approve jobs from DS.
+    """DOs review and approve jobs from DS (convenience wrapper for 2 DOs).
 
     Args:
         syft_managers: Dict with 'ds', 'do1', 'do2', 'env' managers
     """
     logger.info("DOs approving jobs...")
 
-    do1_manager = syft_managers["do1"]
-    do2_manager = syft_managers["do2"]
-
-    logger.info("DO1 getting jobs...")
-    do1_jobs = do1_manager.jobs
-    assert len(do1_jobs) > 0, "No jobs received by DO1"
-    logger.info(f"✅ DO1 received {len(do1_jobs)} job(s)")
-
-    # DO1 approves first job
-    job_to_approve = do1_jobs[0]
-    logger.info(f"DO1 approving job: {job_to_approve.name}")
-    job_to_approve.approve()
-    logger.success("✅ DO1 approved job")
-
-    logger.info("DO2 getting jobs...")
-    do2_jobs = do2_manager.jobs
-    assert len(do2_jobs) > 0, "No jobs received by DO2"
-    logger.info(f"✅ DO2 received {len(do2_jobs)} job(s)")
-
-    # DO2 approves
-    do2_jobs[0].approve()
-    logger.success("✅ DO2 approved job")
+    do_approve_jobs(syft_managers["do1"], "DO1")
+    do_approve_jobs(syft_managers["do2"], "DO2")
 
     logger.success("✅ Both DOs approved jobs")
 
@@ -228,27 +249,45 @@ def dos_approve_jobs(syft_managers):
 # ==============================================================================
 
 
-def _process_with_retry(manager, name, max_retries=3):
-    """Process approved jobs with retry for transient Google API errors."""
+def do_execute_jobs(
+    do_manager: SyftboxManager,
+    do_name: str = "DO",
+    max_retries: int = 3,
+) -> float:
+    """Single DO executes approved jobs on their private data.
+
+    Args:
+        do_manager: Data Owner's SyftboxManager
+        do_name: Name for logging (e.g., "DO1", "DO2")
+        max_retries: Number of retries for transient Google API errors
+
+    Returns:
+        Duration in seconds
+    """
+    logger.info(f"{do_name} processing approved jobs...")
+
     for attempt in range(max_retries):
         try:
             start_time = time.time()
-            manager.process_approved_jobs()
+            do_manager.process_approved_jobs()
             duration = time.time() - start_time
+            logger.success(f"✅ {do_name} completed job in {duration:.1f}s")
             return duration
         except HttpError as e:
             if e.resp.status in [500, 502, 503, 504] and attempt < max_retries - 1:
                 logger.warning(
-                    f"{name} got transient Google API error (attempt {attempt + 1}/{max_retries}), retrying..."
+                    f"{do_name} got transient Google API error "
+                    f"(attempt {attempt + 1}/{max_retries}), retrying..."
                 )
                 sleep(2)
             else:
                 raise
-    return 0
+
+    return 0.0
 
 
 def dos_execute_jobs(syft_managers):
-    """DOs execute approved jobs on their private data.
+    """DOs execute approved jobs on their private data (convenience wrapper for 2 DOs).
 
     Args:
         syft_managers: Dict with 'ds', 'do1', 'do2', 'env' managers
@@ -258,18 +297,8 @@ def dos_execute_jobs(syft_managers):
     """
     logger.info("Executing jobs...")
 
-    do1_manager = syft_managers["do1"]
-    do2_manager = syft_managers["do2"]
-
-    # DO1 processes approved jobs (SYNCHRONOUS - blocks until complete)
-    logger.info("DO1 processing approved jobs...")
-    duration_do1 = _process_with_retry(do1_manager, "DO1")
-    logger.success(f"✅ DO1 completed job in {duration_do1:.1f}s")
-
-    # DO2 processes approved jobs
-    logger.info("DO2 processing approved jobs...")
-    duration_do2 = _process_with_retry(do2_manager, "DO2")
-    logger.success(f"✅ DO2 completed job in {duration_do2:.1f}s")
+    duration_do1 = do_execute_jobs(syft_managers["do1"], "DO1")
+    duration_do2 = do_execute_jobs(syft_managers["do2"], "DO2")
 
     logger.success(
         f"✅ Both DOs executed jobs (DO1: {duration_do1:.1f}s, DO2: {duration_do2:.1f}s)"

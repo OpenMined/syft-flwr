@@ -38,7 +38,8 @@ from time import sleep
 
 import tomli
 from common_rds_phases import (
-    dos_upload_datasets,
+    do_upload_dataset,
+    ds_discover_dataset_from_do,
 )
 from conftest import FL_PROJECT_DIR
 from loguru import logger
@@ -50,18 +51,16 @@ import syft_flwr
 # ==============================================================================
 
 
-def test_phase_03_upload_dataset(syft_managers, prepare_datasets):
+def test_phase_03_upload_dataset(syft_managers_single_do, prepare_datasets):
     """Phase 3: DO1 uploads their dataset partition."""
     logger.info("Phase 3: Uploading dataset to DO1 datasite...")
 
-    do1_manager = syft_managers["do1"]
-    do1_dataset = prepare_datasets
-
-    # Upload dataset to DO1's datasite
-    logger.info(f"DO1 uploading dataset: {do1_dataset.name}")
-    dos_upload_datasets(syft_managers, prepare_datasets)
-    logger.info("DO1 dataset uploaded, syncing...")
-    do1_manager.sync()
+    do_upload_dataset(
+        do_manager=syft_managers_single_do["do1"],
+        dataset_dir=prepare_datasets,
+        partition_index=0,
+        do_name="DO1",
+    )
 
     logger.success("✅ Phase 3 complete: DO1 dataset uploaded and synced")
 
@@ -71,26 +70,18 @@ def test_phase_03_upload_dataset(syft_managers, prepare_datasets):
 # ==============================================================================
 
 
-def test_phase_04_ds_discovers_dataset(syft_managers):
+def test_phase_04_ds_discovers_dataset(syft_managers_single_do):
     """Phase 4: DS discovers dataset from DO1."""
     logger.info("Phase 4: DS discovering dataset...")
 
-    ds_manager = syft_managers["ds"]
-    env = syft_managers["env"]
+    ds_manager = syft_managers_single_do["ds"]
+    env = syft_managers_single_do["env"]
 
-    # Sync DS to pull down DO1's dataset catalog
-    ds_manager.sync()
-    sleep(2)
-
-    # Get datasets from DO1
-    do1_email = env["EMAIL_DO1"]
-    datasets = ds_manager.datasets(peer=do1_email)
-
-    assert len(datasets) > 0, f"No datasets found from {do1_email}"
-    logger.info(f"Found {len(datasets)} dataset(s) from {do1_email}")
-
-    for ds in datasets:
-        logger.info(f"  - {ds.name}: {ds.description}")
+    ds_discover_dataset_from_do(
+        ds_manager=ds_manager,
+        do_email=env["EMAIL_DO1"],
+        do_name="DO1",
+    )
 
     logger.success("✅ Phase 4 complete: DS discovered DO1's dataset")
 
@@ -100,11 +91,11 @@ def test_phase_04_ds_discovers_dataset(syft_managers):
 # ==============================================================================
 
 
-def test_phase_05_bootstrap_fl_project(syft_managers):
+def test_phase_05_bootstrap_fl_project(syft_managers_single_do):
     """Phase 5: Bootstrap FL project for single DO execution."""
     logger.info("Phase 5: Bootstrapping FL project for single DO...")
 
-    env = syft_managers["env"]
+    env = syft_managers_single_do["env"]
     ds_email = env["EMAIL_DS"]
     do1_email = env["EMAIL_DO1"]
 
@@ -154,7 +145,7 @@ def test_phase_05_bootstrap_fl_project(syft_managers):
     logger.info(f"Project path: {fl_temp_project}")
 
     # Store for later phases
-    syft_managers["fl_project"] = fl_temp_project
+    syft_managers_single_do["fl_project"] = fl_temp_project
 
     logger.success("✅ Phase 5 complete: FL project bootstrapped for single DO")
 
@@ -164,13 +155,13 @@ def test_phase_05_bootstrap_fl_project(syft_managers):
 # ==============================================================================
 
 
-def test_phase_06_submit_fl_job(syft_managers):
+def test_phase_06_submit_fl_job(syft_managers_single_do):
     """Phase 6: DS submits FL training job to DO1."""
     logger.info("Phase 6: Submitting FL job to DO1...")
 
-    ds_manager = syft_managers["ds"]
-    env = syft_managers["env"]
-    fl_project = syft_managers.get("fl_project")
+    ds_manager = syft_managers_single_do["ds"]
+    env = syft_managers_single_do["env"]
+    fl_project = syft_managers_single_do.get("fl_project")
 
     assert fl_project is not None, "FL project not bootstrapped - run phase 5 first"
     assert fl_project.exists(), f"FL project not found: {fl_project}"
@@ -197,11 +188,11 @@ def test_phase_06_submit_fl_job(syft_managers):
 # ==============================================================================
 
 
-def test_phase_07_do1_approves_job(syft_managers):
+def test_phase_07_do1_approves_job(syft_managers_single_do):
     """Phase 7: DO1 reviews and approves FL job from DS."""
     logger.info("Phase 7: DO1 approving FL job...")
 
-    do1_manager = syft_managers["do1"]
+    do1_manager = syft_managers_single_do["do1"]
 
     # Sync to get the job
     do1_manager.sync()
@@ -226,11 +217,11 @@ def test_phase_07_do1_approves_job(syft_managers):
 # ==============================================================================
 
 
-def test_phase_08_execute_fl_job(syft_managers):
+def test_phase_08_execute_fl_job(syft_managers_single_do):
     """Phase 8: DO1 executes approved FL job on their private data."""
     logger.info("Phase 8: DO1 executing FL job...")
 
-    do1_manager = syft_managers["do1"]
+    do1_manager = syft_managers_single_do["do1"]
 
     # Process approved jobs (this will run the FL training)
     import time
@@ -247,12 +238,12 @@ def test_phase_08_execute_fl_job(syft_managers):
 # ==============================================================================
 
 
-def test_phase_09_verify_training_results(syft_managers):
+def test_phase_09_verify_training_results(syft_managers_single_do):
     """Phase 9: Verify training results from DO1."""
     logger.info("Phase 9: Verifying FL training results...")
 
-    do1_manager = syft_managers["do1"]
-    ds_manager = syft_managers["ds"]
+    do1_manager = syft_managers_single_do["do1"]
+    ds_manager = syft_managers_single_do["ds"]
 
     # Sync results back to DS
     do1_manager.sync()
@@ -277,7 +268,7 @@ def test_phase_09_verify_training_results(syft_managers):
         logger.warning(f"\nDO1 Error Output:\n{do1_stderr}\n")
 
     # Cleanup FL project temp directory
-    fl_project = syft_managers.get("fl_project")
+    fl_project = syft_managers_single_do.get("fl_project")
     if fl_project and fl_project.parent.exists():
         shutil.rmtree(fl_project.parent, ignore_errors=True)
         logger.info("✅ FL code temp directory cleaned up")

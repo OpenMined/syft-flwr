@@ -23,7 +23,12 @@ from dotenv import load_dotenv
 from huggingface_hub import snapshot_download
 from loguru import logger
 from syft_client.sync.syftbox_manager import SyftboxManager
-from utils import SCOPES, create_token, remove_syftboxes_from_drive
+from utils import (
+    SCOPES,
+    create_token,
+    remove_syftbox_single_do_from_drive,
+    remove_syftboxes_from_drive,
+)
 
 # ==============================================================================
 # Constants
@@ -39,6 +44,141 @@ FL_PROJECT_DIR = (
 
 
 # ==============================================================================
+# Helper Functions
+# ==============================================================================
+
+
+def _load_env_file():
+    """Load environment variables from .env file if it exists."""
+    if ENV_FILE.exists():
+        load_dotenv(ENV_FILE)
+        logger.info(f" Loaded environment variables from {ENV_FILE}")
+    else:
+        logger.info(
+            f"No .env file found at {ENV_FILE}, using existing environment variables"
+        )
+
+
+def validate_user_credentials(
+    user_id: str,
+    email_env_var: str,
+    cred_env_var: str,
+    token_env_var: str,
+    default_cred_file: str,
+    default_token_file: str,
+) -> dict:
+    """Validate and setup credentials for a single user (DO or DS).
+
+    Args:
+        user_id: User identifier for logging (e.g., "DO1", "DO2", "DS")
+        email_env_var: Environment variable name for email
+        cred_env_var: Environment variable name for credentials file
+        token_env_var: Environment variable name for token file
+        default_cred_file: Default credentials filename
+        default_token_file: Default token filename
+
+    Returns:
+        Dict with 'email', 'cred_path', 'token_path' for the user
+
+    Raises:
+        ValueError: If email or credentials are missing
+    """
+    errors = []
+
+    # Get email from environment
+    email = os.environ.get(email_env_var)
+    if not email:
+        errors.append(f"Missing environment variable: {email_env_var}")
+
+    # Get credential and token file names
+    cred_file = os.environ.get(cred_env_var, default_cred_file)
+    token_file = os.environ.get(token_env_var, default_token_file)
+
+    # Build paths
+    cred_path = CREDENTIALS_DIR / cred_file
+    token_path = CREDENTIALS_DIR / token_file
+
+    # Check credentials exist
+    if not cred_path.exists():
+        errors.append(f"Missing {user_id} credentials: {cred_path}")
+
+    if errors:
+        raise ValueError(
+            f"{user_id} validation failed:\n" + "\n".join(f"  - {e}" for e in errors)
+        )
+
+    # Log user info
+    logger.info(f"  - {user_id}: {email}")
+    logger.info(f"    Credentials: {cred_path.name}")
+    logger.info(f"    Token: {token_path.name}")
+
+    # Auto-generate token if it doesn't exist
+    if not token_path.exists():
+        logger.info(f"Generating token for {user_id} from {cred_path.name}...")
+        logger.info(f"Browser will open for {email} to authenticate")
+        create_token(
+            cred_path=cred_path,
+            token_path=token_path,
+            scopes=SCOPES,
+        )
+        logger.success(f" Token created: {token_path.name}")
+
+    return {
+        "email": email,
+        "cred_path": cred_path,
+        "token_path": token_path,
+    }
+
+
+def create_ds_do_pair(
+    ds_email: str,
+    ds_token_path: Path,
+    do_email: str,
+    do_token_path: Path,
+    add_peers: bool = False,
+) -> tuple[SyftboxManager, SyftboxManager]:
+    """Create a DS + DO manager pair with Google Drive connection.
+
+    Args:
+        ds_email: Data Scientist email
+        ds_token_path: Path to DS OAuth token
+        do_email: Data Owner email
+        do_token_path: Path to DO OAuth token
+        add_peers: Whether to auto-add peers (default False, add manually for control)
+
+    Returns:
+        Tuple of (ds_manager, do_manager)
+    """
+    ds_manager, do_manager = SyftboxManager.pair_with_google_drive_testing_connection(
+        do_email=do_email,
+        ds_email=ds_email,
+        do_token_path=do_token_path,
+        ds_token_path=ds_token_path,
+        use_in_memory_cache=False,
+        add_peers=add_peers,
+        load_peers=False,
+        clear_caches=True,
+    )
+    logger.info(f"   Created DS ({ds_email}) + DO ({do_email}) pair")
+    return ds_manager, do_manager
+
+
+def add_peer_connection(ds_manager: SyftboxManager, do_manager: SyftboxManager):
+    """Establish bidirectional peer connection between DS and DO.
+
+    Args:
+        ds_manager: Data Scientist SyftboxManager
+        do_manager: Data Owner SyftboxManager
+    """
+    ds_email = ds_manager.email
+    do_email = do_manager.email
+    logger.info(f"Adding peer connection: {ds_email} <-> {do_email}")
+    ds_manager.add_peer(do_email)
+    do_manager.add_peer(ds_email)
+    logger.info(f"   {ds_email} <-> {do_email} peer connection established")
+
+
+# ==============================================================================
 # Fixtures
 # ==============================================================================
 
@@ -48,115 +188,46 @@ def validate_environment():
     """Verify all prerequisites are met before running tests."""
     logger.info("Phase 0: Validating environment...")
 
-    # Load environment variables from .env file if it exists
-    env_file = ENV_FILE
-    if env_file.exists():
-        load_dotenv(env_file)
-        logger.info(f" Loaded environment variables from {env_file}")
-    else:
-        logger.info(
-            f"No .env file found at {env_file}, using existing environment variables"
-        )
+    _load_env_file()
 
-    # Get environment variables - email addresses
-    EMAIL_DO1 = os.environ.get("DIABETES_EMAIL_DO1")
-    EMAIL_DO2 = os.environ.get("DIABETES_EMAIL_DO2")
-    EMAIL_DS = os.environ.get("DIABETES_EMAIL_DS")
+    # Validate each user
+    do1 = validate_user_credentials(
+        user_id="DO1",
+        email_env_var="DIABETES_EMAIL_DO1",
+        cred_env_var="DIABETES_CRED_FNAME_DO1",
+        token_env_var="DIABETES_TOKEN_FNAME_DO1",
+        default_cred_file="do1.json",
+        default_token_file="token_do1.json",
+    )
 
-    # Credentials file names (OAuth client credentials from Google Cloud Console)
-    CRED_FILE_DO1 = os.environ.get("DIABETES_CRED_FNAME_DO1", "do1.json")
-    CRED_FILE_DO2 = os.environ.get("DIABETES_CRED_FNAME_DO2", "do2.json")
-    CRED_FILE_DS = os.environ.get("DIABETES_CRED_FNAME_DS", "ds.json")
+    do2 = validate_user_credentials(
+        user_id="DO2",
+        email_env_var="DIABETES_EMAIL_DO2",
+        cred_env_var="DIABETES_CRED_FNAME_DO2",
+        token_env_var="DIABETES_TOKEN_FNAME_DO2",
+        default_cred_file="do2.json",
+        default_token_file="token_do2.json",
+    )
 
-    # Token file names (OAuth tokens generated after user authentication)
-    TOKEN_FILE_DO1 = os.environ.get("DIABETES_TOKEN_FNAME_DO1", "token_do1.json")
-    TOKEN_FILE_DO2 = os.environ.get("DIABETES_TOKEN_FNAME_DO2", "token_do2.json")
-    TOKEN_FILE_DS = os.environ.get("DIABETES_TOKEN_FNAME_DS", "token_ds.json")
-
-    # Credentials paths (input files with client_id and client_secret)
-    cred_path_do1 = CREDENTIALS_DIR / CRED_FILE_DO1
-    cred_path_do2 = CREDENTIALS_DIR / CRED_FILE_DO2
-    cred_path_ds = CREDENTIALS_DIR / CRED_FILE_DS
-
-    # Token paths (output files with access_token and refresh_token)
-    token_path_do1 = CREDENTIALS_DIR / TOKEN_FILE_DO1
-    token_path_do2 = CREDENTIALS_DIR / TOKEN_FILE_DO2
-    token_path_ds = CREDENTIALS_DIR / TOKEN_FILE_DS
-
-    errors = []
-
-    # Check credentials exist (these are required to generate tokens)
-    if not cred_path_do1.exists():
-        errors.append(f"Missing DO1 credentials: {cred_path_do1}")
-    if not cred_path_do2.exists():
-        errors.append(f"Missing DO2 credentials: {cred_path_do2}")
-    if not cred_path_ds.exists():
-        errors.append(f"Missing DS credentials: {cred_path_ds}")
-
-    # Check environment variables
-    if not EMAIL_DO1:
-        errors.append("Missing environment variable: DIABETES_EMAIL_DO1")
-    if not EMAIL_DO2:
-        errors.append("Missing environment variable: DIABETES_EMAIL_DO2")
-    if not EMAIL_DS:
-        errors.append("Missing environment variable: DIABETES_EMAIL_DS")
-
-    if errors:
-        error_msg = "Environment validation failed:\n" + "\n".join(
-            f"  - {e}" for e in errors
-        )
-        raise ValueError(error_msg)
+    ds = validate_user_credentials(
+        user_id="DS",
+        email_env_var="DIABETES_EMAIL_DS",
+        cred_env_var="DIABETES_CRED_FNAME_DS",
+        token_env_var="DIABETES_TOKEN_FNAME_DS",
+        default_cred_file="ds.json",
+        default_token_file="token_ds.json",
+    )
 
     logger.success(" All prerequisites validated")
-    logger.info(f"  - DO1: {EMAIL_DO1}")
-    logger.info(f"    Credentials: {cred_path_do1.name}")
-    logger.info(f"    Token: {token_path_do1.name}")
-    logger.info(f"  - DO2: {EMAIL_DO2}")
-    logger.info(f"    Credentials: {cred_path_do2.name}")
-    logger.info(f"    Token: {token_path_do2.name}")
-    logger.info(f"  - DS: {EMAIL_DS}")
-    logger.info(f"    Credentials: {cred_path_ds.name}")
-    logger.info(f"    Token: {token_path_ds.name}")
-
-    # Auto-generate tokens if they don't exist
-    if not token_path_do1.exists():
-        logger.info(f"Generating token for DO1 from {cred_path_do1.name}...")
-        logger.info(f"Browser will open for {EMAIL_DO1} to authenticate")
-        create_token(
-            cred_path=cred_path_do1,
-            token_path=token_path_do1,
-            scopes=SCOPES,
-        )
-        logger.success(f" Token created: {token_path_do1.name}")
-
-    if not token_path_do2.exists():
-        logger.info(f"Generating token for DO2 from {cred_path_do2.name}...")
-        logger.info(f"Browser will open for {EMAIL_DO2} to authenticate")
-        create_token(
-            cred_path=cred_path_do2,
-            token_path=token_path_do2,
-            scopes=SCOPES,
-        )
-        logger.success(f" Token created: {token_path_do2.name}")
-
-    if not token_path_ds.exists():
-        logger.info(f"Generating token for DS from {cred_path_ds.name}...")
-        logger.info(f"Browser will open for {EMAIL_DS} to authenticate")
-        create_token(
-            cred_path=cred_path_ds,
-            token_path=token_path_ds,
-            scopes=SCOPES,
-        )
-        logger.success(f" Token created: {token_path_ds.name}")
 
     # Store in fixture for other tests to use
     return {
-        "EMAIL_DO1": EMAIL_DO1,
-        "EMAIL_DO2": EMAIL_DO2,
-        "EMAIL_DS": EMAIL_DS,
-        "token_path_do1": token_path_do1,
-        "token_path_do2": token_path_do2,
-        "token_path_ds": token_path_ds,
+        "EMAIL_DO1": do1["email"],
+        "EMAIL_DO2": do2["email"],
+        "EMAIL_DS": ds["email"],
+        "token_path_do1": do1["token_path"],
+        "token_path_do2": do2["token_path"],
+        "token_path_ds": ds["token_path"],
     }
 
 
@@ -233,44 +304,25 @@ def syft_managers(cleanup_drive, validate_environment):
 
     env = validate_environment
 
-    # Create DO1 + DS pair WITHOUT auto-adding peers
-    # We add peers manually AFTER all managers are created to ensure symmetric setup
-    ds_manager, do1_manager = SyftboxManager.pair_with_google_drive_testing_connection(
+    # Create DS + DO1 pair (without auto-adding peers)
+    ds_manager, do1_manager = create_ds_do_pair(
+        ds_email=env["EMAIL_DS"],
+        ds_token_path=env["token_path_ds"],
         do_email=env["EMAIL_DO1"],
-        ds_email=env["EMAIL_DS"],
         do_token_path=env["token_path_do1"],
-        ds_token_path=env["token_path_ds"],
-        use_in_memory_cache=False,  # CRITICAL: Must be False for file access
-        add_peers=False,  # Don't auto-add peers (we add manually below)
-        load_peers=False,
-        clear_caches=True,
     )
-    logger.info(f"   Created DO1 ({env['EMAIL_DO1']}) + DS ({env['EMAIL_DS']}) pair")
 
-    # Create DO2 manager
-    _, do2_manager = SyftboxManager.pair_with_google_drive_testing_connection(
-        do_email=env["EMAIL_DO2"],
+    # Create DS + DO2 pair (we only need the DO2 manager)
+    _, do2_manager = create_ds_do_pair(
         ds_email=env["EMAIL_DS"],
-        do_token_path=env["token_path_do2"],
         ds_token_path=env["token_path_ds"],
-        use_in_memory_cache=False,
-        add_peers=False,
-        load_peers=False,
-        clear_caches=True,
+        do_email=env["EMAIL_DO2"],
+        do_token_path=env["token_path_do2"],
     )
-    logger.info(f"   Created DO2 ({env['EMAIL_DO2']}) manager")
 
-    # Add ALL peers manually AFTER all managers created
-    # This ensures symmetric setup for both DOs (fixes dataset discovery issue)
-    logger.info("Adding DO1 as peer to DS...")
-    ds_manager.add_peer(env["EMAIL_DO1"])
-    do1_manager.add_peer(env["EMAIL_DS"])
-    logger.info("   DS <-> DO1 peer connection established")
-
-    logger.info("Adding DO2 as peer to DS...")
-    ds_manager.add_peer(env["EMAIL_DO2"])
-    do2_manager.add_peer(env["EMAIL_DS"])
-    logger.info("   DS <-> DO2 peer connection established")
+    # Add peers after all managers created
+    add_peer_connection(ds_manager, do1_manager)
+    add_peer_connection(ds_manager, do2_manager)
 
     # Wait for Google Drive operations to complete
     sleep(2)
@@ -302,4 +354,109 @@ def syft_managers(cleanup_drive, validate_environment):
         "do1": do1_manager,
         "do2": do2_manager,
         "env": env,  # Include env for test functions that need emails
+    }
+
+
+@pytest.fixture(scope="module")
+def validate_environment_single_do():
+    """Verify prerequisites for single-DO tests (DO1 + DS only)."""
+    logger.info("Phase 0: Validating environment (single DO)...")
+
+    _load_env_file()
+
+    # Validate DO1 and DS only
+    do1 = validate_user_credentials(
+        user_id="DO1",
+        email_env_var="DIABETES_EMAIL_DO1",
+        cred_env_var="DIABETES_CRED_FNAME_DO1",
+        token_env_var="DIABETES_TOKEN_FNAME_DO1",
+        default_cred_file="do1.json",
+        default_token_file="token_do1.json",
+    )
+
+    ds = validate_user_credentials(
+        user_id="DS",
+        email_env_var="DIABETES_EMAIL_DS",
+        cred_env_var="DIABETES_CRED_FNAME_DS",
+        token_env_var="DIABETES_TOKEN_FNAME_DS",
+        default_cred_file="ds.json",
+        default_token_file="token_ds.json",
+    )
+
+    logger.success(" All prerequisites validated (single DO)")
+
+    return {
+        "EMAIL_DO1": do1["email"],
+        "EMAIL_DS": ds["email"],
+        "token_path_do1": do1["token_path"],
+        "token_path_ds": ds["token_path"],
+    }
+
+
+@pytest.fixture(scope="module")
+def cleanup_drive_single_do(validate_environment_single_do):
+    """Clean up Google Drive for single-DO tests (DO1 + DS only)."""
+    logger.info("Running cleanup fixture (single DO)...")
+
+    env = validate_environment_single_do
+
+    # Cleanup before test
+    remove_syftbox_single_do_from_drive(
+        env["EMAIL_DO1"],
+        env["EMAIL_DS"],
+        env["token_path_do1"],
+        env["token_path_ds"],
+    )
+
+    yield
+
+    # Cleanup after test (optional - comment out for debugging)
+    logger.info("Test completed. Keeping artifacts for inspection.")
+    logger.info(f"  - DO1 workspace: {env['EMAIL_DO1']}")
+    logger.info(f"  - DS workspace: {env['EMAIL_DS']}")
+
+
+@pytest.fixture(scope="module")
+def syft_managers_single_do(cleanup_drive_single_do, validate_environment_single_do):
+    """Initialize syft-client instances for single DO (DO1) + DS only.
+
+    This fixture is optimized for single-DO tests that don't need DO2.
+    """
+    logger.info("Phase 2: Initializing syft-client managers (single DO)...")
+
+    env = validate_environment_single_do
+
+    # Create DS + DO1 pair only
+    ds_manager, do1_manager = create_ds_do_pair(
+        ds_email=env["EMAIL_DS"],
+        ds_token_path=env["token_path_ds"],
+        do_email=env["EMAIL_DO1"],
+        do_token_path=env["token_path_do1"],
+    )
+
+    # Add peer connection
+    add_peer_connection(ds_manager, do1_manager)
+
+    # Wait for Google Drive operations to complete
+    sleep(2)
+
+    # Verify managers initialized
+    assert ds_manager is not None
+    assert do1_manager is not None
+
+    logger.success(" 2 managers initialized (single DO mode)")
+    logger.info(f"  - DO1: {env['EMAIL_DO1']}")
+    logger.info(f"  - DS: {env['EMAIL_DS']}")
+    logger.info(f"  - DS peers: {[p.email for p in ds_manager.peers]}")
+
+    # Verify DS has DO1 as peer
+    ds_peer_emails = [p.email for p in ds_manager.peers]
+    assert (
+        env["EMAIL_DO1"] in ds_peer_emails
+    ), f"DO1 not in DS peers after sync: {ds_peer_emails}"
+
+    return {
+        "ds": ds_manager,
+        "do1": do1_manager,
+        "env": env,
     }

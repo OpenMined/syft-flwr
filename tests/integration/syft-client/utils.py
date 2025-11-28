@@ -56,6 +56,51 @@ def create_token(cred_path: Path, token_path: Path, scopes: list = None):
 # ==============================================================================
 
 
+def remove_syftbox_single_do_from_drive(
+    email_do, email_ds, token_path_do, token_path_ds
+):
+    """Clean up Google Drive for single DO + DS.
+
+    Args:
+        email_do: Data Owner email
+        email_ds: Data Scientist email
+        token_path_do: Path to DO OAuth token
+        token_path_ds: Path to DS OAuth token
+    """
+    logger.info("Cleaning up SyftBoxes from Google Drive (single DO)...")
+
+    ds_manager, do_manager = SyftboxManager.pair_with_google_drive_testing_connection(
+        do_email=email_do,
+        ds_email=email_ds,
+        do_token_path=token_path_do,
+        ds_token_path=token_path_ds,
+        add_peers=False,
+    )
+
+    do_manager.delete_syftbox()
+    logger.info("  ✅ Deleted DO SyftBoxes")
+
+    ds_manager.delete_syftbox()
+    logger.info("  ✅ Deleted DS SyftBoxes")
+
+    logger.success("✅ SyftBoxes cleaned up from Google Drive (single DO)")
+
+    # Clean up event messages
+    logger.info("Cleaning up syft event messages from Google Drive...")
+
+    do_drive = do_manager.connection_router.connections[0].drive_service
+    ds_drive = ds_manager.connection_router.connections[0].drive_service
+
+    do_count = delete_event_messages_from_drive(do_drive)
+    logger.info(f"  ✅ Deleted {do_count} event message(s) from DO's Drive")
+
+    ds_count = delete_event_messages_from_drive(ds_drive)
+    logger.info(f"  ✅ Deleted {ds_count} event message(s) from DS's Drive")
+
+    total = do_count + ds_count
+    logger.success(f"✅ Cleaned up {total} event message(s) total")
+
+
 def remove_syftboxes_from_drive(
     email_do1, email_do2, email_ds, token_path_do1, token_path_do2, token_path_ds
 ):
