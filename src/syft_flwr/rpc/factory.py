@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from loguru import logger
-from syft_core import Client as SyftCoreClient
+from syft_core import Client as SyftCoreNativeClient
 
 from syft_flwr.client.protocol import SyftFlwrClient
+from syft_flwr.client.syft_p2p_client import SyftP2PClient
 from syft_flwr.rpc.p2p_file_rpc import P2PFileRpc
 from syft_flwr.rpc.protocol import SyftFlwrRpc
 from syft_flwr.rpc.syft_rpc import SyftRpc
@@ -24,15 +25,14 @@ def create_rpc(
 
     Note:
         - syft_core path: get_client() returns syft_core.Client
-        - syft_client path: get_client() returns None (no RPC client, uses file-based RPC)
+        - syft_client path: get_client() returns SyftP2PClient (file-based RPC)
     """
     native_client = client.get_client()
 
-    if isinstance(native_client, SyftCoreClient):
+    if isinstance(native_client, SyftCoreNativeClient):
         logger.debug("Creating SyftRpc (syft_core path)")
         return SyftRpc(client=native_client, app_name=app_name)
-    elif native_client is None:
-        # syft_client path - SyftClientAdapter returns None from get_client()
+    elif isinstance(native_client, SyftP2PClient):
         logger.debug("Creating P2PFileRpc (syft_client path)")
         return P2PFileRpc(
             sender_email=client.email,

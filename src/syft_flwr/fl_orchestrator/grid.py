@@ -16,8 +16,8 @@ from syft_core import Client
 from syft_crypto import EncryptedPayload, decrypt_message
 from typing_extensions import Dict, Iterable, List, Optional, Tuple, Union, cast
 
-from syft_flwr.client import SyftFlwrClient, create_client
-from syft_flwr.client.syft_core_adapter import SyftCoreClientAdapter
+from syft_flwr.client import SyftCoreClient, SyftFlwrClient, create_client
+from syft_flwr.client.syft_p2p_client import SyftP2PClient
 from syft_flwr.consts import SYFT_FLWR_ENCRYPTION_ENABLED
 from syft_flwr.rpc import SyftFlwrRpc, create_rpc
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
@@ -69,7 +69,7 @@ class SyftGrid(Grid):
             self._flwr_client = client
         else:
             # Direct syft_core.Client passed - wrap it
-            self._flwr_client = SyftCoreClientAdapter(client)
+            self._flwr_client = SyftCoreClient(client)
 
         # Create or use provided RPC adapter
         if rpc is None:
@@ -82,7 +82,7 @@ class SyftGrid(Grid):
 
         # Determine encryption capability based on client type
         native_client = self._flwr_client.get_client()
-        if native_client is None:
+        if isinstance(native_client, SyftP2PClient):
             # syft_client path - encryption not supported
             self._encryption_enabled = False
             logger.warning(

@@ -3,21 +3,21 @@ from typing import Optional
 
 from syft_core import Client
 
-from .protocol import SyftFlwrClient
+from syft_flwr.client.protocol import SyftFlwrClient
 
 
-class SyftCoreClientAdapter(SyftFlwrClient):
+class SyftCoreClient(SyftFlwrClient):
     """Adapter for syft_core.Client - the traditional SyftBox client.
 
     This adapter wraps syft_core.Client and provides full syft-rpc/syft-crypto/syft-event
-    functionality through get_native_client().
+    functionality through get_client().
     """
 
     def __init__(self, client: Client):
         self._client = client
 
     @classmethod
-    def load(cls, filepath: Optional[str] = None) -> "SyftCoreClientAdapter":
+    def load(cls, filepath: Optional[str] = None) -> "SyftCoreClient":
         """Load client from config file."""
         return cls(Client.load(filepath))
 

@@ -12,6 +12,7 @@ from syft_crypto.x3dh_bootstrap import ensure_bootstrap
 from typing_extensions import Optional, Tuple, Union
 
 from syft_flwr.client import SyftFlwrClient, create_client
+from syft_flwr.client.syft_p2p_client import SyftP2PClient
 from syft_flwr.consts import SYFT_FLWR_ENCRYPTION_ENABLED
 
 EMAIL_REGEX = r"^[^@]+@[^@]+\.[^@]+$"
@@ -81,12 +82,12 @@ def setup_client(app_name: str) -> Tuple[Union[Client, SyftFlwrClient], bool, st
     )
 
     # Bootstrap encryption if needed (only for syft_core - has RPC/crypto stack)
-    if encryption_enabled and syftbox_client is not None:
+    if encryption_enabled and not isinstance(syftbox_client, SyftP2PClient):
         syftbox_client = ensure_bootstrap(syftbox_client)
         logger.info("🔐 End-to-end encryption is ENABLED for FL messages")
         # Return native client for RPC/crypto operations
         return syftbox_client, encryption_enabled, f"flwr/{app_name}"
-    elif syftbox_client is None:
+    elif isinstance(syftbox_client, SyftP2PClient):
         # syft_client (Google Drive) - no encryption needed
         logger.info("📁 Running via syft_client (e.g. Google Drive sync)")
         return syftbox_client, False, f"flwr/{app_name}"

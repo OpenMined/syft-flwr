@@ -9,6 +9,7 @@ from syft_rds.syft_runtime.mounts import MountProvider
 from typing_extensions import List
 
 from syft_flwr.client import create_client
+from syft_flwr.client.syft_p2p_client import SyftP2PClient
 
 
 class SyftFlwrMountProvider(MountProvider):
@@ -30,7 +31,7 @@ class SyftFlwrMountProvider(MountProvider):
         native_client = flwr_client.get_client()
 
         # MountProvider requires syft_core.Client for Docker operations
-        if native_client is None:
+        if isinstance(native_client, SyftP2PClient):
             raise RuntimeError(
                 "SyftFlwrMountProvider requires syft_core.Client (traditional SyftBox). "
                 "Docker mounts are not supported in syft_client (Google Drive sync) mode."

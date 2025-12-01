@@ -2,13 +2,13 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from .protocol import SyftFlwrClient
+from syft_flwr.client.protocol import SyftFlwrClient
 
 
-class SyftClientAdapter(SyftFlwrClient):
-    """Adapter for syft_client (Google Drive / Microsoft OneDrive sync) - flat path structure.
+class SyftP2PClient(SyftFlwrClient):
+    """Client for P2P (Google Drive/OneDrive) sync mode - flat path structure.
 
-    This adapter is used when FL jobs are submitted via syft_client's
+    This client is used when FL jobs are submitted via syft_client's
     Google Drive-based sync system.
     syft_client does NOT use the syft_rpc / syft_crypto / syft_event / syftbox stack.
 
@@ -23,8 +23,8 @@ class SyftClientAdapter(SyftFlwrClient):
         self._syftbox_folder = syftbox_folder
 
     @classmethod
-    def from_env(cls) -> "SyftClientAdapter":
-        """Create adapter from environment variables set by job runner.
+    def from_env(cls) -> "SyftP2PClient":
+        """Create client from environment variables set by job runner.
 
         Environment variables:
         - SYFTBOX_EMAIL: The DO's email (set by job_runner.py)
@@ -43,6 +43,10 @@ class SyftClientAdapter(SyftFlwrClient):
     @property
     def email(self) -> str:
         return self._email
+
+    @property
+    def syftbox_folder(self) -> Path:
+        return self._syftbox_folder
 
     @property
     def config_path(self) -> Path:
@@ -70,8 +74,6 @@ class SyftClientAdapter(SyftFlwrClient):
             return self._syftbox_folder / datasite / "app_data" / app_name
         return self._syftbox_folder / datasite / "app_data"
 
-    def get_client(self) -> None:
-        """
-        syft_client does not use syft_rpc/syft_crypto/syft_event stack.
-        """
-        return None
+    def get_client(self) -> "SyftP2PClient":
+        """Return self - this IS the client."""
+        return self
