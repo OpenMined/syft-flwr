@@ -6,7 +6,7 @@ from flwr.server import ServerApp
 from flwr.server.run_serverapp import run as run_server
 from loguru import logger
 
-from syft_flwr.grid import SyftGrid
+from syft_flwr.fl_orchestrator.grid import SyftGrid
 from syft_flwr.utils import setup_client
 
 

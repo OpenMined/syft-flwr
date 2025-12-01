@@ -9,8 +9,7 @@ from flwr.common.record import RecordDict
 from flwr.server.server_app import LoadServerAppError
 
 from syft_flwr.config import load_flwr_pyproject
-from syft_flwr.flower_client import syftbox_flwr_client
-from syft_flwr.flower_server import syftbox_flwr_server
+from syft_flwr.fl_orchestrator import syftbox_flwr_client, syftbox_flwr_server
 from syft_flwr.run_simulation import run
 
 __all__ = ["syftbox_run_flwr_client", "syftbox_run_flwr_server", "run"]

@@ -88,9 +88,7 @@ def setup_client(app_name: str) -> Tuple[Union[Client, SyftFlwrClient], bool, st
         return syftbox_client, encryption_enabled, f"flwr/{app_name}"
     elif syftbox_client is None:
         # syft_client (Google Drive) - no encryption needed
-        logger.info(
-            "📁 Running via syft_client (Google Drive sync) - encryption handled by transport"
-        )
+        logger.info("📁 Running via syft_client (e.g. Google Drive sync)")
         return syftbox_client, False, f"flwr/{app_name}"
     else:
         logger.warning("⚠️ Encryption disabled - skipping client key bootstrap")
