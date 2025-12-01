@@ -28,7 +28,7 @@ def syftbox_flwr_server(
     run_id = randint(0, 1000)
     syft_grid.set_run(run_id)
 
-    logger.info(f"Started SyftBox Flower Server on: {syft_grid._client.email}")
+    logger.info(f"Started SyftBox Flower Server on: {syft_grid.get_client_email()}")
     logger.info(f"syft_flwr app name: {syft_flwr_app_name}")
 
     try:

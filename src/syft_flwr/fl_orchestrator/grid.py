@@ -81,8 +81,8 @@ class SyftGrid(Grid):
             self._rpc = rpc
 
         # Determine encryption capability based on client type
-        native_client = self._flwr_client.get_client()
-        if isinstance(native_client, SyftP2PClient):
+        self._native_client = self._flwr_client.get_client()
+        if isinstance(self._native_client, SyftP2PClient):
             # syft_client path - encryption not supported
             self._encryption_enabled = False
             logger.warning(
@@ -93,9 +93,6 @@ class SyftGrid(Grid):
             self._encryption_enabled = (
                 os.environ.get(SYFT_FLWR_ENCRYPTION_ENABLED, "true").lower() != "false"
             )
-
-        # Keep reference to native client for encryption operations
-        self._client = native_client
 
         self._run: Optional[Run] = None
         self.node = Node(node_id=AGGREGATOR_NODE_ID)
@@ -110,6 +107,14 @@ class SyftGrid(Grid):
             logger.info("🔐 End-to-end encryption is ENABLED for FL messages")
         else:
             logger.warning("⚠️ End-to-end encryption is DISABLED for FL messages")
+
+    def get_client_email(self) -> str:
+        """Get the email address of the server's SyftFlwrClient.
+
+        Returns:
+            Email address as a string
+        """
+        return self._flwr_client.email
 
     def set_run(self, run_id: int) -> None:
         """Set the run ID for this federated learning session.
@@ -498,7 +503,9 @@ class SyftGrid(Grid):
             # Try to parse as encrypted payload
             encrypted_payload = EncryptedPayload.model_validate_json(body.decode())
             # Decrypt the message
-            decrypted_body = decrypt_message(encrypted_payload, client=self._client)
+            decrypted_body = decrypt_message(
+                encrypted_payload, client=self._native_client
+            )
             # The decrypted body should be a base64-encoded string
             response_body = base64.b64decode(decrypted_body)
             logger.debug(f"🔓 Successfully decrypted response for message {msg_id}")
