@@ -28,6 +28,7 @@ _nc := '\033[0m'
 test:
     @echo "{{ _cyan }}Running syft-flwr tests...{{ _nc }}"
     bash scripts/test.sh
+    @just clean
 
 # ---------------------------------------------------------------------------------------------------------------------
 
@@ -67,6 +68,19 @@ clean:
     if [ "$pycache_count" -gt 0 ]; then
         echo "  {{ _red }}✗{{ _nc }} Removing $pycache_count __pycache__ directories"
         find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+    fi
+
+    # Remove .coverage files (from parallel pytest runs)
+    coverage_count=$(find . -type f -name ".coverage*" 2>/dev/null | wc -l)
+    if [ "$coverage_count" -gt 0 ]; then
+        echo "  {{ _red }}✗{{ _nc }} Removing $coverage_count .coverage files"
+        find . -type f -name ".coverage*" -delete 2>/dev/null || true
+    fi
+
+    # Remove coverage.xml if it exists
+    if [ -f "coverage.xml" ]; then
+        echo "  {{ _red }}✗{{ _nc }} Removing coverage.xml"
+        rm -f coverage.xml
     fi
 
     echo "{{ _green }}✓ Clean complete!{{ _nc }}"
