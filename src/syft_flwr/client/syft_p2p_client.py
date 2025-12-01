@@ -22,6 +22,9 @@ class SyftP2PClient(SyftFlwrClient):
         self._email = email
         self._syftbox_folder = syftbox_folder
 
+    def __repr__(self) -> str:
+        return f"SyftP2PClient(email={self._email!r}, syftbox_folder={self._syftbox_folder!r})"
+
     @classmethod
     def from_env(cls) -> "SyftP2PClient":
         """Create client from environment variables set by job runner.

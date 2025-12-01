@@ -16,8 +16,12 @@ from syft_core import Client
 from syft_crypto import EncryptedPayload, decrypt_message
 from typing_extensions import Dict, Iterable, List, Optional, Tuple, Union, cast
 
-from syft_flwr.client import SyftCoreClient, SyftFlwrClient, create_client
-from syft_flwr.client.syft_p2p_client import SyftP2PClient
+from syft_flwr.client import (
+    SyftCoreClient,
+    SyftFlwrClient,
+    SyftP2PClient,
+    create_client,
+)
 from syft_flwr.consts import SYFT_FLWR_ENCRYPTION_ENABLED
 from syft_flwr.rpc import SyftFlwrRpc, create_rpc
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
@@ -45,7 +49,7 @@ class SyftGrid(Grid):
     def __init__(
         self,
         app_name: str,
-        datasites: list[str] = [],
+        datasites: Optional[list[str]] = None,
         client: Optional[Union[Client, SyftFlwrClient]] = None,
         rpc: Optional[SyftFlwrRpc] = None,
     ) -> None:
@@ -58,50 +62,59 @@ class SyftGrid(Grid):
             rpc: RPC adapter for message transport (auto-created if None)
 
         Note:
-            Encryption is only available when using syft_core (SyftCoreClientAdapter).
-            When using syft_client (SyftClientAdapter), encryption is automatically
+            Encryption is only available when using syft_core (SyftCoreClient).
+            When using syft_client (SyftP2PClient), encryption is automatically
             disabled and a warning is logged.
         """
         # Handle client setup
         if client is None:
-            self._flwr_client = create_client()
+            self._client = create_client()
         elif isinstance(client, SyftFlwrClient):
-            self._flwr_client = client
+            self._client = client
         else:
             # Direct syft_core.Client passed - wrap it
-            self._flwr_client = SyftCoreClient(client)
+            self._client = SyftCoreClient(client)
 
         # Create or use provided RPC adapter
         if rpc is None:
             self._rpc = create_rpc(
-                client=self._flwr_client,
+                client=self._client,
                 app_name=app_name,
             )
         else:
             self._rpc = rpc
 
         # Determine encryption capability based on client type
-        self._native_client = self._flwr_client.get_client()
-        if isinstance(self._native_client, SyftP2PClient):
-            # syft_client path - encryption not supported
+        # Store syft_core.Client separately for encryption operations (only needed for syft_core)
+        self._syft_core_client: Optional[Client] = None
+        if isinstance(self._client, SyftP2PClient):
+            # P2P mode (syft_client) - encryption not available
             self._encryption_enabled = False
             logger.warning(
                 "⚠️ Running via syft_client (P2P mode) - no e2e encryption yet"
             )
-        else:
-            # syft_core path - check env var
+        elif isinstance(self._client, SyftCoreClient):
+            # Traditional SyftBox mode - encryption available
             self._encryption_enabled = (
                 os.environ.get(SYFT_FLWR_ENCRYPTION_ENABLED, "true").lower() != "false"
+            )
+            if self._encryption_enabled:
+                self._syft_core_client = self._client.get_client()
+        else:
+            # Unknown client type - disable encryption for safety
+            self._encryption_enabled = False
+            logger.warning(
+                f"⚠️ Unknown client type {type(self._client)}, encryption disabled"
             )
 
         self._run: Optional[Run] = None
         self.node = Node(node_id=AGGREGATOR_NODE_ID)
-        self.datasites = datasites
+        self.datasites = datasites or []
         self.client_map = {str_to_int(ds): ds for ds in self.datasites}
         self.app_name = app_name
 
         logger.debug(
-            f"Initialize SyftGrid for '{self._flwr_client.email}' with datasites: {self.datasites}"
+            f"Initialize SyftGrid for '{self._client.email}' with datasites: {self.datasites}"
         )
         if self._encryption_enabled:
             logger.info("🔐 End-to-end encryption is ENABLED for FL messages")
@@ -114,7 +127,7 @@ class SyftGrid(Grid):
         Returns:
             Email address as a string
         """
-        return self._flwr_client.email
+        return self._client.email
 
     def set_run(self, run_id: int) -> None:
         """Set the run ID for this federated learning session.
@@ -347,12 +360,22 @@ class SyftGrid(Grid):
 
         Returns:
             Tuple of (destination_datasite, message_bytes)
+
+        Raises:
+            ValueError: If destination node ID is not in the client map
         """
         run_id = cast(Run, self._run).run_id
         msg.metadata.__dict__["_run_id"] = run_id
         msg.metadata.__dict__["_src_node_id"] = self.node.node_id
 
-        dest_datasite = self.client_map[msg.metadata.dst_node_id]
+        dst_node_id = msg.metadata.dst_node_id
+        if dst_node_id not in self.client_map:
+            raise ValueError(
+                f"Unknown destination node ID {dst_node_id}. "
+                f"Known nodes: {list(self.client_map.keys())}. "
+                f"Datasites: {self.datasites}"
+            )
+        dest_datasite = self.client_map[dst_node_id]
 
         self._check_message(msg)
         msg_bytes = flower_message_to_bytes(msg)
@@ -499,12 +522,16 @@ class SyftGrid(Grid):
 
     def _try_decrypt_response(self, body: bytes, msg_id: str) -> bytes:
         """Try to decrypt response body if it's encrypted."""
+        if self._syft_core_client is None:
+            # No syft_core client available for decryption
+            return body
+
         try:
             # Try to parse as encrypted payload
             encrypted_payload = EncryptedPayload.model_validate_json(body.decode())
             # Decrypt the message
             decrypted_body = decrypt_message(
-                encrypted_payload, client=self._native_client
+                encrypted_payload, client=self._syft_core_client
             )
             # The decrypted body should be a base64-encoded string
             response_body = base64.b64decode(decrypted_body)

@@ -16,6 +16,9 @@ class SyftCoreClient(SyftFlwrClient):
     def __init__(self, client: Client):
         self._client = client
 
+    def __repr__(self) -> str:
+        return f"SyftCoreClient(email={self._client.email!r})"
+
     @classmethod
     def load(cls, filepath: Optional[str] = None) -> "SyftCoreClient":
         """Load client from config file."""

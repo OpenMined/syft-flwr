@@ -45,10 +45,14 @@ class SyftFlwrClient(ABC):
 
     @abstractmethod
     def get_client(self) -> Any:
-        """Get the underlying client.
+        """Get the underlying client of the underlying communication transport layer.
 
         Returns:
-            syft_core.Client instance for traditional SyftBox,
-            None for syft_client (Google Drive sync - doesn't need RPC/crypto)
+            - syft_core.Client instance for SyftCoreClient (full RPC/crypto stack)
+            - SyftP2PClient instance itself for P2P sync mode (file-based messaging)
+
+        Note:
+            Use isinstance() checks in calling code to determine which
+            path to take for RPC/encryption operations.
         """
         ...
