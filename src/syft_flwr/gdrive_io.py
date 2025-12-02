@@ -48,11 +48,16 @@ class GDriveFileIO:
             logger.info(f"Initialized GDriveConnection for {self._email}")
         return self._connection
 
-    def _get_or_create_folder(self, folder_name: str) -> str:
+    def _get_or_create_folder(
+        self, folder_name: str, share_with_email: Optional[str] = None
+    ) -> str:
         """Get folder ID, creating it if necessary.
 
         Args:
             folder_name: The folder name (e.g., syft_outbox_inbox_sender_to_recipient)
+            share_with_email: If provided and folder is newly created, share it with
+                this email address with write permissions. This is required for
+                cross-account visibility in Google Drive.
 
         Returns:
             Google Drive folder ID
@@ -76,6 +81,19 @@ class GDriveFileIO:
             logger.info(f"[GDrive] Creating folder: {folder_name}")
             folder_id = conn.create_folder(folder_name, syftbox_id)
             logger.info(f"[GDrive] Created folder: {folder_name} (id: {folder_id})")
+
+            # Share with recipient if specified (required for cross-account visibility)
+            if share_with_email:
+                try:
+                    conn.add_permission(folder_id, share_with_email, write=True)
+                    logger.info(
+                        f"[GDrive] Shared folder '{folder_name}' with {share_with_email}"
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"[GDrive] Failed to share folder with {share_with_email}: {e}"
+                    )
+                    # Continue anyway - the folder exists, just not shared
         else:
             logger.debug(
                 f"[GDrive] Found existing folder: {folder_name} (id: {folder_id})"
@@ -143,13 +161,15 @@ class GDriveFileIO:
 
         conn = self._ensure_connection()
 
-        # Get/create the outbox folder
+        # Get/create the outbox folder (shared with recipient for cross-account visibility)
         outbox_folder = GdriveInboxOutBoxFolder(
             sender_email=self._email, recipient_email=recipient_email
         )
         outbox_folder_name = outbox_folder.as_string()
         logger.debug(f"[GDrive]   outbox folder name: {outbox_folder_name}")
-        outbox_folder_id = self._get_or_create_folder(outbox_folder_name)
+        outbox_folder_id = self._get_or_create_folder(
+            outbox_folder_name, share_with_email=recipient_email
+        )
 
         # Create nested path: {app_name}/rpc/{endpoint}
         path_parts = [app_name, "rpc", endpoint.lstrip("/")]
