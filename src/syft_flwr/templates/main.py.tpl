@@ -24,7 +24,7 @@ flower_project_dir = Path(__file__).parent.absolute()
 print(f"flower_project_dir: {flower_project_dir}")
 
 print("Creating client...")
-client = create_client()
+client = create_client(project_dir=flower_project_dir)
 print(f"Client created: email={client.email}")
 print(f"Client my_datasite: {client.my_datasite}")
 print(f"Client datasites: {client.datasites}")
