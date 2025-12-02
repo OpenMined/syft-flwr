@@ -36,7 +36,6 @@ def create_rpc(
         logger.debug("Creating P2PFileRpc (syft_client path)")
         return P2PFileRpc(
             sender_email=client.email,
-            syftbox_folder=client.datasites,
             app_name=app_name,
         )
     else:

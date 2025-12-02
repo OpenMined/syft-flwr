@@ -69,7 +69,6 @@ def create_events_watcher(
         return P2PFileEvents(
             app_name=app_name,
             client_email=flwr_client.email,
-            syftbox_folder=flwr_client.datasites,
             poll_interval=poll_interval,
         )
     else:
