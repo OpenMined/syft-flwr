@@ -53,6 +53,7 @@ class SyftRpc(SyftFlwrRpc):
 
         response = future.resolve()
         if response is not None:
+            response.raise_for_status()  # Raise HTTPError if status code indicates failure
             logger.debug(f"Got response for future_id={future_id}")
             return response.body
         return None

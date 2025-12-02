@@ -49,21 +49,23 @@ def test_syft_flwr_client_bootstrap_key(do1_client: Client) -> None:
 
     with (
         patch("syft_flwr.utils.Client.load", return_value=do1_client),
-        patch("syft_flwr.fl_orchestrator.flower_client.SyftEvents") as MockSyftEvents,
+        patch(
+            "syft_flwr.fl_orchestrator.flower_client.create_events_watcher"
+        ) as MockCreateEvents,
     ):
         mock_events = MagicMock()
-        mock_events.client = do1_client
+        mock_events.client_email = do1_client.email
         mock_events.run_forever = MagicMock()  # Don't actually run forever
-        MockSyftEvents.return_value = mock_events
+        MockCreateEvents.return_value = mock_events
 
         # Call client - this should bootstrap the client
         syftbox_flwr_client(
             client_app=MagicMock(), context=MagicMock(), app_name="test_app"
         )
 
-        # Check that SyftEvents was called with the bootstrapped client
-        MockSyftEvents.assert_called_once()
-        call_kwargs = MockSyftEvents.call_args.kwargs
+        # Check that create_events_watcher was called
+        MockCreateEvents.assert_called_once()
+        call_kwargs = MockCreateEvents.call_args.kwargs
 
         # Verify that we can load the private keys
         identity_priv_key, signed_prekey_priv_key = load_private_keys(do1_client)
@@ -71,5 +73,7 @@ def test_syft_flwr_client_bootstrap_key(do1_client: Client) -> None:
         assert signed_prekey_priv_key is not None
 
         # Verify that the client was bootstrapped
-        did_doc = get_did_document(call_kwargs["client"], call_kwargs["client"].email)
+        # The client passed to create_events_watcher is the bootstrapped syft_core.Client
+        client = call_kwargs["client"]
+        did_doc = get_did_document(client, client.email)
         assert did_doc is not None
