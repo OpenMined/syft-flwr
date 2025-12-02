@@ -1,40 +1,38 @@
 from __future__ import annotations
 
 import uuid
-from pathlib import Path
 from typing import Optional
 
 from loguru import logger
-from syft_client.sync.connections.drive.gdrive_transport import GdriveInboxOutBoxFolder
 
+from syft_flwr.gdrive_io import GDriveFileIO
 from syft_flwr.rpc.protocol import SyftFlwrRpc
 
 
 class P2PFileRpc(SyftFlwrRpc):
-    """P2P File-based RPC adapter for syft_client (Google Drive / Microsoft 365... sync).
+    """P2P File-based RPC adapter using Google Drive API via syft-client.
 
-    Instead of using syft_rpc with its futures database, this adapter:
-    - Writes .request files to the shared outbox folder (synced via Google Drive)
-    - Polls for .response files in the inbox folder
+    Instead of using filesystem paths, this adapter uses GDriveFileIO to:
+    - Write .request files to the shared outbox folder via Google Drive API
+    - Poll for .response files in the inbox folder via Google Drive API
     - Uses in-memory tracking for pending futures
 
-    Directory structure (using syft-client inbox/outbox pattern):
-        {syftbox_folder}/syft_outbox_inbox_{sender}_to_{recipient}/{app_name}/rpc/{endpoint}/*.request
-        {syftbox_folder}/syft_outbox_inbox_{recipient}_to_{sender}/{app_name}/rpc/{endpoint}/*.response
+    Directory structure in Google Drive:
+        SyftBox/syft_outbox_inbox_{sender}_to_{recipient}/{app_name}/rpc/{endpoint}/*.request
+        SyftBox/syft_outbox_inbox_{recipient}_to_{sender}/{app_name}/rpc/{endpoint}/*.response
     """
 
     def __init__(
         self,
         sender_email: str,
-        syftbox_folder: Path,
         app_name: str,
     ) -> None:
         self._sender_email = sender_email
-        self._syftbox_folder = syftbox_folder
         self._app_name = app_name
+        self._gdrive_io = GDriveFileIO(email=sender_email)
         self._pending_futures: dict[
-            str, tuple[Path, str]
-        ] = {}  # future_id -> (response_path, recipient)
+            str, tuple[str, str, str]
+        ] = {}  # future_id -> (recipient, app_name, endpoint)
         logger.debug(f"Initialized P2PFileRpc for {sender_email}")
 
     def send(
@@ -47,43 +45,25 @@ class P2PFileRpc(SyftFlwrRpc):
     ) -> str:
         if encrypt:
             logger.warning(
-                "Encryption not supported in FileRpcAdapter, sending unencrypted"
+                "Encryption not supported in P2PFileRpc, sending unencrypted"
             )
 
-        # Outbox path: {syftbox_folder}/syft_outbox_inbox_{sender}_to_{recipient}/{app_name}/rpc/{endpoint}/
-        outbox_folder = GdriveInboxOutBoxFolder(
-            sender_email=self._sender_email, recipient_email=to_email
-        )
-        target_dir = (
-            self._syftbox_folder
-            / outbox_folder.as_string()
-            / app_name
-            / "rpc"
-            / endpoint.lstrip("/")
-        )
-        target_dir.mkdir(parents=True, exist_ok=True)
-
         future_id = str(uuid.uuid4())
-        request_path = target_dir / f"{future_id}.request"
-        request_path.write_bytes(body)
+        filename = f"{future_id}.request"
 
-        # Response will come back via inbox (recipient's outbox to us)
-        inbox_folder = GdriveInboxOutBoxFolder(
-            sender_email=to_email, recipient_email=self._sender_email
+        # Write request to outbox via Google Drive API
+        self._gdrive_io.write_to_outbox(
+            recipient_email=to_email,
+            app_name=app_name,
+            endpoint=endpoint.lstrip("/"),
+            filename=filename,
+            data=body,
         )
-        response_dir = (
-            self._syftbox_folder
-            / inbox_folder.as_string()
-            / app_name
-            / "rpc"
-            / endpoint.lstrip("/")
-        )
-        response_path = response_dir / f"{future_id}.response"
-        self._pending_futures[future_id] = (response_path, to_email)
+
+        # Track pending future for response polling
+        self._pending_futures[future_id] = (to_email, app_name, endpoint.lstrip("/"))
 
         logger.debug(f"Sent message to {to_email}, future_id={future_id}")
-        logger.debug(f"  Outbox: {target_dir}")
-        logger.debug(f"  Expecting response in: {response_dir}")
         return future_id
 
     def get_response(self, future_id: str) -> Optional[bytes]:
@@ -92,19 +72,33 @@ class P2PFileRpc(SyftFlwrRpc):
             logger.warning(f"Unknown future_id: {future_id}")
             return None
 
-        response_path, _ = future_data
-        if response_path.exists():
-            body = response_path.read_bytes()
-            logger.debug(f"Got response for future_id={future_id}")
-            return body
+        recipient, app_name, endpoint = future_data
+        filename = f"{future_id}.response"
 
-        return None
+        # Response comes from recipient's outbox (which is our inbox)
+        body = self._gdrive_io.read_from_inbox(
+            sender_email=recipient,
+            app_name=app_name,
+            endpoint=endpoint,
+            filename=filename,
+        )
+
+        if body is not None:
+            logger.debug(f"Got response for future_id={future_id}")
+
+        return body
 
     def delete_future(self, future_id: str) -> None:
         future_data = self._pending_futures.pop(future_id, None)
         if future_data is not None:
-            response_path, _ = future_data
-            # Clean up response file from inbox
-            if response_path.exists():
-                response_path.unlink()
+            recipient, app_name, endpoint = future_data
+            filename = f"{future_id}.response"
+
+            # Clean up response file from inbox (sent by recipient to us)
+            self._gdrive_io.delete_file_from_inbox(
+                sender_email=recipient,
+                app_name=app_name,
+                endpoint=endpoint,
+                filename=filename,
+            )
             logger.debug(f"Deleted future_id={future_id}")

@@ -6,24 +6,30 @@ from syft_flwr.client.protocol import SyftFlwrClient
 
 
 class SyftP2PClient(SyftFlwrClient):
-    """Client for P2P (Google Drive/OneDrive) sync mode - flat path structure.
+    """Client for P2P (Google Drive) sync mode using Google Drive API.
 
     This client is used when FL jobs are submitted via syft_client's
     Google Drive-based sync system.
-    syft_client does NOT use the syft_rpc / syft_crypto / syft_event / syftbox stack.
 
     Key differences from syft_core:
-    - Flat path structure: {syftbox_folder}/{email}/ (no 'datasites/' subdirectory)
+    - Uses Google Drive API directly (via GDriveFileIO) instead of filesystem paths
     - No RPC/crypto/event - Google Drive handles transport and access control
-    - Email and folder path come from environment variables set by job runner
+    - Email comes from environment variable or explicit parameter
+
+    Note: Path properties (my_datasite, datasites, etc.) are kept for compatibility
+    but represent logical paths in Google Drive, not local filesystem paths.
     """
 
-    def __init__(self, email: str, syftbox_folder: Path):
+    def __init__(self, email: str):
+        """Initialize SyftP2PClient.
+
+        Args:
+            email: The user's email address for Google Drive access
+        """
         self._email = email
-        self._syftbox_folder = syftbox_folder
 
     def __repr__(self) -> str:
-        return f"SyftP2PClient(email={self._email!r}, syftbox_folder={self._syftbox_folder!r})"
+        return f"SyftP2PClient(email={self._email!r})"
 
     @classmethod
     def from_env(cls) -> "SyftP2PClient":
@@ -31,17 +37,13 @@ class SyftP2PClient(SyftFlwrClient):
 
         Environment variables:
         - SYFTBOX_EMAIL: The DO's email (set by job_runner.py)
-        - SYFTBOX_FOLDER: Path to SyftBox folder (set by job_runner.py)
         """
         email = os.environ.get("SYFTBOX_EMAIL")
-        syftbox_folder = os.environ.get("SYFTBOX_FOLDER")
 
         if not email:
             raise ValueError("SYFTBOX_EMAIL environment variable not set")
-        if not syftbox_folder:
-            raise ValueError("SYFTBOX_FOLDER environment variable not set")
 
-        return cls(email=email, syftbox_folder=Path(syftbox_folder))
+        return cls(email=email)
 
     @property
     def email(self) -> str:
@@ -49,33 +51,34 @@ class SyftP2PClient(SyftFlwrClient):
 
     @property
     def syftbox_folder(self) -> Path:
-        return self._syftbox_folder
+        # Returns logical path in Google Drive
+        return Path("SyftBox")
 
     @property
     def config_path(self) -> Path:
-        # No config file in syft_client context - return placeholder
-        return self._syftbox_folder / ".config"
+        # No config file in P2P context
+        return Path("SyftBox") / ".config"
 
     @property
     def my_datasite(self) -> Path:
-        # Flat structure: {syftbox_folder}/{email}/
-        return self._syftbox_folder / self._email
+        # Logical path: SyftBox/{email}/
+        return Path("SyftBox") / self._email
 
     @property
     def datasites(self) -> Path:
-        # In flat structure, datasites root IS the syftbox_folder
-        return self._syftbox_folder
+        # In Google Drive, datasites root is SyftBox folder
+        return Path("SyftBox")
 
     def app_data(
         self,
         app_name: Optional[str] = None,
         datasite: Optional[str] = None,
     ) -> Path:
-        # Flat structure: {syftbox_folder}/{datasite}/app_data/{app_name}/
+        # Logical path: SyftBox/{datasite}/app_data/{app_name}/
         datasite = datasite or self._email
         if app_name:
-            return self._syftbox_folder / datasite / "app_data" / app_name
-        return self._syftbox_folder / datasite / "app_data"
+            return Path("SyftBox") / datasite / "app_data" / app_name
+        return Path("SyftBox") / datasite / "app_data"
 
     def get_client(self) -> "SyftP2PClient":
         """Return self - this IS the client."""

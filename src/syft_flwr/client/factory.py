@@ -23,11 +23,6 @@ def _load_syft_flwr_config(project_dir: Path) -> Optional[dict]:
         return None
 
 
-def _get_p2p_syftbox_folder(email: str) -> Path:
-    """Get the default SyftBox folder path for P2P mode (Colab)."""
-    return Path("/content") / f"SyftBox_{email}"
-
-
 def _syft_core_available() -> bool:
     """Check if syft_core config file exists at default location."""
     try:
@@ -40,16 +35,12 @@ def _syft_core_available() -> bool:
         return False
 
 
-def _create_p2p_client(
-    email: Optional[str],
-    syftbox_folder: Optional[Union[str, Path]],
-) -> SyftP2PClient:
+def _create_p2p_client(email: Optional[str]) -> SyftP2PClient:
     """Create a SyftP2PClient for P2P transport mode.
 
-    Determines email from: explicit param > env var
-    Determines folder from: explicit param > env var > default path
+    Uses Google Drive API directly (via GDriveFileIO), no filesystem paths needed.
+    Email determined from: explicit param > env var
     """
-    # Determine email - must be explicitly provided
     _email = email or os.getenv("SYFTBOX_EMAIL")
 
     if not _email:
@@ -59,20 +50,14 @@ def _create_p2p_client(
             "2. Set SYFTBOX_EMAIL environment variable"
         )
 
-    # Determine syftbox folder
-    _folder = syftbox_folder or os.getenv("SYFTBOX_FOLDER")
-    if not _folder:
-        _folder = _get_p2p_syftbox_folder(_email)
-
-    logger.info(f"Creating SyftP2PClient for {_email} at {_folder}")
-    return SyftP2PClient(email=_email, syftbox_folder=Path(_folder))
+    logger.info(f"Creating SyftP2PClient for {_email} (using Google Drive API)")
+    return SyftP2PClient(email=_email)
 
 
 def create_client(
     transport: Optional[str] = None,
     project_dir: Optional[Union[str, Path]] = None,
     email: Optional[str] = None,
-    syftbox_folder: Optional[Union[str, Path]] = None,
     **kwargs,
 ) -> SyftFlwrClient:
     """Factory function to create the appropriate client.
@@ -86,10 +71,9 @@ def create_client(
     Args:
         transport: Communication transport type:
             - "syftbox": Local SyftBox with RPC/crypto
-            - "p2p": P2P sync via Google Drive/OneDrive (no encryption)
+            - "p2p": P2P sync via Google Drive API (no encryption)
         project_dir: Path to the FL project (reads transport/email from pyproject.toml)
         email: Explicit email (for P2P mode)
-        syftbox_folder: Explicit syftbox folder path (for P2P mode)
         **kwargs: Additional arguments (e.g., filepath for syftbox config)
 
     Returns:
@@ -119,7 +103,7 @@ def create_client(
         return SyftCoreClient.load(kwargs.get("filepath"))
     elif _transport == "p2p":
         logger.info("Creating SyftP2PClient (p2p transport)")
-        return _create_p2p_client(email, syftbox_folder)
+        return _create_p2p_client(email)
 
     # 2. Auto-detect: check if syft_core config exists (local SyftBox installation)
     if _syft_core_available():
