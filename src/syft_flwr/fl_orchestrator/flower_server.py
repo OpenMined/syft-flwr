@@ -1,5 +1,7 @@
 import traceback
+from pathlib import Path
 from random import randint
+from typing import Optional
 
 from flwr.common import Context
 from flwr.server import ServerApp
@@ -15,9 +17,10 @@ def syftbox_flwr_server(
     context: Context,
     datasites: list[str],
     app_name: str,
+    project_dir: Optional[Path] = None,
 ) -> Context:
     """Run the Flower ServerApp with SyftBox."""
-    client, _, syft_flwr_app_name = setup_client(app_name)
+    client, _, syft_flwr_app_name = setup_client(app_name, project_dir=project_dir)
 
     # Construct the SyftGrid
     syft_grid = SyftGrid(

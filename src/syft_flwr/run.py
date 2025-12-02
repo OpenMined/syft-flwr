@@ -37,7 +37,12 @@ def syftbox_run_flwr_client(flower_project_dir: Path) -> None:
         flower_project_dir,
     )
 
-    syftbox_flwr_client(client_app, context, app_name)
+    syftbox_flwr_client(
+        client_app=client_app,
+        context=context,
+        app_name=app_name,
+        project_dir=flower_project_dir,
+    )
 
 
 def syftbox_run_flwr_server(flower_project_dir: Path) -> None:
@@ -59,4 +64,10 @@ def syftbox_run_flwr_server(flower_project_dir: Path) -> None:
         flower_project_dir,
     )
 
-    syftbox_flwr_server(server_app, context, datasites, app_name)
+    syftbox_flwr_server(
+        server_app=server_app,
+        context=context,
+        datasites=datasites,
+        app_name=app_name,
+        project_dir=flower_project_dir,
+    )

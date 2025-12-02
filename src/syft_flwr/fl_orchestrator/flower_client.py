@@ -1,6 +1,7 @@
 import base64
 import sys
 import traceback
+from pathlib import Path
 
 from flwr.client import ClientApp
 from flwr.common import Context
@@ -158,14 +159,21 @@ class RequestProcessor:
             return self.message_handler.create_error_reply(message, error)
 
 
-def syftbox_flwr_client(client_app: ClientApp, context: Context, app_name: str):
+def syftbox_flwr_client(
+    client_app: ClientApp,
+    context: Context,
+    app_name: str,
+    project_dir: Optional[Path] = None,
+):
     """Run the Flower ClientApp with SyftBox.
 
     Supports both syft_core (traditional SyftBox) and syft_client (P2P file sync).
     The appropriate events adapter is auto-detected based on environment.
     """
     # Setup - now works for both syft_core and syft_client
-    client, encryption_enabled, syft_flwr_app_name = setup_client(app_name)
+    client, encryption_enabled, syft_flwr_app_name = setup_client(
+        app_name, project_dir=project_dir
+    )
 
     # Create events adapter (auto-detects syft_core vs syft_client)
     events_watcher = create_events_watcher(

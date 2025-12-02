@@ -64,8 +64,14 @@ def create_temp_client(email: str, workspace_dir: Path) -> Client:
     return Client(config)
 
 
-def setup_client(app_name: str) -> Tuple[Union[Client, SyftFlwrClient], bool, str]:
+def setup_client(
+    app_name: str, project_dir: Optional[Path] = None
+) -> Tuple[Union[Client, SyftFlwrClient], bool, str]:
     """Setup SyftBox client and encryption.
+
+    Args:
+        app_name: Name of the FL app
+        project_dir: Path to the FL project directory (for reading transport config)
 
     Returns:
         Tuple of (client, encryption_enabled, app_path)
@@ -73,7 +79,7 @@ def setup_client(app_name: str) -> Tuple[Union[Client, SyftFlwrClient], bool, st
         - encryption_enabled: Whether encryption is enabled
         - app_path: Path for the app (e.g., "flwr/{app_name}")
     """
-    syftbox_client = create_client()
+    syftbox_client = create_client(project_dir=project_dir)
     syftbox_client = syftbox_client.get_client()
 
     # Check encryption setting
