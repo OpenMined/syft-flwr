@@ -41,6 +41,7 @@ class GDriveFileIO:
         self._connection_ready: bool = False  # Flag to ensure setup() completes
         self._folder_id_cache: dict[str, str] = {}
         self._connection_lock = threading.Lock()
+        self._api_lock = threading.Lock()  # Serialize all API operations for SSL safety
 
     def _ensure_connection(self) -> GDriveConnection:
         """Lazily initialize the GDriveConnection (thread-safe).
@@ -173,39 +174,40 @@ class GDriveFileIO:
         )
         logger.debug(f"[GDrive]   data size: {len(data)} bytes")
 
-        conn = self._ensure_connection()
+        with self._api_lock:
+            conn = self._ensure_connection()
 
-        # Get/create the outbox folder (shared with recipient for cross-account visibility)
-        outbox_folder = GdriveInboxOutBoxFolder(
-            sender_email=self._email, recipient_email=recipient_email
-        )
-        outbox_folder_name = outbox_folder.as_string()
-        logger.debug(f"[GDrive]   outbox folder name: {outbox_folder_name}")
-        outbox_folder_id = self._get_or_create_folder(
-            outbox_folder_name, share_with_email=recipient_email
-        )
+            # Get/create the outbox folder (shared with recipient for cross-account visibility)
+            outbox_folder = GdriveInboxOutBoxFolder(
+                sender_email=self._email, recipient_email=recipient_email
+            )
+            outbox_folder_name = outbox_folder.as_string()
+            logger.debug(f"[GDrive]   outbox folder name: {outbox_folder_name}")
+            outbox_folder_id = self._get_or_create_folder(
+                outbox_folder_name, share_with_email=recipient_email
+            )
 
-        # Create nested path: {app_name}/rpc/{endpoint}
-        path_parts = [app_name, "rpc", endpoint.lstrip("/")]
-        logger.debug(f"[GDrive]   nested path: {'/'.join(path_parts)}")
-        endpoint_folder_id = self._get_nested_folder(outbox_folder_id, path_parts)
+            # Create nested path: {app_name}/rpc/{endpoint}
+            path_parts = [app_name, "rpc", endpoint.lstrip("/")]
+            logger.debug(f"[GDrive]   nested path: {'/'.join(path_parts)}")
+            endpoint_folder_id = self._get_nested_folder(outbox_folder_id, path_parts)
 
-        # Upload the file
-        payload, _ = conn.create_file_payload(data)
-        file_metadata = {
-            "name": filename,
-            "parents": [endpoint_folder_id],
-        }
+            # Upload the file
+            payload, _ = conn.create_file_payload(data)
+            file_metadata = {
+                "name": filename,
+                "parents": [endpoint_folder_id],
+            }
 
-        result = (
-            conn.drive_service.files()
-            .create(body=file_metadata, media_body=payload, fields="id")
-            .execute()
-        )
+            result = (
+                conn.drive_service.files()
+                .create(body=file_metadata, media_body=payload, fields="id")
+                .execute()
+            )
 
-        logger.info(
-            f"[GDrive] Wrote file to outbox: {filename} (id: {result.get('id')})"
-        )
+            logger.info(
+                f"[GDrive] Wrote file to outbox: {filename} (id: {result.get('id')})"
+            )
 
     def read_from_inbox(
         self,
@@ -232,57 +234,58 @@ class GDriveFileIO:
             f"[GDrive]   app_name={app_name}, endpoint={endpoint}, filename={filename}"
         )
 
-        conn = self._ensure_connection()
+        with self._api_lock:
+            conn = self._ensure_connection()
 
-        # Find the inbox folder (owned by sender)
-        inbox_folder = GdriveInboxOutBoxFolder(
-            sender_email=sender_email, recipient_email=self._email
-        )
-        inbox_folder_name = inbox_folder.as_string()
-        logger.debug(f"[GDrive]   Looking for inbox folder: {inbox_folder_name}")
-        inbox_folder_id = conn._find_folder_by_name(
-            inbox_folder_name, owner_email=sender_email
-        )
-
-        if inbox_folder_id is None:
-            logger.debug(
-                "[GDrive]   Inbox folder not found (sender may not have sent anything yet)"
+            # Find the inbox folder (owned by sender)
+            inbox_folder = GdriveInboxOutBoxFolder(
+                sender_email=sender_email, recipient_email=self._email
             )
-            return None
-
-        logger.debug(f"[GDrive]   Found inbox folder: {inbox_folder_id}")
-
-        # Navigate to endpoint folder
-        path_parts = [app_name, "rpc", endpoint.lstrip("/")]
-        try:
-            endpoint_folder_id = self._get_nested_folder(inbox_folder_id, path_parts)
-            logger.debug(f"[GDrive]   Found endpoint folder: {endpoint_folder_id}")
-        except Exception as e:
-            logger.debug(
-                f"[GDrive]   Endpoint folder not found: {'/'.join(path_parts)} - {e}"
+            inbox_folder_name = inbox_folder.as_string()
+            logger.debug(f"[GDrive]   Looking for inbox folder: {inbox_folder_name}")
+            inbox_folder_id = conn._find_folder_by_name(
+                inbox_folder_name, owner_email=sender_email
             )
-            return None
 
-        # Find the file
-        query = (
-            f"name='{filename}' and '{endpoint_folder_id}' in parents and trashed=false"
-        )
-        results = (
-            conn.drive_service.files()
-            .list(q=query, fields="files(id)", pageSize=1)
-            .execute()
-        )
-        items = results.get("files", [])
+            if inbox_folder_id is None:
+                logger.debug(
+                    "[GDrive]   Inbox folder not found (sender may not have sent anything yet)"
+                )
+                return None
 
-        if not items:
-            logger.debug(f"[GDrive]   File not found: {filename}")
-            return None
+            logger.debug(f"[GDrive]   Found inbox folder: {inbox_folder_id}")
 
-        file_id = items[0]["id"]
-        logger.debug(f"[GDrive]   Downloading file: {filename} (id: {file_id})")
-        data = conn.download_file(file_id)
-        logger.debug(f"[GDrive]   Downloaded {len(data)} bytes")
-        return data
+            # Navigate to endpoint folder
+            path_parts = [app_name, "rpc", endpoint.lstrip("/")]
+            try:
+                endpoint_folder_id = self._get_nested_folder(
+                    inbox_folder_id, path_parts
+                )
+                logger.debug(f"[GDrive]   Found endpoint folder: {endpoint_folder_id}")
+            except Exception as e:
+                logger.debug(
+                    f"[GDrive]   Endpoint folder not found: {'/'.join(path_parts)} - {e}"
+                )
+                return None
+
+            # Find the file
+            query = f"name='{filename}' and '{endpoint_folder_id}' in parents and trashed=false"
+            results = (
+                conn.drive_service.files()
+                .list(q=query, fields="files(id)", pageSize=1)
+                .execute()
+            )
+            items = results.get("files", [])
+
+            if not items:
+                logger.debug(f"[GDrive]   File not found: {filename}")
+                return None
+
+            file_id = items[0]["id"]
+            logger.debug(f"[GDrive]   Downloading file: {filename} (id: {file_id})")
+            data = conn.download_file(file_id)
+            logger.debug(f"[GDrive]   Downloaded {len(data)} bytes")
+            return data
 
     def list_inbox_folders(self) -> List[str]:
         """List all inbox folders for this user.
@@ -292,60 +295,61 @@ class GDriveFileIO:
         """
         logger.debug(f"[GDrive] list_inbox_folders for {self._email}")
 
-        conn = self._ensure_connection()
+        with self._api_lock:
+            conn = self._ensure_connection()
 
-        # Find all folders matching the inbox pattern
-        query = (
-            f"name contains '{GDRIVE_OUTBOX_INBOX_FOLDER_PREFIX}' "
-            f"and name contains '_to_{self._email}' "
-            f"and mimeType='application/vnd.google-apps.folder' "
-            f"and trashed=false"
-        )
-        logger.debug(f"[GDrive]   Query: {query}")
-
-        # Handle pagination to get all folders
-        sender_emails = []
-        page_token = None
-        page_count = 0
-
-        while True:
-            page_count += 1
-            results = (
-                conn.drive_service.files()
-                .list(
-                    q=query,
-                    fields="files(name), nextPageToken",
-                    pageSize=100,
-                    pageToken=page_token,
-                )
-                .execute()
+            # Find all folders matching the inbox pattern
+            query = (
+                f"name contains '{GDRIVE_OUTBOX_INBOX_FOLDER_PREFIX}' "
+                f"and name contains '_to_{self._email}' "
+                f"and mimeType='application/vnd.google-apps.folder' "
+                f"and trashed=false"
             )
+            logger.debug(f"[GDrive]   Query: {query}")
 
-            files_in_page = results.get("files", [])
-            logger.debug(
-                f"[GDrive]   Page {page_count}: found {len(files_in_page)} folders"
-            )
+            # Handle pagination to get all folders
+            sender_emails = []
+            page_token = None
+            page_count = 0
 
-            for item in files_in_page:
-                try:
-                    folder_info = GdriveInboxOutBoxFolder.from_name(item["name"])
-                    if folder_info.recipient_email == self._email:
-                        sender_emails.append(folder_info.sender_email)
-                        logger.debug(
-                            f"[GDrive]     Found inbox from: {folder_info.sender_email}"
-                        )
-                except Exception as e:
-                    logger.debug(
-                        f"[GDrive]     Failed to parse folder name {item['name']}: {e}"
+            while True:
+                page_count += 1
+                results = (
+                    conn.drive_service.files()
+                    .list(
+                        q=query,
+                        fields="files(name), nextPageToken",
+                        pageSize=100,
+                        pageToken=page_token,
                     )
-                    continue
+                    .execute()
+                )
 
-            page_token = results.get("nextPageToken")
-            if not page_token:
-                break
+                files_in_page = results.get("files", [])
+                logger.debug(
+                    f"[GDrive]   Page {page_count}: found {len(files_in_page)} folders"
+                )
 
-        logger.debug(f"[GDrive]   Total senders found: {len(sender_emails)}")
-        return sender_emails
+                for item in files_in_page:
+                    try:
+                        folder_info = GdriveInboxOutBoxFolder.from_name(item["name"])
+                        if folder_info.recipient_email == self._email:
+                            sender_emails.append(folder_info.sender_email)
+                            logger.debug(
+                                f"[GDrive]     Found inbox from: {folder_info.sender_email}"
+                            )
+                    except Exception as e:
+                        logger.debug(
+                            f"[GDrive]     Failed to parse folder name {item['name']}: {e}"
+                        )
+                        continue
+
+                page_token = results.get("nextPageToken")
+                if not page_token:
+                    break
+
+            logger.debug(f"[GDrive]   Total senders found: {len(sender_emails)}")
+            return sender_emails
 
     def list_files_in_inbox_endpoint(
         self,
@@ -370,53 +374,58 @@ class GDriveFileIO:
             f"[GDrive]   app_name={app_name}, endpoint={endpoint}, suffix={suffix}"
         )
 
-        conn = self._ensure_connection()
+        with self._api_lock:
+            conn = self._ensure_connection()
 
-        # Find the inbox folder
-        inbox_folder = GdriveInboxOutBoxFolder(
-            sender_email=sender_email, recipient_email=self._email
-        )
-        inbox_folder_name = inbox_folder.as_string()
-        inbox_folder_id = conn._find_folder_by_name(
-            inbox_folder_name, owner_email=sender_email
-        )
-
-        if inbox_folder_id is None:
-            logger.debug(f"[GDrive]   Inbox folder not found: {inbox_folder_name}")
-            return []
-
-        logger.debug(f"[GDrive]   Found inbox folder: {inbox_folder_id}")
-
-        # Navigate to endpoint folder
-        path_parts = [app_name, "rpc", endpoint.lstrip("/")]
-        try:
-            endpoint_folder_id = self._get_nested_folder(inbox_folder_id, path_parts)
-            logger.debug(f"[GDrive]   Found endpoint folder: {endpoint_folder_id}")
-        except Exception as e:
-            logger.debug(
-                f"[GDrive]   Endpoint folder not found: {'/'.join(path_parts)} - {e}"
+            # Find the inbox folder
+            inbox_folder = GdriveInboxOutBoxFolder(
+                sender_email=sender_email, recipient_email=self._email
             )
-            return []
-
-        # List files with suffix
-        query = (
-            f"'{endpoint_folder_id}' in parents "
-            f"and name contains '{suffix}' "
-            f"and trashed=false"
-        )
-
-        results = (
-            conn.drive_service.files().list(q=query, fields="files(name)").execute()
-        )
-
-        filenames = [item["name"] for item in results.get("files", [])]
-        logger.debug(f"[GDrive]   Found {len(filenames)} files with suffix '{suffix}'")
-        if filenames:
-            logger.debug(
-                f"[GDrive]   Files: {filenames[:5]}{'...' if len(filenames) > 5 else ''}"
+            inbox_folder_name = inbox_folder.as_string()
+            inbox_folder_id = conn._find_folder_by_name(
+                inbox_folder_name, owner_email=sender_email
             )
 
-        return filenames
+            if inbox_folder_id is None:
+                logger.debug(f"[GDrive]   Inbox folder not found: {inbox_folder_name}")
+                return []
+
+            logger.debug(f"[GDrive]   Found inbox folder: {inbox_folder_id}")
+
+            # Navigate to endpoint folder
+            path_parts = [app_name, "rpc", endpoint.lstrip("/")]
+            try:
+                endpoint_folder_id = self._get_nested_folder(
+                    inbox_folder_id, path_parts
+                )
+                logger.debug(f"[GDrive]   Found endpoint folder: {endpoint_folder_id}")
+            except Exception as e:
+                logger.debug(
+                    f"[GDrive]   Endpoint folder not found: {'/'.join(path_parts)} - {e}"
+                )
+                return []
+
+            # List files with suffix
+            query = (
+                f"'{endpoint_folder_id}' in parents "
+                f"and name contains '{suffix}' "
+                f"and trashed=false"
+            )
+
+            results = (
+                conn.drive_service.files().list(q=query, fields="files(name)").execute()
+            )
+
+            filenames = [item["name"] for item in results.get("files", [])]
+            logger.debug(
+                f"[GDrive]   Found {len(filenames)} files with suffix '{suffix}'"
+            )
+            if filenames:
+                logger.debug(
+                    f"[GDrive]   Files: {filenames[:5]}{'...' if len(filenames) > 5 else ''}"
+                )
+
+            return filenames
 
     def _delete_file_in_folder(
         self,
@@ -499,20 +508,21 @@ class GDriveFileIO:
             f"[GDrive]   app_name={app_name}, endpoint={endpoint}, filename={filename}"
         )
 
-        conn = self._ensure_connection()
+        with self._api_lock:
+            conn = self._ensure_connection()
 
-        folder = GdriveInboxOutBoxFolder(
-            sender_email=sender_email, recipient_email=self._email
-        )
-        folder_name = folder.as_string()
-        folder_id = conn._find_folder_by_name(folder_name, owner_email=sender_email)
+            folder = GdriveInboxOutBoxFolder(
+                sender_email=sender_email, recipient_email=self._email
+            )
+            folder_name = folder.as_string()
+            folder_id = conn._find_folder_by_name(folder_name, owner_email=sender_email)
 
-        if folder_id is None:
-            logger.debug(f"[GDrive]   Inbox folder not found: {folder_name}")
-            return False
+            if folder_id is None:
+                logger.debug(f"[GDrive]   Inbox folder not found: {folder_name}")
+                return False
 
-        logger.debug(f"[GDrive]   Found inbox folder: {folder_id}")
-        return self._delete_file_in_folder(folder_id, app_name, endpoint, filename)
+            logger.debug(f"[GDrive]   Found inbox folder: {folder_id}")
+            return self._delete_file_in_folder(folder_id, app_name, endpoint, filename)
 
     def delete_file_from_outbox(
         self,
@@ -541,17 +551,18 @@ class GDriveFileIO:
             f"[GDrive]   app_name={app_name}, endpoint={endpoint}, filename={filename}"
         )
 
-        conn = self._ensure_connection()
+        with self._api_lock:
+            conn = self._ensure_connection()
 
-        folder = GdriveInboxOutBoxFolder(
-            sender_email=self._email, recipient_email=recipient_email
-        )
-        folder_name = folder.as_string()
-        folder_id = conn._find_folder_by_name(folder_name, owner_email=self._email)
+            folder = GdriveInboxOutBoxFolder(
+                sender_email=self._email, recipient_email=recipient_email
+            )
+            folder_name = folder.as_string()
+            folder_id = conn._find_folder_by_name(folder_name, owner_email=self._email)
 
-        if folder_id is None:
-            logger.debug(f"[GDrive]   Outbox folder not found: {folder_name}")
-            return False
+            if folder_id is None:
+                logger.debug(f"[GDrive]   Outbox folder not found: {folder_name}")
+                return False
 
-        logger.debug(f"[GDrive]   Found outbox folder: {folder_id}")
-        return self._delete_file_in_folder(folder_id, app_name, endpoint, filename)
+            logger.debug(f"[GDrive]   Found outbox folder: {folder_id}")
+            return self._delete_file_in_folder(folder_id, app_name, endpoint, filename)
