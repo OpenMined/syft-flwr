@@ -10,6 +10,7 @@ using syft-client's GDriveConnection. It handles:
 
 from __future__ import annotations
 
+import threading
 from typing import List, Optional
 
 from loguru import logger
@@ -37,15 +38,28 @@ class GDriveFileIO:
         """
         self._email = email
         self._connection: Optional[GDriveConnection] = None
+        self._connection_ready: bool = False  # Flag to ensure setup() completes
         self._folder_id_cache: dict[str, str] = {}
+        self._connection_lock = threading.Lock()
 
     def _ensure_connection(self) -> GDriveConnection:
-        """Lazily initialize the GDriveConnection."""
-        if self._connection is None:
-            # In Colab, this will use automatic OAuth
-            self._connection = GDriveConnection(email=self._email)
-            self._connection.setup()
-            logger.info(f"Initialized GDriveConnection for {self._email}")
+        """Lazily initialize the GDriveConnection (thread-safe).
+
+        Uses double-checked locking with a flag to ensure setup() completes
+        before any other thread can use the connection.
+        """
+        # First check without lock for performance (check both connection and setup flag)
+        if self._connection is not None and self._connection_ready:
+            return self._connection
+
+        with self._connection_lock:
+            # Double-check after acquiring lock
+            if self._connection is None or not self._connection_ready:
+                # In Colab, this will use automatic OAuth
+                self._connection = GDriveConnection(email=self._email)
+                self._connection.setup()
+                self._connection_ready = True  # Mark as ready AFTER setup completes
+                logger.info(f"Initialized GDriveConnection for {self._email}")
         return self._connection
 
     def _get_or_create_folder(
