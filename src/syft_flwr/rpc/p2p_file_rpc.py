@@ -89,16 +89,7 @@ class P2PFileRpc(SyftFlwrRpc):
         return body
 
     def delete_future(self, future_id: str) -> None:
-        future_data = self._pending_futures.pop(future_id, None)
-        if future_data is not None:
-            recipient, app_name, endpoint = future_data
-            filename = f"{future_id}.response"
-
-            # Clean up response file from inbox (sent by recipient to us)
-            self._gdrive_io.delete_file_from_inbox(
-                sender_email=recipient,
-                app_name=app_name,
-                endpoint=endpoint,
-                filename=filename,
-            )
-            logger.debug(f"Deleted future_id={future_id}")
+        # Only clear in-memory tracking
+        # Response files are owned by DO and cannot be deleted by DS
+        if self._pending_futures.pop(future_id, None) is not None:
+            logger.debug(f"Cleared future_id={future_id} from tracking")
