@@ -6,11 +6,16 @@ using syft-client's GDriveConnection. It handles:
 - Writing request/response files
 - Reading files from inbox folders
 - Listing files in folders
+
+Environment variables:
+- GDRIVE_TOKEN_PATH: Path to OAuth token file (for non-Colab environments)
 """
 
 from __future__ import annotations
 
+import os
 import threading
+from pathlib import Path
 from typing import List, Optional
 
 from loguru import logger
@@ -48,6 +53,10 @@ class GDriveFileIO:
 
         Uses double-checked locking with a flag to ensure setup() completes
         before any other thread can use the connection.
+
+        Authentication priority:
+        1. GDRIVE_TOKEN_PATH env var (for local/test environments)
+        2. Automatic OAuth (for Colab environments)
         """
         # First check without lock for performance (check both connection and setup flag)
         if self._connection is not None and self._connection_ready:
@@ -56,11 +65,32 @@ class GDriveFileIO:
         with self._connection_lock:
             # Double-check after acquiring lock
             if self._connection is None or not self._connection_ready:
-                # In Colab, this will use automatic OAuth
-                self._connection = GDriveConnection(email=self._email)
-                self._connection.setup()
+                # Check for token path from environment variable
+                token_path_str = os.environ.get("GDRIVE_TOKEN_PATH")
+
+                if token_path_str:
+                    # Use token file for authentication (local/test environment)
+                    token_path = Path(token_path_str)
+                    if not token_path.exists():
+                        raise FileNotFoundError(
+                            f"GDRIVE_TOKEN_PATH set but file not found: {token_path}"
+                        )
+                    logger.info(
+                        f"Initializing GDriveConnection for {self._email} with token: {token_path}"
+                    )
+                    self._connection = GDriveConnection.from_token_path(
+                        email=self._email, token_path=token_path
+                    )
+                else:
+                    # In Colab, this will use automatic OAuth
+                    logger.info(
+                        f"Initializing GDriveConnection for {self._email} (automatic OAuth)"
+                    )
+                    self._connection = GDriveConnection(email=self._email)
+                    self._connection.setup()
+
                 self._connection_ready = True  # Mark as ready AFTER setup completes
-                logger.info(f"Initialized GDriveConnection for {self._email}")
+                logger.info(f"GDriveConnection ready for {self._email}")
         return self._connection
 
     def _get_or_create_folder(
@@ -117,15 +147,21 @@ class GDriveFileIO:
         self._folder_id_cache[folder_name] = folder_id
         return folder_id
 
-    def _get_nested_folder(self, parent_id: str, path_parts: List[str]) -> str:
+    def _get_nested_folder(
+        self, parent_id: str, path_parts: List[str], create_if_missing: bool = True
+    ) -> Optional[str]:
         """Get or create nested folders under parent.
 
         Args:
             parent_id: Parent folder ID
             path_parts: List of folder names to create/traverse
+            create_if_missing: If True, create folders that don't exist.
+                If False, return None if any folder in the path doesn't exist.
+                Use False when reading from inbox (folders owned by others)
+                to avoid creating duplicate folders.
 
         Returns:
-            Final folder ID
+            Final folder ID, or None if create_if_missing=False and path doesn't exist
         """
         conn = self._ensure_connection()
         current_id = parent_id
@@ -140,9 +176,16 @@ class GDriveFileIO:
             folder_id = conn._find_folder_by_name(part, parent_id=current_id)
 
             if folder_id is None:
-                # Create the folder
-                folder_id = conn.create_folder(part, current_id)
-                logger.debug(f"Created nested folder: {part}")
+                if create_if_missing:
+                    # Create the folder
+                    folder_id = conn.create_folder(part, current_id)
+                    logger.debug(f"Created nested folder: {part}")
+                else:
+                    # Don't create - return None to indicate path doesn't exist yet
+                    logger.debug(
+                        f"[GDrive] Nested folder not found: {part} (not creating)"
+                    )
+                    return None
 
             self._folder_id_cache[cache_key] = folder_id
             current_id = folder_id
@@ -255,18 +298,17 @@ class GDriveFileIO:
 
             logger.debug(f"[GDrive]   Found inbox folder: {inbox_folder_id}")
 
-            # Navigate to endpoint folder
+            # Navigate to endpoint folder (don't create - folders owned by sender)
             path_parts = [app_name, "rpc", endpoint.lstrip("/")]
-            try:
-                endpoint_folder_id = self._get_nested_folder(
-                    inbox_folder_id, path_parts
-                )
-                logger.debug(f"[GDrive]   Found endpoint folder: {endpoint_folder_id}")
-            except Exception as e:
+            endpoint_folder_id = self._get_nested_folder(
+                inbox_folder_id, path_parts, create_if_missing=False
+            )
+            if endpoint_folder_id is None:
                 logger.debug(
-                    f"[GDrive]   Endpoint folder not found: {'/'.join(path_parts)} - {e}"
+                    f"[GDrive]   Endpoint folder not found yet: {'/'.join(path_parts)}"
                 )
                 return None
+            logger.debug(f"[GDrive]   Found endpoint folder: {endpoint_folder_id}")
 
             # Find the file
             query = f"name='{filename}' and '{endpoint_folder_id}' in parents and trashed=false"
@@ -392,18 +434,17 @@ class GDriveFileIO:
 
             logger.debug(f"[GDrive]   Found inbox folder: {inbox_folder_id}")
 
-            # Navigate to endpoint folder
+            # Navigate to endpoint folder (don't create - folders owned by sender)
             path_parts = [app_name, "rpc", endpoint.lstrip("/")]
-            try:
-                endpoint_folder_id = self._get_nested_folder(
-                    inbox_folder_id, path_parts
-                )
-                logger.debug(f"[GDrive]   Found endpoint folder: {endpoint_folder_id}")
-            except Exception as e:
+            endpoint_folder_id = self._get_nested_folder(
+                inbox_folder_id, path_parts, create_if_missing=False
+            )
+            if endpoint_folder_id is None:
                 logger.debug(
-                    f"[GDrive]   Endpoint folder not found: {'/'.join(path_parts)} - {e}"
+                    f"[GDrive]   Endpoint folder not found yet: {'/'.join(path_parts)}"
                 )
                 return []
+            logger.debug(f"[GDrive]   Found endpoint folder: {endpoint_folder_id}")
 
             # List files with suffix
             query = (
