@@ -12,7 +12,7 @@ from syft_flwr.fl_orchestrator.flower_client import (
     syftbox_flwr_client,
 )
 from syft_flwr.fl_orchestrator.flower_server import syftbox_flwr_server
-from syft_flwr.fl_orchestrator.grid import SyftGrid
+from syft_flwr.fl_orchestrator.syft_grid import SyftGrid
 
 __all__ = [
     # Grid

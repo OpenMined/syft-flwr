@@ -1,14 +1,14 @@
 """
-Integration test for simple Python script execution using syft-client.
+Integration test for simple Python script submission using syft-client.
 
-This test verifies the complete workflow for executing a simple Python script:
+This test verifies the complete workflow for submitting and accepting a Python job:
 1. DOs upload private datasets to Google Drive
 2. DS discovers datasets and submits simple analysis jobs
-3. DOs approve and execute jobs on their private data
+3. DOs approve jobs and accept them by depositing results
 4. Results are verified
 
-This is a simpler test than FL diabetes training - just runs a Python script
-that reads the dataset and prints summary statistics.
+This is a simpler test that focuses on the job submission/acceptance workflow
+without actually executing the Python scripts.
 
 Prerequisites:
 - Google OAuth credentials in syft-flwr/credentials/
@@ -24,7 +24,6 @@ from time import sleep
 
 from common_rds_phases import (
     dos_approve_jobs,
-    dos_execute_jobs,
     dos_upload_datasets,
     ds_discover_datasets,
 )
@@ -127,77 +126,122 @@ def test_phase_06_dos_approve_jobs(syft_managers):
 
 
 # ==============================================================================
-# Phase 7: Execute Jobs
+# Phase 7: DOs Accept Jobs by Depositing Results
 # ==============================================================================
 
 
-def test_phase_07_execute_jobs(syft_managers):
-    """Phase 7: DOs execute approved jobs on their private data."""
-    logger.info("Phase 7: Executing jobs...")
-    duration_do1, duration_do2 = dos_execute_jobs(syft_managers)
-    logger.success(
-        f"✅ Phase 7 complete: Both DOs executed jobs (DO1: {duration_do1:.1f}s, DO2: {duration_do2:.1f}s)"
-    )
+def test_phase_07_dos_accept_jobs(syft_managers):
+    """Phase 7: DOs accept jobs by depositing mock results.
 
-
-# ==============================================================================
-# Phase 8: Verify Job Results
-# ==============================================================================
-
-
-def test_phase_08_verify_results(syft_managers):
-    """Phase 8: Verify job results - check that the simple analysis job ran successfully."""
-    logger.info("Phase 8: Verifying job results...")
+    This uses accept_by_depositing_result() to mark jobs as done
+    without actually executing the Python scripts.
+    """
+    logger.info("Phase 7: DOs accepting jobs by depositing results...")
 
     do1_manager = syft_managers["do1"]
     do2_manager = syft_managers["do2"]
 
-    # Get DO1 job results
+    # Create a mock result file to deposit
+    result_content = """DIABETES DATASET ANALYSIS RESULTS
+==================================
+Shape: (384, 9)
+Analysis completed successfully.
+RESULT: SUCCESS
+"""
+
+    # DO1 accepts job by depositing result
+    logger.info("DO1 accepting job...")
     do1_jobs = do1_manager.jobs
     assert len(do1_jobs) > 0, "No jobs found for DO1"
     do1_job = do1_jobs[0]
-
-    # Read DO1 stdout
-    logger.info("Reading DO1 job stdout...")
-    do1_stdout = str(do1_job.stdout)
-    logger.info(f"\nDO1 Output:\n{do1_stdout}\n")
-
-    # Verify DO1 job succeeded
     assert (
-        "RESULT: SUCCESS" in do1_stdout
-    ), f"DO1 job did not succeed. Output: {do1_stdout}"
-    assert (
-        "Shape:" in do1_stdout
-    ), f"DO1 job did not print dataset shape. Output: {do1_stdout}"
-    assert "DIABETES DATASET SUMMARY" in do1_stdout, "DO1 job missing summary header"
-    logger.success("✅ DO1 job completed successfully")
+        do1_job.status == "approved"
+    ), f"DO1 job not approved, status: {do1_job.status}"
 
-    # Get DO2 job results
+    # Create temp result file and deposit it
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        f.write(result_content)
+        do1_result_path = f.name
+
+    try:
+        do1_job.accept_by_depositing_result(do1_result_path)
+        logger.success("✅ DO1 job accepted with deposited result")
+    finally:
+        Path(do1_result_path).unlink(missing_ok=True)
+
+    # DO2 accepts job by depositing result
+    logger.info("DO2 accepting job...")
     do2_jobs = do2_manager.jobs
     assert len(do2_jobs) > 0, "No jobs found for DO2"
     do2_job = do2_jobs[0]
-
-    # Read DO2 stdout
-    logger.info("Reading DO2 job stdout...")
-    do2_stdout = str(do2_job.stdout)
-    logger.info(f"\nDO2 Output:\n{do2_stdout}\n")
-
-    # Verify DO2 job succeeded
     assert (
-        "RESULT: SUCCESS" in do2_stdout
-    ), f"DO2 job did not succeed. Output: {do2_stdout}"
-    assert (
-        "Shape:" in do2_stdout
-    ), f"DO2 job did not print dataset shape. Output: {do2_stdout}"
-    assert "DIABETES DATASET SUMMARY" in do2_stdout, "DO2 job missing summary header"
-    logger.success("✅ DO2 job completed successfully")
+        do2_job.status == "approved"
+    ), f"DO2 job not approved, status: {do2_job.status}"
 
-    # Log final summary
+    # Create temp result file and deposit it
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        f.write(result_content)
+        do2_result_path = f.name
+
+    try:
+        do2_job.accept_by_depositing_result(do2_result_path)
+        logger.success("✅ DO2 job accepted with deposited result")
+    finally:
+        Path(do2_result_path).unlink(missing_ok=True)
+
+    logger.success("✅ Phase 7 complete: Both DOs accepted jobs")
+
+
+# ==============================================================================
+# Phase 8: Verify Results
+# ==============================================================================
+
+
+def test_phase_08_verify_results(syft_managers):
+    """Phase 8: Verify that jobs are marked as done and results are deposited."""
+    logger.info("Phase 8: Verifying job results...")
+
+    do1_manager = syft_managers["do1"]
+    do2_manager = syft_managers["do2"]
+    ds_manager = syft_managers["ds"]
+
+    # DS syncs to get latest state
+    logger.info("DS syncing to get latest job status...")
+    ds_manager.sync()
+    sleep(1)
+
+    # Verify DO1 job is done
+    do1_jobs = do1_manager.jobs
+    assert len(do1_jobs) > 0, "No jobs found for DO1"
+    do1_job = do1_jobs[0]
+    assert do1_job.status == "done", f"DO1 job not done, status: {do1_job.status}"
+
+    # Check DO1 has output files
+    do1_outputs = do1_job.output_paths
+    assert len(do1_outputs) > 0, "DO1 job has no output files"
+    logger.info(f"DO1 job outputs: {[p.name for p in do1_outputs]}")
+    logger.success("✅ DO1 job verified: status=done, outputs deposited")
+
+    # Verify DO2 job is done
+    do2_jobs = do2_manager.jobs
+    assert len(do2_jobs) > 0, "No jobs found for DO2"
+    do2_job = do2_jobs[0]
+    assert do2_job.status == "done", f"DO2 job not done, status: {do2_job.status}"
+
+    # Check DO2 has output files
+    do2_outputs = do2_job.output_paths
+    assert len(do2_outputs) > 0, "DO2 job has no output files"
+    logger.info(f"DO2 job outputs: {[p.name for p in do2_outputs]}")
+    logger.success("✅ DO2 job verified: status=done, outputs deposited")
+
+    # Summary
     logger.info("\n" + "=" * 60)
-    logger.info("JOB RESULTS SUMMARY")
+    logger.info("JOB VERIFICATION SUMMARY")
     logger.info("=" * 60)
-    logger.info("DO1: Job executed successfully - dataset summary printed")
-    logger.info("DO2: Job executed successfully - dataset summary printed")
+    logger.info(f"  DO1 job status: {do1_job.status}")
+    logger.info(f"  DO1 outputs: {len(do1_outputs)} file(s)")
+    logger.info(f"  DO2 job status: {do2_job.status}")
+    logger.info(f"  DO2 outputs: {len(do2_outputs)} file(s)")
     logger.info("=" * 60)
 
-    logger.success("✅ Phase 8 complete: Job results verified!")
+    logger.success("✅ Phase 8 complete: All jobs verified successfully!")

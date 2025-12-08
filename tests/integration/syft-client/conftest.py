@@ -22,7 +22,7 @@ import pytest
 from dotenv import load_dotenv
 from huggingface_hub import snapshot_download
 from loguru import logger
-from syft_client.sync.syftbox_manager import SyftboxManager
+from syft_client.sync.syftbox_manager import SyftboxManager, SyftboxManagerConfig
 from utils import (
     SCOPES,
     create_token,
@@ -41,6 +41,7 @@ ENV_FILE = CREDENTIALS_DIR / ".env"
 FL_PROJECT_DIR = (
     SYFT_FLWR_DIR / "notebooks" / "fl-diabetes-prediction" / "fl-diabetes-prediction"
 )
+TEST_LOGS_DIR = Path("/tmp/syft_flwr_test_logs")
 
 
 # ==============================================================================
@@ -130,52 +131,87 @@ def validate_user_credentials(
     }
 
 
-def create_ds_do_pair(
-    ds_email: str,
-    ds_token_path: Path,
-    do_email: str,
-    do_token_path: Path,
-    add_peers: bool = False,
-) -> tuple[SyftboxManager, SyftboxManager]:
-    """Create a DS + DO manager pair with Google Drive connection.
+def create_single_manager(
+    email: str,
+    token_path: Path,
+    is_ds: bool = False,
+) -> SyftboxManager:
+    """Create a single SyftboxManager for testing.
+
+    This function creates managers individually to avoid the cross-contamination
+    issues that can occur when using pair_with_google_drive_testing_connection()
+    multiple times (which creates duplicate DS managers).
 
     Args:
-        ds_email: Data Scientist email
-        ds_token_path: Path to DS OAuth token
-        do_email: Data Owner email
-        do_token_path: Path to DO OAuth token
-        add_peers: Whether to auto-add peers (default False, add manually for control)
+        email: User email
+        token_path: Path to OAuth token
+        is_ds: True for Data Scientist, False for Data Owner
 
     Returns:
-        Tuple of (ds_manager, do_manager)
+        Configured SyftboxManager instance with appropriate callbacks
     """
-    ds_manager, do_manager = SyftboxManager.pair_with_google_drive_testing_connection(
-        do_email=do_email,
-        ds_email=ds_email,
-        do_token_path=do_token_path,
-        ds_token_path=ds_token_path,
+    logger.debug(f"[DEBUG] Creating manager for {email} (is_ds={is_ds})")
+
+    config = SyftboxManagerConfig.for_google_drive_testing_connection(
+        email=email,
+        token_path=token_path,
         use_in_memory_cache=False,
-        add_peers=add_peers,
-        load_peers=False,
-        clear_caches=True,
+        only_ds=is_ds,
+        only_datasite_owner=not is_ds,
     )
-    logger.info(f"   Created DS ({ds_email}) + DO ({do_email}) pair")
-    return ds_manager, do_manager
+    logger.debug(
+        f"[DEBUG] Config created for {email}, syftbox_folder={config.syftbox_folder}"
+    )
 
+    manager = SyftboxManager.from_config(config)
+    logger.debug(
+        f"[DEBUG] Manager created for {email}, syftbox_folder={manager.syftbox_folder}"
+    )
 
-def add_peer_connection(ds_manager: SyftboxManager, do_manager: SyftboxManager):
-    """Establish bidirectional peer connection between DS and DO.
+    # DEBUG: Check what SyftBox folder ID the connection is using
+    try:
+        conn = manager.connection_router.connections[0]
+        syftbox_id = conn.get_syftbox_folder_id()
+        personal_id = conn.get_personal_syftbox_folder_id()
+        logger.debug(f"[DEBUG] {email}: SyftBox folder ID = {syftbox_id}")
+        logger.debug(f"[DEBUG] {email}: Personal folder ID = {personal_id}")
 
-    Args:
-        ds_manager: Data Scientist SyftboxManager
-        do_manager: Data Owner SyftboxManager
-    """
-    ds_email = ds_manager.email
-    do_email = do_manager.email
-    logger.info(f"Adding peer connection: {ds_email} <-> {do_email}")
-    ds_manager.add_peer(do_email)
-    do_manager.add_peer(ds_email)
-    logger.info(f"   {ds_email} <-> {do_email} peer connection established")
+        # List what folders are in the SyftBox
+        drive_service = conn.drive_service
+        query = f"'{syftbox_id}' in parents and trashed=false"
+        results = (
+            drive_service.files()
+            .list(q=query, fields="files(id, name, owners)")
+            .execute()
+        )
+        items = results.get("files", [])
+        logger.debug(f"[DEBUG] {email}: Folders in SyftBox ({len(items)}):")
+        for item in items:
+            owners = [o.get("emailAddress", "?") for o in item.get("owners", [])]
+            logger.debug(
+                f"[DEBUG]   - {item['name']} (id={item['id'][:8]}..., owners={owners})"
+            )
+    except Exception as e:
+        logger.debug(f"[DEBUG] Error getting folder info for {email}: {e}")
+
+    manager.clear_caches()
+
+    # Setup callbacks based on role
+    if is_ds:
+        # DS: file writes trigger push to outbox
+        manager.file_writer.add_callback(
+            "write_file",
+            manager.proposed_file_change_pusher.on_file_change,
+        )
+    else:
+        # DO: received events trigger job handler
+        manager.proposed_file_change_handler.event_cache.add_callback(
+            "on_event_local_write",
+            manager.job_file_change_handler._handle_file_change,
+        )
+
+    logger.info(f"   Created {'DS' if is_ds else 'DO'} manager for {email}")
+    return manager
 
 
 # ==============================================================================
@@ -299,30 +335,40 @@ def prepare_datasets():
 
 @pytest.fixture(scope="module")
 def syft_managers(cleanup_drive, validate_environment):
-    """Initialize syft-client instances for DO1, DO2, DS."""
+    """Initialize syft-client instances for DO1, DO2, DS.
+
+    Creates each manager individually using SyftboxManagerConfig to avoid
+    the cross-contamination issues that occur when pair_with_google_drive_testing_connection()
+    is called multiple times (which creates duplicate DS managers).
+    """
     logger.info("Phase 2: Initializing syft-client managers...")
 
     env = validate_environment
 
-    # Create DS + DO1 pair (without auto-adding peers)
-    ds_manager, do1_manager = create_ds_do_pair(
-        ds_email=env["EMAIL_DS"],
-        ds_token_path=env["token_path_ds"],
-        do_email=env["EMAIL_DO1"],
-        do_token_path=env["token_path_do1"],
+    # Create each manager individually - NO duplicates
+    ds_manager = create_single_manager(
+        email=env["EMAIL_DS"],
+        token_path=env["token_path_ds"],
+        is_ds=True,
     )
 
-    # Create DS + DO2 pair (we only need the DO2 manager)
-    _, do2_manager = create_ds_do_pair(
-        ds_email=env["EMAIL_DS"],
-        ds_token_path=env["token_path_ds"],
-        do_email=env["EMAIL_DO2"],
-        do_token_path=env["token_path_do2"],
+    do1_manager = create_single_manager(
+        email=env["EMAIL_DO1"],
+        token_path=env["token_path_do1"],
+        is_ds=False,
     )
 
-    # Add peers after all managers created
-    add_peer_connection(ds_manager, do1_manager)
-    add_peer_connection(ds_manager, do2_manager)
+    do2_manager = create_single_manager(
+        email=env["EMAIL_DO2"],
+        token_path=env["token_path_do2"],
+        is_ds=False,
+    )
+
+    # DS adds both DOs as peers (creates outbox AND inbox folders for each)
+    logger.info(f"Adding peer connection: {env['EMAIL_DS']} <-> {env['EMAIL_DO1']}")
+    ds_manager.add_peer(env["EMAIL_DO1"])
+    logger.info(f"Adding peer connection: {env['EMAIL_DS']} <-> {env['EMAIL_DO2']}")
+    ds_manager.add_peer(env["EMAIL_DO2"])
 
     # Wait for Google Drive operations to complete
     sleep(2)
@@ -336,10 +382,10 @@ def syft_managers(cleanup_drive, validate_environment):
     logger.info(f"  - DO1: {env['EMAIL_DO1']}")
     logger.info(f"  - DO2: {env['EMAIL_DO2']}")
     logger.info(f"  - DS: {env['EMAIL_DS']}")
-    logger.info(f"  - DS peers (initial): {[p.email for p in ds_manager.peers]}")
 
     # Verify DS has both DOs as peers
     ds_peer_emails = [p.email for p in ds_manager.peers]
+    logger.info(f"  - DS peers: {ds_peer_emails}")
     assert (
         env["EMAIL_DO1"] in ds_peer_emails
     ), f"DO1 not in DS peers after sync: {ds_peer_emails}"
@@ -421,21 +467,28 @@ def syft_managers_single_do(cleanup_drive_single_do, validate_environment_single
     """Initialize syft-client instances for single DO (DO1) + DS only.
 
     This fixture is optimized for single-DO tests that don't need DO2.
+    Creates each manager individually using SyftboxManagerConfig.
     """
     logger.info("Phase 2: Initializing syft-client managers (single DO)...")
 
     env = validate_environment_single_do
 
-    # Create DS + DO1 pair only
-    ds_manager, do1_manager = create_ds_do_pair(
-        ds_email=env["EMAIL_DS"],
-        ds_token_path=env["token_path_ds"],
-        do_email=env["EMAIL_DO1"],
-        do_token_path=env["token_path_do1"],
+    # Create each manager individually
+    ds_manager = create_single_manager(
+        email=env["EMAIL_DS"],
+        token_path=env["token_path_ds"],
+        is_ds=True,
     )
 
-    # Add peer connection
-    add_peer_connection(ds_manager, do1_manager)
+    do1_manager = create_single_manager(
+        email=env["EMAIL_DO1"],
+        token_path=env["token_path_do1"],
+        is_ds=False,
+    )
+
+    # DS adds DO1 as peer
+    logger.info(f"Adding peer connection: {env['EMAIL_DS']} <-> {env['EMAIL_DO1']}")
+    ds_manager.add_peer(env["EMAIL_DO1"])
 
     # Wait for Google Drive operations to complete
     sleep(2)
@@ -447,10 +500,10 @@ def syft_managers_single_do(cleanup_drive_single_do, validate_environment_single
     logger.success(" 2 managers initialized (single DO mode)")
     logger.info(f"  - DO1: {env['EMAIL_DO1']}")
     logger.info(f"  - DS: {env['EMAIL_DS']}")
-    logger.info(f"  - DS peers: {[p.email for p in ds_manager.peers]}")
 
     # Verify DS has DO1 as peer
     ds_peer_emails = [p.email for p in ds_manager.peers]
+    logger.info(f"  - DS peers: {ds_peer_emails}")
     assert (
         env["EMAIL_DO1"] in ds_peer_emails
     ), f"DO1 not in DS peers after sync: {ds_peer_emails}"

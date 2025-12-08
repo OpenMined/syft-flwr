@@ -18,8 +18,8 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-# syft-client = { path = "/Users/khoaguin/Desktop/projects/OpenMined/syft-client", editable = true }  # for development
 syft-client = { git = "https://github.com/OpenMined/syft-client/", branch = "khoa/python_job_folder_submission" }  # for development
+# syft-client = { path = "/Users/khoaguin/Desktop/projects/OpenMined/syft-client", editable = true }  # for development
 # syft-rds = { path = "../syft-rds", editable = true }  # for development
 
 [project.scripts]

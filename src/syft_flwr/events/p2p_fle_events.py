@@ -106,20 +106,20 @@ class P2PFileEvents(SyftFlwrEvents):
 
         future_id = filename.rsplit(".", 1)[0]  # Remove .request extension
 
+        # Read request from inbox
+        request_body = self._gdrive_io.read_from_inbox(
+            sender_email=sender_email,
+            app_name=self._app_name,
+            endpoint=endpoint,
+            filename=filename,
+        )
+
+        if request_body is None:
+            return
+
+        logger.debug(f"Processing request from {sender_email}: {filename}")
+
         try:
-            # Read request from inbox
-            request_body = self._gdrive_io.read_from_inbox(
-                sender_email=sender_email,
-                app_name=self._app_name,
-                endpoint=endpoint,
-                filename=filename,
-            )
-
-            if request_body is None:
-                return
-
-            logger.debug(f"Processing request from {sender_email}: {filename}")
-
             response = handler(request_body)
 
             if response is not None:
@@ -139,22 +139,6 @@ class P2PFileEvents(SyftFlwrEvents):
                     data=response_bytes,
                 )
                 logger.debug(f"Wrote response to outbox: {response_filename}")
-
-            # Delete the request file from inbox after processing
-            # This prevents re-processing the same request if we restart
-            deleted = self._gdrive_io.delete_file_from_inbox(
-                sender_email=sender_email,
-                app_name=self._app_name,
-                endpoint=endpoint,
-                filename=filename,
-            )
-            if deleted:
-                logger.debug(f"Deleted processed request file: {filename}")
-            else:
-                logger.warning(f"Could not delete request file: {filename}")
-
-            # Mark as processed (with LRU eviction)
-            self._mark_as_processed(request_key)
 
         except Exception as e:
             logger.error(f"Error processing request {filename}: {e}")
@@ -178,7 +162,18 @@ class P2PFileEvents(SyftFlwrEvents):
             except Exception as write_error:
                 logger.error(f"Failed to write error response: {write_error}")
 
-            # Mark as processed even on error (with LRU eviction)
+        finally:
+            # Always delete request file and mark as processed
+            try:
+                self._gdrive_io.delete_file_from_inbox(
+                    sender_email=sender_email,
+                    app_name=self._app_name,
+                    endpoint=endpoint,
+                    filename=filename,
+                )
+            except Exception as delete_error:
+                logger.debug(f"Could not delete request file: {delete_error}")
+
             self._mark_as_processed(request_key)
 
     def _poll_loop(self) -> None:

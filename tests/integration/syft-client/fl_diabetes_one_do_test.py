@@ -1,14 +1,13 @@
 """
 Integration test for FL Diabetes Prediction with a SINGLE Data Owner.
 
-This simplified test verifies the FL workflow with just one DO:
-1. Single data owner uploads private dataset to Google Drive
-2. Data scientist discovers dataset and submits FL training job
-3. Data owner approves and executes job on their private data
-4. Training results are verified
-
-This test avoids the parallel execution requirement that would be needed
-when multiple DOs need to coordinate in federated learning.
+This test verifies the FL workflow with one DO:
+1. DS logs in and adds DO as peer
+2. DO logs in and uploads dataset
+3. DS discovers dataset and submits FL training job
+4. DO approves job
+5. DS runs Flower server + DO runs Flower client concurrently
+6. Training results are verified
 
 Prerequisites:
 - Google OAuth credentials (client_id, client_secret) in syft-flwr/credentials/
@@ -31,8 +30,12 @@ Setup:
        (OAuth tokens will be generated automatically on first run)
 """
 
+import os
 import shutil
+import subprocess
 import tempfile
+import threading
+import time
 from pathlib import Path
 from time import sleep
 
@@ -120,6 +123,7 @@ def test_phase_05_bootstrap_fl_project(syft_managers_single_do):
         fl_temp_project,
         aggregator=ds_email,
         datasites=[do1_email],  # Only DO1
+        transport="p2p",
     )
     logger.info("Bootstrapped project with:")
     logger.info(f"  - Aggregator (DS): {ds_email}")
@@ -213,24 +217,200 @@ def test_phase_07_do1_approves_job(syft_managers_single_do):
 
 
 # ==============================================================================
-# Phase 8: Execute FL Job on DO1
+# Phase 8: Execute FL Job (DS Server + DO1 Client simultaneously)
 # ==============================================================================
 
 
 def test_phase_08_execute_fl_job(syft_managers_single_do):
-    """Phase 8: DO1 executes approved FL job on their private data."""
-    logger.info("Phase 8: DO1 executing FL job...")
+    """Phase 8: Run DS Flower server and DO1 Flower client simultaneously.
+
+    The FL training requires:
+    - DS to run main.py (Flower server) via `uv run main.py`
+    - DO1 to run process_approved_jobs() (Flower client)
+
+    Both must run at the same time for FL training to work.
+    This mirrors the notebook flow where DS and DO run in separate Colab instances.
+    """
+    logger.info("Phase 8: Executing FL job (DS server + DO1 client)...")
 
     do1_manager = syft_managers_single_do["do1"]
+    ds_manager = syft_managers_single_do["ds"]
+    env = syft_managers_single_do["env"]
+    fl_project = syft_managers_single_do.get("fl_project")
 
-    # Process approved jobs (this will run the FL training)
-    import time
+    assert fl_project is not None, "FL project not bootstrapped - run phase 5 first"
 
+    # Prepare environment for DS server
+    ds_email = env["EMAIL_DS"]
+    ds_syftbox_folder = ds_manager.syftbox_folder
+    ds_token_path = env["token_path_ds"]
+
+    # Set OUTPUT_DIR for trained weights to be saved in DS's syftbox folder
+    output_dir = ds_syftbox_folder / ds_email / "fl_outputs"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    ds_env = os.environ.copy()
+    ds_env["SYFTBOX_EMAIL"] = ds_email
+    ds_env["SYFTBOX_FOLDER"] = str(ds_syftbox_folder)
+    ds_env["GDRIVE_TOKEN_PATH"] = str(ds_token_path)  # For GDriveFileIO authentication
+    ds_env["OUTPUT_DIR"] = str(output_dir)  # Where trained weights will be saved
+
+    # Store output_dir for Phase 9 verification
+    syft_managers_single_do["fl_output_dir"] = output_dir
+
+    # Results containers
+    do1_result = {"success": False, "error": None, "duration": 0.0}
+    ds_result = {"success": False, "error": None, "process": None}
+
+    # Log files for debugging (stream output in real-time)
+    log_dir = Path("/tmp/syft_flwr_test_logs")
+    # Clear old logs before each test run
+    if log_dir.exists():
+        shutil.rmtree(log_dir)
+    log_dir.mkdir(exist_ok=True)
+    ds_stdout_path = log_dir / "ds_stdout.log"
+    ds_stderr_path = log_dir / "ds_stderr.log"
+    do1_stdout_path = log_dir / "do1_stdout.log"
+    do1_stderr_path = log_dir / "do1_stderr.log"
+    logger.info(f"All logs will be written to: {log_dir}")
+
+    # Get DO1 job location for log access
+    do1_jobs = do1_manager.jobs
+    approved_jobs = [j for j in do1_jobs if j.status == "approved"]
+    do1_job_location = approved_jobs[0].location if approved_jobs else None
+    if do1_job_location:
+        logger.info(f"DO1 job location: {do1_job_location}")
+
+    # Pre-install dependencies (mirrors ds.ipynb cell JyInjbVp_ye6)
+    # This ensures packages are ready before parallel execution starts
+    logger.info("Pre-installing FL project dependencies...")
+    install_result = subprocess.run(
+        ["uv", "sync"],
+        cwd=str(fl_project),
+        env=ds_env,
+        capture_output=True,
+        timeout=300,  # 5 min timeout for installation
+    )
+    if install_result.returncode != 0:
+        logger.warning(f"uv sync warning: {install_result.stderr.decode()}")
+    else:
+        logger.success("Dependencies installed successfully")
+
+    def run_ds_server():
+        """Run DS Flower server via uv run main.py (mirrors ds.ipynb cell KxOOWlwm_3MB)"""
+        ds_stdout_file = None
+        ds_stderr_file = None
+        try:
+            logger.info(f"Starting DS Flower server: uv run {fl_project / 'main.py'}")
+            logger.info(f"  SYFTBOX_EMAIL={ds_email}")
+            logger.info(f"  SYFTBOX_FOLDER={ds_syftbox_folder}")
+            logger.info(f"  Logs: {ds_stdout_path}, {ds_stderr_path}")
+
+            # Open log files for streaming output
+            ds_stdout_file = open(ds_stdout_path, "w")
+            ds_stderr_file = open(ds_stderr_path, "w")
+
+            process = subprocess.Popen(
+                ["uv", "run", str(fl_project / "main.py")],
+                cwd=str(fl_project),
+                env=ds_env,
+                stdout=ds_stdout_file,
+                stderr=ds_stderr_file,
+            )
+            ds_result["process"] = process
+
+            # Wait for process to complete
+            process.wait(timeout=600)  # 10 min timeout
+
+            if process.returncode == 0:
+                ds_result["success"] = True
+                logger.success("DS Flower server completed successfully")
+            else:
+                ds_result["error"] = f"DS server exited with code {process.returncode}"
+                logger.error(ds_result["error"])
+
+        except subprocess.TimeoutExpired:
+            if ds_result["process"]:
+                ds_result["process"].kill()
+            ds_result["error"] = "DS server timed out after 10 minutes"
+            logger.error(ds_result["error"])
+        except Exception as e:
+            ds_result["error"] = str(e)
+            logger.error(f"DS server error: {e}")
+        finally:
+            if ds_stdout_file:
+                ds_stdout_file.close()
+            if ds_stderr_file:
+                ds_stderr_file.close()
+            logger.info(f"DS logs saved to: {ds_stdout_path}, {ds_stderr_path}")
+
+    def run_do1_client():
+        """Run DO1 Flower client via process_approved_jobs() (mirrors do.ipynb cell 17)"""
+        try:
+            # Small delay to let DS server start first
+            sleep(5)
+
+            # Set GDRIVE_TOKEN_PATH for the job subprocess to authenticate with Google Drive
+            # The job_runner does os.environ.copy(), so this will be inherited
+            do1_token_path = env["token_path_do1"]
+            os.environ["GDRIVE_TOKEN_PATH"] = str(do1_token_path)
+            logger.info(f"Set GDRIVE_TOKEN_PATH={do1_token_path} for DO1 job")
+
+            logger.info("Starting DO1 Flower client (process_approved_jobs)...")
+            start_time = time.time()
+            do1_manager.process_approved_jobs()
+            do1_result["duration"] = time.time() - start_time
+            do1_result["success"] = True
+            logger.success(f"DO1 client completed in {do1_result['duration']:.1f}s")
+        except Exception as e:
+            do1_result["error"] = str(e)
+            logger.error(f"DO1 client error: {e}")
+        finally:
+            # Copy DO1 job logs to central log directory
+            if do1_job_location:
+                try:
+                    src_stdout = do1_job_location / "stdout.txt"
+                    src_stderr = do1_job_location / "stderr.txt"
+                    if src_stdout.exists():
+                        shutil.copy(src_stdout, do1_stdout_path)
+                    if src_stderr.exists():
+                        shutil.copy(src_stderr, do1_stderr_path)
+                    logger.info(
+                        f"DO1 logs copied to: {do1_stdout_path}, {do1_stderr_path}"
+                    )
+                except Exception as log_err:
+                    logger.warning(f"Could not copy DO1 logs: {log_err}")
+
+    # Start both in parallel (mirrors running DS and DO notebooks simultaneously)
     start_time = time.time()
-    do1_manager.process_approved_jobs()
-    duration = time.time() - start_time
 
-    logger.success(f"✅ Phase 8 complete: DO1 executed FL job in {duration:.1f}s")
+    ds_thread = threading.Thread(target=run_ds_server, name="DS-Server")
+    do1_thread = threading.Thread(target=run_do1_client, name="DO1-Client")
+
+    logger.info("Starting DS server and DO1 client in parallel...")
+    ds_thread.start()
+    do1_thread.start()
+
+    # Wait for both to complete
+    do1_thread.join(timeout=660)  # 11 min timeout
+    ds_thread.join(timeout=660)
+
+    total_duration = time.time() - start_time
+
+    # Check results
+    if do1_result["error"]:
+        logger.error(f"DO1 failed: {do1_result['error']}")
+    if ds_result["error"]:
+        logger.error(f"DS failed: {ds_result['error']}")
+
+    # Both should succeed for FL training to work
+    assert (
+        do1_result["success"] and ds_result["success"]
+    ), f"FL training failed - DO1: {do1_result['error']}, DS: {ds_result['error']}"
+
+    logger.success(
+        f"✅ Phase 8 complete: FL training finished in {total_duration:.1f}s"
+    )
 
 
 # ==============================================================================
@@ -239,7 +419,7 @@ def test_phase_08_execute_fl_job(syft_managers_single_do):
 
 
 def test_phase_09_verify_training_results(syft_managers_single_do):
-    """Phase 9: Verify training results from DO1."""
+    """Phase 9: Verify training results from DO1 and check trained weights exist for DS."""
     logger.info("Phase 9: Verifying FL training results...")
 
     do1_manager = syft_managers_single_do["do1"]
@@ -266,6 +446,49 @@ def test_phase_09_verify_training_results(syft_managers_single_do):
     do1_stderr = str(do1_job.stderr)
     if do1_stderr and "No stderr" not in do1_stderr:
         logger.warning(f"\nDO1 Error Output:\n{do1_stderr}\n")
+
+    # =========================================================================
+    # Verify trained weights are available for DS
+    # =========================================================================
+    logger.info("\n" + "=" * 60)
+    logger.info("VERIFYING TRAINED WEIGHTS FOR DS")
+    logger.info("=" * 60)
+
+    # Weights are saved to OUTPUT_DIR/weights/ (set in Phase 8)
+    fl_output_dir = syft_managers_single_do.get("fl_output_dir")
+    if fl_output_dir:
+        weights_dir = fl_output_dir / "weights"
+    else:
+        # Fallback to default path
+        weights_dir = Path.home() / ".syftbox" / "rds" / "weights"
+
+    logger.info(f"Checking weights directory: {weights_dir}")
+
+    assert weights_dir.exists(), f"Weights directory not found: {weights_dir}"
+
+    # Find all .safetensors weight files
+    weight_files = list(weights_dir.glob("parameters_round_*.safetensors"))
+    logger.info(f"Found {len(weight_files)} weight file(s):")
+    for wf in sorted(weight_files):
+        file_size = wf.stat().st_size
+        logger.info(f"  - {wf.name} ({file_size} bytes)")
+
+    # Verify at least one weight file exists (from at least one FL round)
+    assert len(weight_files) > 0, "No trained weight files found!"
+
+    # Verify the latest weights file is readable
+    latest_weights = max(weight_files, key=lambda p: p.stat().st_mtime)
+    assert latest_weights.stat().st_size > 0, "Latest weights file is empty!"
+    logger.success(f"✅ DS can access trained weights: {latest_weights.name}")
+
+    # Load and verify the weights structure
+    from safetensors.numpy import load_file
+
+    weights_dict = load_file(str(latest_weights))
+    logger.info(f"  Weight layers: {list(weights_dict.keys())}")
+    logger.success("✅ Trained weights verified and loadable!")
+
+    logger.info("=" * 60)
 
     # Cleanup FL project temp directory
     fl_project = syft_managers_single_do.get("fl_project")

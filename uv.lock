@@ -3041,12 +3041,13 @@ wheels = [
 [[package]]
 name = "syft-client"
 version = "0.1.93"
-source = { git = "https://github.com/OpenMined/syft-client/?branch=khoa%2Fpython_job_folder_submission#6c2e645d497bdd78dbb41a83ed4b8439afc6ad0c" }
+source = { git = "https://github.com/OpenMined/syft-client/?branch=khoa%2Fpython_job_folder_submission#d9050d1ca128a59a1e57e1d58e7e6feff5759ff7" }
 dependencies = [
     { name = "google-api-python-client" },
     { name = "google-auth" },
     { name = "google-auth-oauthlib" },
     { name = "pandas" },
+    { name = "pyarrow" },
     { name = "pydantic-settings" },
     { name = "rich" },
     { name = "syft-dataset" },
@@ -3087,7 +3088,7 @@ wheels = [
 [[package]]
 name = "syft-dataset"
 version = "0.1.4"
-source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-datasets&branch=khoa%2Fpython_job_folder_submission#6c2e645d497bdd78dbb41a83ed4b8439afc6ad0c" }
+source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-datasets&branch=khoa%2Fpython_job_folder_submission#d9050d1ca128a59a1e57e1d58e7e6feff5759ff7" }
 dependencies = [
     { name = "pyyaml" },
     { name = "syft-notebook-ui" },
@@ -3171,7 +3172,7 @@ dev = [
 [[package]]
 name = "syft-job"
 version = "0.1.22"
-source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-job&branch=khoa%2Fpython_job_folder_submission#6c2e645d497bdd78dbb41a83ed4b8439afc6ad0c" }
+source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-job&branch=khoa%2Fpython_job_folder_submission#d9050d1ca128a59a1e57e1d58e7e6feff5759ff7" }
 dependencies = [
     { name = "pandas" },
     { name = "pydantic" },
@@ -3182,7 +3183,7 @@ dependencies = [
 [[package]]
 name = "syft-notebook-ui"
 version = "0.1.1"
-source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-notebook-ui&branch=khoa%2Fpython_job_folder_submission#6c2e645d497bdd78dbb41a83ed4b8439afc6ad0c" }
+source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-notebook-ui&branch=khoa%2Fpython_job_folder_submission#d9050d1ca128a59a1e57e1d58e7e6feff5759ff7" }
 dependencies = [
     { name = "ipython" },
     { name = "jinja2" },

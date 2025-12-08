@@ -75,7 +75,7 @@ class GDriveFileIO:
                         raise FileNotFoundError(
                             f"GDRIVE_TOKEN_PATH set but file not found: {token_path}"
                         )
-                    logger.info(
+                    logger.debug(
                         f"Initializing GDriveConnection for {self._email} with token: {token_path}"
                     )
                     self._connection = GDriveConnection.from_token_path(
@@ -83,20 +83,25 @@ class GDriveFileIO:
                     )
                 else:
                     # In Colab, this will use automatic OAuth
-                    logger.info(
+                    logger.debug(
                         f"Initializing GDriveConnection for {self._email} (automatic OAuth)"
                     )
                     self._connection = GDriveConnection(email=self._email)
                     self._connection.setup()
 
                 self._connection_ready = True  # Mark as ready AFTER setup completes
-                logger.info(f"GDriveConnection ready for {self._email}")
+                logger.debug(f"GDriveConnection ready for {self._email}")
         return self._connection
 
     def _get_or_create_folder(
         self, folder_name: str, share_with_email: Optional[str] = None
     ) -> str:
         """Get folder ID, creating it if necessary.
+
+        First checks for folders owned by self. If not found and share_with_email
+        is provided, also checks for folders shared by that email (the recipient
+        may have pre-created the folder and shared it with us, e.g., in DS→DO workflow
+        where DS pre-creates inbox folders for DOs to write responses).
 
         Args:
             folder_name: The folder name (e.g., syft_outbox_inbox_sender_to_recipient)
@@ -115,23 +120,39 @@ class GDriveFileIO:
         syftbox_id = conn.get_syftbox_folder_id()
         logger.debug(f"[GDrive] SyftBox folder ID: {syftbox_id}")
 
-        # Try to find existing folder
+        # First, try to find folder owned by self
         logger.debug(
             f"[GDrive] Looking for folder: {folder_name} (owner: {self._email})"
         )
         folder_id = conn._find_folder_by_name(folder_name, owner_email=self._email)
 
+        # If not found and we're sharing with someone, check if they pre-created it
+        # This handles the case where DS pre-creates inbox folders for DOs
+        if folder_id is None and share_with_email:
+            logger.debug(
+                f"[GDrive] Folder not found, checking if {share_with_email} shared it with us"
+            )
+            folder_id = conn._find_folder_by_name(
+                folder_name, owner_email=share_with_email
+            )
+            if folder_id:
+                logger.debug(
+                    f"[GDrive] Found shared folder from {share_with_email} (id: {folder_id})"
+                )
+                self._folder_id_cache[folder_name] = folder_id
+                return folder_id
+
         if folder_id is None:
             # Create the folder
-            logger.info(f"[GDrive] Creating folder: {folder_name}")
+            logger.debug(f"[GDrive] Creating folder: {folder_name}")
             folder_id = conn.create_folder(folder_name, syftbox_id)
-            logger.info(f"[GDrive] Created folder: {folder_name} (id: {folder_id})")
+            logger.debug(f"[GDrive] Created folder: {folder_name} (id: {folder_id})")
 
             # Share with recipient if specified (required for cross-account visibility)
             if share_with_email:
                 try:
                     conn.add_permission(folder_id, share_with_email, write=True)
-                    logger.info(
+                    logger.debug(
                         f"[GDrive] Shared folder '{folder_name}' with {share_with_email}"
                     )
                 except Exception as e:
@@ -211,7 +232,7 @@ class GDriveFileIO:
             filename: File name (e.g., "{uuid}.request")
             data: File contents as bytes
         """
-        logger.info(f"[GDrive] write_to_outbox: {self._email} -> {recipient_email}")
+        logger.debug(f"[GDrive] write_to_outbox: {self._email} -> {recipient_email}")
         logger.debug(
             f"[GDrive]   app_name={app_name}, endpoint={endpoint}, filename={filename}"
         )
@@ -248,7 +269,7 @@ class GDriveFileIO:
                 .execute()
             )
 
-            logger.info(
+            logger.debug(
                 f"[GDrive] Wrote file to outbox: {filename} (id: {result.get('id')})"
             )
 
@@ -280,12 +301,13 @@ class GDriveFileIO:
         with self._api_lock:
             conn = self._ensure_connection()
 
-            # Find the inbox folder (owned by sender)
+            # Find the inbox folder (shared by sender)
             inbox_folder = GdriveInboxOutBoxFolder(
                 sender_email=sender_email, recipient_email=self._email
             )
             inbox_folder_name = inbox_folder.as_string()
             logger.debug(f"[GDrive]   Looking for inbox folder: {inbox_folder_name}")
+            # Specify owner_email=sender_email since the inbox folder is owned by sender
             inbox_folder_id = conn._find_folder_by_name(
                 inbox_folder_name, owner_email=sender_email
             )
@@ -419,11 +441,12 @@ class GDriveFileIO:
         with self._api_lock:
             conn = self._ensure_connection()
 
-            # Find the inbox folder
+            # Find the inbox folder (shared by sender)
             inbox_folder = GdriveInboxOutBoxFolder(
                 sender_email=sender_email, recipient_email=self._email
             )
             inbox_folder_name = inbox_folder.as_string()
+            # Specify owner_email=sender_email since the inbox folder is owned by sender
             inbox_folder_id = conn._find_folder_by_name(
                 inbox_folder_name, owner_email=sender_email
             )
@@ -556,6 +579,7 @@ class GDriveFileIO:
                 sender_email=sender_email, recipient_email=self._email
             )
             folder_name = folder.as_string()
+            # Specify owner_email=sender_email since the inbox folder is owned by sender
             folder_id = conn._find_folder_by_name(folder_name, owner_email=sender_email)
 
             if folder_id is None:

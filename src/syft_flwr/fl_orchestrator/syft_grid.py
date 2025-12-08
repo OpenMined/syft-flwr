@@ -112,6 +112,8 @@ class SyftGrid(Grid):
         self.datasites = datasites or []
         self.client_map = {str_to_int(ds): ds for ds in self.datasites}
         self.app_name = app_name
+        # Track pending messages: message_id -> client_email for debugging
+        self._pending_messages: Dict[str, str] = {}
 
         logger.debug(
             f"Initialize SyftGrid for '{self._client.email}' with datasites: {self.datasites}"
@@ -219,6 +221,8 @@ class SyftGrid(Grid):
 
             if future_id:
                 message_ids.append(future_id)
+                # Track which client this message was sent to (for debugging)
+                self._pending_messages[future_id] = dest_datasite
 
         return message_ids
 
@@ -235,6 +239,7 @@ class SyftGrid(Grid):
         """
         messages = {}
         completed_ids = set()
+        responded_clients: set[str] = set()
 
         for msg_id in message_ids:
             try:
@@ -254,15 +259,21 @@ class SyftGrid(Grid):
                 # Mark as completed regardless of success/failure
                 completed_ids.add(msg_id)
 
+                # Get and remove from pending tracking dict
+                client_email = self._pending_messages.pop(msg_id, None)
+
                 if message:
                     messages[msg_id] = message
+                    # Track which client this message came from
+                    if client_email:
+                        responded_clients.add(client_email)
 
             except Exception as e:
                 logger.error(f"❌ Unexpected error pulling message {msg_id}: {e}")
                 continue
 
         # Log summary
-        self._log_pull_summary(messages, message_ids)
+        self._log_pull_summary(messages, message_ids, responded_clients)
 
         return messages, completed_ids
 
@@ -546,19 +557,34 @@ class SyftGrid(Grid):
             return body
 
     def _log_pull_summary(
-        self, messages: Dict[str, Message], message_ids: List[str]
+        self,
+        messages: Dict[str, Message],
+        message_ids: List[str],
+        responded_clients: set[str],
     ) -> None:
         """Log summary of pulled messages."""
         if messages:
+            clients_str = (
+                ", ".join(sorted(responded_clients)) if responded_clients else "unknown"
+            )
             if self._encryption_enabled:
                 logger.info(
-                    f"🔐 Successfully pulled {len(messages)} messages (encryption enabled)"
+                    f"🔐 Successfully pulled {len(messages)} message(s) from [{clients_str}] (encryption enabled)"
                 )
             else:
-                logger.info(f"📥 Successfully pulled {len(messages)} messages")
+                logger.info(
+                    f"📥 Successfully pulled {len(messages)} message(s) from [{clients_str}]"
+                )
         elif message_ids:
+            # Get the client emails for pending messages
+            pending_clients = [
+                self._pending_messages.get(msg_id, "unknown")
+                for msg_id in message_ids
+                if msg_id in self._pending_messages
+            ]
+            clients_str = ", ".join(pending_clients) if pending_clients else "unknown"
             logger.debug(
-                f"No messages pulled yet from {len(message_ids)} attempts "
+                f"No messages pulled yet from {len(message_ids)} client(s): [{clients_str}] "
                 f"(clients may still be processing)"
             )
 
