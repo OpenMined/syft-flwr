@@ -3145,7 +3145,7 @@ dev = [
 requires-dist = [
     { name = "flwr", extras = ["simulation"], specifier = "==1.23.0" },
     { name = "flwr-datasets", extras = ["vision"], specifier = ">=0.5.0" },
-    { name = "huggingface-hub", specifier = ">=1.1.4" },
+    { name = "huggingface-hub", specifier = ">=0.26.0" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "safetensors", specifier = ">=0.7.0" },
     { name = "syft-client", git = "https://github.com/OpenMined/syft-client/?branch=khoa%2Fpython_job_folder_submission" },

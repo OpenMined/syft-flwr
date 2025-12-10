@@ -213,6 +213,40 @@ class GDriveFileIO:
 
         return current_id
 
+    def _find_inbox_folder(
+        self, sender_email: str, conn: GDriveConnection
+    ) -> Optional[str]:
+        """Find an inbox folder (sender -> self).
+
+        In P2P mode, the inbox folder can be owned by either:
+        1. The sender (sender creates their own outbox)
+        2. Self (DS pre-creates inbox folders for DOs to write responses)
+
+        Args:
+            sender_email: Email of the sender
+            conn: GDriveConnection instance
+
+        Returns:
+            Folder ID if found, None otherwise
+        """
+        inbox_folder = GdriveInboxOutBoxFolder(
+            sender_email=sender_email, recipient_email=self._email
+        )
+        inbox_folder_name = inbox_folder.as_string()
+
+        # First try: folder owned by sender
+        folder_id = conn._find_folder_by_name(
+            inbox_folder_name, owner_email=sender_email
+        )
+
+        # Second try: folder owned by self (DS pre-created the inbox)
+        if folder_id is None:
+            folder_id = conn._find_folder_by_name(
+                inbox_folder_name, owner_email=self._email
+            )
+
+        return folder_id
+
     def write_to_outbox(
         self,
         recipient_email: str,
@@ -301,16 +335,8 @@ class GDriveFileIO:
         with self._api_lock:
             conn = self._ensure_connection()
 
-            # Find the inbox folder (shared by sender)
-            inbox_folder = GdriveInboxOutBoxFolder(
-                sender_email=sender_email, recipient_email=self._email
-            )
-            inbox_folder_name = inbox_folder.as_string()
-            logger.debug(f"[GDrive]   Looking for inbox folder: {inbox_folder_name}")
-            # Specify owner_email=sender_email since the inbox folder is owned by sender
-            inbox_folder_id = conn._find_folder_by_name(
-                inbox_folder_name, owner_email=sender_email
-            )
+            # Find the inbox folder
+            inbox_folder_id = self._find_inbox_folder(sender_email, conn)
 
             if inbox_folder_id is None:
                 logger.debug(
@@ -441,23 +467,16 @@ class GDriveFileIO:
         with self._api_lock:
             conn = self._ensure_connection()
 
-            # Find the inbox folder (shared by sender)
-            inbox_folder = GdriveInboxOutBoxFolder(
-                sender_email=sender_email, recipient_email=self._email
-            )
-            inbox_folder_name = inbox_folder.as_string()
-            # Specify owner_email=sender_email since the inbox folder is owned by sender
-            inbox_folder_id = conn._find_folder_by_name(
-                inbox_folder_name, owner_email=sender_email
-            )
+            # Find the inbox folder
+            inbox_folder_id = self._find_inbox_folder(sender_email, conn)
 
             if inbox_folder_id is None:
-                logger.debug(f"[GDrive]   Inbox folder not found: {inbox_folder_name}")
+                logger.debug("[GDrive]   Inbox folder not found")
                 return []
 
             logger.debug(f"[GDrive]   Found inbox folder: {inbox_folder_id}")
 
-            # Navigate to endpoint folder (don't create - folders owned by sender)
+            # Navigate to endpoint folder (don't create - folders may be owned by sender or self)
             path_parts = [app_name, "rpc", endpoint.lstrip("/")]
             endpoint_folder_id = self._get_nested_folder(
                 inbox_folder_id, path_parts, create_if_missing=False
@@ -575,15 +594,11 @@ class GDriveFileIO:
         with self._api_lock:
             conn = self._ensure_connection()
 
-            folder = GdriveInboxOutBoxFolder(
-                sender_email=sender_email, recipient_email=self._email
-            )
-            folder_name = folder.as_string()
-            # Specify owner_email=sender_email since the inbox folder is owned by sender
-            folder_id = conn._find_folder_by_name(folder_name, owner_email=sender_email)
+            # Find the inbox folder
+            folder_id = self._find_inbox_folder(sender_email, conn)
 
             if folder_id is None:
-                logger.debug(f"[GDrive]   Inbox folder not found: {folder_name}")
+                logger.debug("[GDrive]   Inbox folder not found")
                 return False
 
             logger.debug(f"[GDrive]   Found inbox folder: {folder_id}")
