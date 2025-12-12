@@ -1,0 +1,95 @@
+name: Integration Tests (Google Drive)
+
+on:
+  workflow_dispatch:  # Manual trigger only
+  # Uncomment for nightly runs:
+  # schedule:
+  #   - cron: '0 2 * * *'  # 2 AM UTC daily
+
+jobs:
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    # Only run if secrets are available (skip for forks)
+    if: github.repository == 'OpenMined/syft-flwr'
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.12'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+
+    - name: Install just
+      uses: extractions/setup-just@v3
+
+    - name: Setup Google Drive credentials
+      run: |
+        set +x  # Disable command echoing to prevent secrets in logs
+
+        # Create credentials directory with restricted permissions
+        mkdir -p credentials
+        chmod 700 credentials
+
+        # Write OAuth credentials (client secrets) with restricted permissions
+        echo '${{ secrets.GDRIVE_CRED_DO1 }}' > credentials/do1.json
+        chmod 600 credentials/do1.json
+        echo '${{ secrets.GDRIVE_CRED_DO2 }}' > credentials/do2.json
+        chmod 600 credentials/do2.json
+        echo '${{ secrets.GDRIVE_CRED_DS }}' > credentials/ds.json
+        chmod 600 credentials/ds.json
+
+        # Write OAuth tokens (refresh tokens) with restricted permissions
+        echo '${{ secrets.GDRIVE_TOKEN_DO1 }}' > credentials/token_do1.json
+        chmod 600 credentials/token_do1.json
+        echo '${{ secrets.GDRIVE_TOKEN_DO2 }}' > credentials/token_do2.json
+        chmod 600 credentials/token_do2.json
+        echo '${{ secrets.GDRIVE_TOKEN_DS }}' > credentials/token_ds.json
+        chmod 600 credentials/token_ds.json
+
+        # Create .env file with restricted permissions
+        cat > credentials/.env << 'EOF'
+        SYFT_EMAIL_DO1=${{ secrets.EMAIL_DO1 }}
+        SYFT_CRED_FNAME_DO1=do1.json
+        SYFT_TOKEN_FNAME_DO1=token_do1.json
+        SYFT_EMAIL_DO2=${{ secrets.EMAIL_DO2 }}
+        SYFT_CRED_FNAME_DO2=do2.json
+        SYFT_TOKEN_FNAME_DO2=token_do2.json
+        SYFT_EMAIL_DS=${{ secrets.EMAIL_DS }}
+        SYFT_CRED_FNAME_DS=ds.json
+        SYFT_TOKEN_FNAME_DS=token_ds.json
+        EOF
+        chmod 600 credentials/.env
+
+        echo "Credentials setup complete"
+
+    - name: Verify credentials exist
+      run: |
+        for file in do1.json do2.json ds.json token_do1.json token_do2.json token_ds.json .env; do
+          if [ ! -s "credentials/$file" ]; then
+            echo "ERROR: credentials/$file is missing or empty"
+            echo "Please ensure all GitHub secrets are configured"
+            exit 1
+          fi
+        done
+        echo "All credential files verified"
+
+    - name: Run integration tests
+      run: just test-integration
+      timeout-minutes: 30
+      env:
+        SYFT_EMAIL_DO1: ${{ secrets.EMAIL_DO1 }}
+        SYFT_EMAIL_DO2: ${{ secrets.EMAIL_DO2 }}
+        SYFT_EMAIL_DS: ${{ secrets.EMAIL_DS }}
+
+    - name: Cleanup credentials
+      if: always()
+      run: |
+        rm -rf credentials/
+        echo "Credentials cleaned up"

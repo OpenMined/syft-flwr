@@ -1,18 +1,22 @@
 #!/bin/bash
 # Test script for syft-flwr project
+# Usage: ./test.sh [unit|integration|all]
+
+TEST_TYPE="${1:-unit}"  # Default to unit tests
 
 echo "Running tests for syft-flwr..."
 
 # Track overall test status
 ALL_TESTS_PASSED=true
 
-# Function to run tests
-run_tests() {
-    echo ""
-    echo "========================================="
-    echo "Testing syft-flwr"
-    echo "========================================="
+# Color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+CYAN='\033[1;36m'
+NC='\033[0m'
 
+# Function to setup environment
+setup_env() {
     # Get the root directory (parent of scripts)
     ROOT_DIR="$(dirname "$(dirname "$(readlink -f "$0")")")"
     cd "$ROOT_DIR" || { echo "Failed to enter root directory"; exit 1; }
@@ -30,7 +34,7 @@ run_tests() {
         # Create virtual environment with uv
         echo "Creating virtual environment..."
         if ! uv venv .venv; then
-            echo -e "\033[0;31mFailed to create virtual environment\033[0m"
+            echo -e "${RED}Failed to create virtual environment${NC}"
             ALL_TESTS_PASSED=false
             return 1
         fi
@@ -38,67 +42,109 @@ run_tests() {
         # Activate virtual environment based on OS
         echo "Activating virtual environment..."
         if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
-            # Windows
             source .venv/Scripts/activate
         else
-            # Unix-like (Linux, macOS)
             source .venv/bin/activate
         fi
     fi
 
-    # Install the package in editable mode with dependencies
-    echo "Installing syft-flwr and dependencies..."
-    if ! uv pip install -e .; then
-        echo -e "\033[0;31mFailed to install syft-flwr\033[0m"
+    # Install the package in editable mode with dev dependencies
+    echo "Installing syft-flwr and dev dependencies..."
+    if ! uv sync --group dev; then
+        echo -e "${RED}Failed to install syft-flwr${NC}"
         ALL_TESTS_PASSED=false
-        if [[ "$VIRTUAL_ENV" == "" ]]; then
-            deactivate
-        fi
         return 1
     fi
 
-    # Install test dependencies
-    echo "Installing test dependencies..."
-    if ! uv pip install pytest pytest-cov pytest-xdist pytest-asyncio; then
-        echo -e "\033[0;31mFailed to install test dependencies\033[0m"
-        ALL_TESTS_PASSED=false
-        if [[ "$VIRTUAL_ENV" == "" ]]; then
-            deactivate
-        fi
-        return 1
-    fi
+    return 0
+}
 
-    # Run tests if they exist
+# Function to run unit tests
+run_unit_tests() {
+    echo ""
+    echo "========================================="
+    echo "Running Unit Tests"
+    echo "========================================="
+
+    ROOT_DIR="$(dirname "$(dirname "$(readlink -f "$0")")")"
+
     if [ -d "tests" ]; then
-        echo "Running tests in parallel..."
-        echo "Skipping syft-client integration tests (run manually with: pytest tests/integration/syft-client -v -s)"
+        echo "Running unit tests in parallel..."
         if uv run pytest tests/ -v -n auto --cov=syft_flwr --cov-report=term-missing --cov-report=xml --ignore="$ROOT_DIR/tests/integration/syft-client"; then
-            echo -e "\033[0;32mTests PASSED for syft-flwr\033[0m"
+            echo -e "${GREEN}Unit tests PASSED${NC}"
         else
-            echo -e "\033[0;31mTests FAILED for syft-flwr\033[0m"
+            echo -e "${RED}Unit tests FAILED${NC}"
             ALL_TESTS_PASSED=false
         fi
     else
-        echo "No tests directory found, skipping tests"
+        echo "No tests directory found"
+    fi
+}
+
+# Function to run integration tests
+run_integration_tests() {
+    echo ""
+    echo "========================================="
+    echo "Running Integration Tests (Google Drive)"
+    echo "========================================="
+
+    # Check if credentials exist
+    if [ ! -d "credentials" ] || [ ! -f "credentials/.env" ]; then
+        echo -e "${RED}Error: credentials/ directory or .env file not found${NC}"
+        echo "Please set up Google OAuth credentials first."
+        echo "See DEVELOPMENT.md for instructions."
+        ALL_TESTS_PASSED=false
+        return 1
     fi
 
-    # Deactivate virtual environment only if we created it
-    if [[ "$VIRTUAL_ENV" == "" ]]; then
-        deactivate
+    if [ -d "tests/integration/syft-client" ]; then
+        echo "Running integration tests..."
+        if uv run pytest tests/integration/syft-client -v -s --tb=short; then
+            echo -e "${GREEN}Integration tests PASSED${NC}"
+        else
+            echo -e "${RED}Integration tests FAILED${NC}"
+            ALL_TESTS_PASSED=false
+        fi
+    else
+        echo "No integration tests directory found"
     fi
 }
 
 # Main script
-echo "Starting syft-flwr test suite..."
+echo -e "${CYAN}Starting syft-flwr test suite (${TEST_TYPE})...${NC}"
 
-# Run tests
-run_tests
+# Setup environment
+setup_env || exit 1
+
+# Run appropriate tests based on argument
+case "$TEST_TYPE" in
+    unit)
+        run_unit_tests
+        ;;
+    integration)
+        run_integration_tests
+        ;;
+    all)
+        run_unit_tests
+        run_integration_tests
+        ;;
+    *)
+        echo -e "${RED}Unknown test type: $TEST_TYPE${NC}"
+        echo "Usage: $0 [unit|integration|all]"
+        exit 1
+        ;;
+esac
+
+# Deactivate virtual environment only if we created it
+if [[ "$VIRTUAL_ENV" == "" ]]; then
+    deactivate 2>/dev/null || true
+fi
 
 echo ""
 if [ "$ALL_TESTS_PASSED" = true ]; then
-    echo -e "\033[0;32mAll tests completed successfully!\033[0m"
+    echo -e "${GREEN}All tests completed successfully!${NC}"
     exit 0
 else
-    echo -e "\033[0;31mSome tests FAILED!\033[0m"
+    echo -e "${RED}Some tests FAILED!${NC}"
     exit 1
 fi

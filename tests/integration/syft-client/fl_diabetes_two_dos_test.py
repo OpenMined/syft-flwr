@@ -17,15 +17,15 @@ Prerequisites:
 
 Setup:
     1. Create credentials/.env with your configuration:
-        DIABETES_EMAIL_DO1="do1@example.com"
-        DIABETES_EMAIL_DO2="do2@example.com"
-        DIABETES_EMAIL_DS="ds@example.com"
-        DIABETES_CRED_FNAME_DO1="do1.json"
-        DIABETES_CRED_FNAME_DO2="do2.json"
-        DIABETES_CRED_FNAME_DS="ds.json"
-        DIABETES_TOKEN_FNAME_DO1="token_do1.json"
-        DIABETES_TOKEN_FNAME_DO2="token_do2.json"
-        DIABETES_TOKEN_FNAME_DS="token_ds.json"
+        SYFT_EMAIL_DO1="do1@example.com"
+        SYFT_EMAIL_DO2="do2@example.com"
+        SYFT_EMAIL_DS="ds@example.com"
+        SYFT_CRED_FNAME_DO1="do1.json"
+        SYFT_CRED_FNAME_DO2="do2.json"
+        SYFT_CRED_FNAME_DS="ds.json"
+        SYFT_TOKEN_FNAME_DO1="token_do1.json"
+        SYFT_TOKEN_FNAME_DO2="token_do2.json"
+        SYFT_TOKEN_FNAME_DS="token_ds.json"
 
     2. Place OAuth credentials (from Google Cloud Console) in credentials/:
         - do1.json, do2.json, ds.json
@@ -44,6 +44,7 @@ import time
 from pathlib import Path
 from time import sleep
 
+import pytest
 import tomli
 from common_rds_phases import (
     dos_approve_jobs,
@@ -54,6 +55,9 @@ from conftest import FL_PROJECT_DIR, TEST_LOGS_DIR
 from loguru import logger
 
 import syft_flwr
+
+# Mark all tests in this module as slow (integration tests)
+pytestmark = pytest.mark.slow
 
 # ==============================================================================
 # Multiprocessing Helper for DO Clients

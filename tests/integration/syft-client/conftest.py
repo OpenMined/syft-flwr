@@ -31,6 +31,24 @@ from utils import (
 )
 
 # ==============================================================================
+# Pytest Hooks - Test Logging
+# ==============================================================================
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_setup(item):
+    """Log a nicely formatted banner before each test runs."""
+    test_name = item.name
+    test_file = item.fspath.basename if item.fspath else "unknown"
+
+    logger.info("")
+    logger.info("=" * 70)
+    logger.info(f"  RUNNING: {test_name}")
+    logger.info(f"  FILE: {test_file}")
+    logger.info("=" * 70)
+
+
+# ==============================================================================
 # Constants
 # ==============================================================================
 
@@ -229,27 +247,27 @@ def validate_environment():
     # Validate each user
     do1 = validate_user_credentials(
         user_id="DO1",
-        email_env_var="DIABETES_EMAIL_DO1",
-        cred_env_var="DIABETES_CRED_FNAME_DO1",
-        token_env_var="DIABETES_TOKEN_FNAME_DO1",
+        email_env_var="SYFT_EMAIL_DO1",
+        cred_env_var="SYFT_CRED_FNAME_DO1",
+        token_env_var="SYFT_TOKEN_FNAME_DO1",
         default_cred_file="do1.json",
         default_token_file="token_do1.json",
     )
 
     do2 = validate_user_credentials(
         user_id="DO2",
-        email_env_var="DIABETES_EMAIL_DO2",
-        cred_env_var="DIABETES_CRED_FNAME_DO2",
-        token_env_var="DIABETES_TOKEN_FNAME_DO2",
+        email_env_var="SYFT_EMAIL_DO2",
+        cred_env_var="SYFT_CRED_FNAME_DO2",
+        token_env_var="SYFT_TOKEN_FNAME_DO2",
         default_cred_file="do2.json",
         default_token_file="token_do2.json",
     )
 
     ds = validate_user_credentials(
         user_id="DS",
-        email_env_var="DIABETES_EMAIL_DS",
-        cred_env_var="DIABETES_CRED_FNAME_DS",
-        token_env_var="DIABETES_TOKEN_FNAME_DS",
+        email_env_var="SYFT_EMAIL_DS",
+        cred_env_var="SYFT_CRED_FNAME_DS",
+        token_env_var="SYFT_TOKEN_FNAME_DS",
         default_cred_file="ds.json",
         default_token_file="token_ds.json",
     )
@@ -413,18 +431,18 @@ def validate_environment_single_do():
     # Validate DO1 and DS only
     do1 = validate_user_credentials(
         user_id="DO1",
-        email_env_var="DIABETES_EMAIL_DO1",
-        cred_env_var="DIABETES_CRED_FNAME_DO1",
-        token_env_var="DIABETES_TOKEN_FNAME_DO1",
+        email_env_var="SYFT_EMAIL_DO1",
+        cred_env_var="SYFT_CRED_FNAME_DO1",
+        token_env_var="SYFT_TOKEN_FNAME_DO1",
         default_cred_file="do1.json",
         default_token_file="token_do1.json",
     )
 
     ds = validate_user_credentials(
         user_id="DS",
-        email_env_var="DIABETES_EMAIL_DS",
-        cred_env_var="DIABETES_CRED_FNAME_DS",
-        token_env_var="DIABETES_TOKEN_FNAME_DS",
+        email_env_var="SYFT_EMAIL_DS",
+        cred_env_var="SYFT_CRED_FNAME_DS",
+        token_env_var="SYFT_TOKEN_FNAME_DS",
         default_cred_file="ds.json",
         default_token_file="token_ds.json",
     )

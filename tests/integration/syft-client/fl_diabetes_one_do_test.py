@@ -16,18 +16,18 @@ Prerequisites:
 
 Setup:
     1. Create credentials/.env with your configuration:
-        DIABETES_EMAIL_DO1="do1@example.com"
-        DIABETES_EMAIL_DS="ds@example.com"
-        DIABETES_CRED_FNAME_DO1="do1.json"
-        DIABETES_CRED_FNAME_DS="ds.json"
-        DIABETES_TOKEN_FNAME_DO1="token_do1.json"
-        DIABETES_TOKEN_FNAME_DS="token_ds.json"
+        SYFT_EMAIL_DO1="do1@example.com"
+        SYFT_EMAIL_DS="ds@example.com"
+        SYFT_CRED_FNAME_DO1="do1.json"
+        SYFT_CRED_FNAME_DS="ds.json"
+        SYFT_TOKEN_FNAME_DO1="token_do1.json"
+        SYFT_TOKEN_FNAME_DS="token_ds.json"
 
     2. Place OAuth credentials (from Google Cloud Console) in credentials/:
         - do1.json, ds.json
 
     3. Run: pytest tests/integration/syft-client/fl_diabetes_one_do_test.py -v -s
-       (OAuth tokens will be generated automatically on first run)
+        (OAuth tokens will be generated automatically on first run)
 """
 
 import os
@@ -39,6 +39,7 @@ import time
 from pathlib import Path
 from time import sleep
 
+import pytest
 import tomli
 from common_rds_phases import (
     do_upload_dataset,
@@ -48,6 +49,9 @@ from conftest import FL_PROJECT_DIR
 from loguru import logger
 
 import syft_flwr
+
+# Mark all tests in this module as slow (integration tests)
+pytestmark = pytest.mark.slow
 
 # ==============================================================================
 # Phase 3: Upload Dataset to DO1 Datasite

@@ -23,65 +23,43 @@ _nc := '\033[0m'
 @default:
     just --list
 
-# Run tests for syft-flwr
+# Run unit tests (excludes integration tests)
+[group('test')]
+test-unit:
+    @echo "{{ _cyan }}Running unit tests...{{ _nc }}"
+    bash scripts/test.sh unit
+    @just clean
+
+# Run integration tests (requires Google OAuth credentials)
+[group('test')]
+test-integration:
+    @echo "{{ _cyan }}Running integration tests...{{ _nc }}"
+    bash scripts/test.sh integration
+    @just clean
+
+# Run all tests (unit + integration)
 [group('test')]
 test:
-    @echo "{{ _cyan }}Running syft-flwr tests...{{ _nc }}"
-    bash scripts/test.sh
+    @echo "{{ _cyan }}Running all tests...{{ _nc }}"
+    bash scripts/test.sh all
     @just clean
 
 # ---------------------------------------------------------------------------------------------------------------------
 
+# Clean up generated files and directories
 [group('utils')]
 clean:
     #!/bin/sh
-    echo "{{ _cyan }}Cleaning up local files and directories...{{ _nc }}"
+    echo "{{ _cyan }}Cleaning up...{{ _nc }}"
 
-    # Function to remove directories by name pattern
-    remove_dirs() {
-        dir_name=$1
-        dirs=$(find . -type d -name "$dir_name" 2>/dev/null)
-        if [ -n "$dirs" ]; then
-            echo "$dirs" | while read -r dir; do
-                echo "  {{ _red }}✗{{ _nc }} Removing $dir"
-                rm -rf "$dir"
-            done
-        fi
-    }
+    # Remove build/test artifacts
+    rm -rf dist .pytest_cache .e2e .logs coverage.xml 2>/dev/null
 
-    # Remove root directories if they exist
-    for dir in ./.clients ./dist ./.e2e ./.logs ./.pytest_cache; do
-        if [ -d "$dir" ]; then
-            echo "  {{ _red }}✗{{ _nc }} Removing $dir"
-            rm -rf "$dir"
-        fi
-    done
+    # Remove directories by pattern (silently)
+    find . -type d \( -name "__pycache__" -o -name ".clients" -o -name ".server" -o -name ".syftbox" -o -name "local_syftbox_network" \) -exec rm -rf {} + 2>/dev/null || true
 
-    # Remove directories by name pattern
-    remove_dirs ".server"
-    remove_dirs ".clients"
-    remove_dirs ".syftbox"
-    remove_dirs "local_syftbox_network"
-
-    # Remove __pycache__ directories
-    pycache_count=$(find . -type d -name "__pycache__" 2>/dev/null | wc -l)
-    if [ "$pycache_count" -gt 0 ]; then
-        echo "  {{ _red }}✗{{ _nc }} Removing $pycache_count __pycache__ directories"
-        find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-    fi
-
-    # Remove .coverage files (from parallel pytest runs)
-    coverage_count=$(find . -type f -name ".coverage*" 2>/dev/null | wc -l)
-    if [ "$coverage_count" -gt 0 ]; then
-        echo "  {{ _red }}✗{{ _nc }} Removing $coverage_count .coverage files"
-        find . -type f -name ".coverage*" -delete 2>/dev/null || true
-    fi
-
-    # Remove coverage.xml if it exists
-    if [ -f "coverage.xml" ]; then
-        echo "  {{ _red }}✗{{ _nc }} Removing coverage.xml"
-        rm -f coverage.xml
-    fi
+    # Remove coverage files
+    find . -type f -name ".coverage*" -delete 2>/dev/null || true
 
     echo "{{ _green }}✓ Clean complete!{{ _nc }}"
 
