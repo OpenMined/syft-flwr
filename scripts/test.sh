@@ -98,13 +98,22 @@ run_integration_tests() {
     fi
 
     if [ -d "tests/integration/syft-client" ]; then
-        echo "Running integration tests..."
-        if uv run pytest tests/integration/syft-client -v -s --tb=short; then
-            echo -e "${GREEN}Integration tests PASSED${NC}"
-        else
-            echo -e "${RED}Integration tests FAILED${NC}"
-            ALL_TESTS_PASSED=false
-        fi
+        # Run each test file separately to avoid conflicts
+        # (tests share the same Google Drive accounts and their fixtures conflict)
+        for test_file in tests/integration/syft-client/*_test.py; do
+            if [ -f "$test_file" ]; then
+                echo ""
+                echo "-----------------------------------------"
+                echo "Running: $(basename "$test_file")"
+                echo "-----------------------------------------"
+                if uv run pytest "$test_file" -v -s --tb=short; then
+                    echo -e "${GREEN}$(basename "$test_file") PASSED${NC}"
+                else
+                    echo -e "${RED}$(basename "$test_file") FAILED${NC}"
+                    ALL_TESTS_PASSED=false
+                fi
+            fi
+        done
     else
         echo "No integration tests directory found"
     fi
