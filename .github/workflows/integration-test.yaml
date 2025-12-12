@@ -1,4 +1,4 @@
-name: Integration Tests (Google Drive)
+name: Integration Tests (GDrive Transport)
 
 on:
   push:
