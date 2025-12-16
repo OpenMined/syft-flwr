@@ -1,10 +1,7 @@
 name: Integration Tests (GDrive Transport)
 
+# Disabled for now - only manual trigger
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
