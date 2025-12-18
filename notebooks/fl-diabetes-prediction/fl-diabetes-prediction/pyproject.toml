@@ -24,7 +24,7 @@ dependencies = [
 
 [tool.uv.sources]
 # syft-flwr = { path = "../syft-flwr", editable = true }  # local development
-syft-flwr = { git = "https://github.com/OpenMined/syft-flwr/", branch = "feat/syft-client-p2p" }  # for development
+syft-flwr = { git = "https://github.com/OpenMined/syft-flwr/", branch = "main" }  # for development
 
 [tool.hatch.build.targets.wheel]
 packages = [
