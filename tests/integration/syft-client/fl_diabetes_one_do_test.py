@@ -183,7 +183,6 @@ def test_phase_06_submit_fl_job(syft_managers_single_do):
             user=env["EMAIL_DO1"],
             code_path=str(fl_project),
             job_name="fl-diabetes-training",
-            entrypoint="main.py",
         )
         logger.success("✅ FL job submitted to DO1")
     except Exception as e:
@@ -370,7 +369,7 @@ def test_phase_08_execute_fl_job(syft_managers_single_do):
 
             logger.info("Starting DO1 Flower client (process_approved_jobs)...")
             start_time = time.time()
-            do1_manager.process_approved_jobs(stream_output=True)
+            do1_manager.process_approved_jobs()
             do1_result["duration"] = time.time() - start_time
             do1_result["success"] = True
             logger.success(f"DO1 client completed in {do1_result['duration']:.1f}s")
