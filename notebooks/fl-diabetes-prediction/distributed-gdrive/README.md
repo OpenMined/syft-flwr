@@ -1,6 +1,6 @@
-![Zero-Setup Federated Learning Banner](banner.svg)
-
 # Zero-Setup Federated Learning: Train Models Across Private Datasets Using Only Google Colab
+
+![Zero-Setup Federated Learning Banner](banner.svg)
 
 Have you ever want to train a machine learning model on distributed private data without anyone sharing their raw data?
 In this tutorial, you'll learn how to run a complete federated learning workflow directly from Google Colab—no local setup required.
