@@ -320,9 +320,9 @@ This is the core promise of federated learning: collaborative machine learning w
 
 **Ready to build production federated learning solutions?**
 
-We invite data scientists, researchers, and engineers working on production federated learning use cases to apply to our [Federated Learning Co-Design Program](https://openmined.org/co-design). You'll get direct support from the OpenMined team.
+We invite data scientists, researchers, and engineers working on production federated learning use cases to apply to our [Federated Learning Co-Design Program](https://openmined.org/federated-learning/co-design/). You'll get direct support from the OpenMined team.
 
-[Apply to the Co-Design Program Now](https://openmined.org/co-design)
+[Apply to the Co-Design Program Now](https://openmined.org/federated-learning/co-design/)
 
 **Have questions or want to contribute?**
 
