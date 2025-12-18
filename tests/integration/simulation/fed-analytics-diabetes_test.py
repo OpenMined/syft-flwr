@@ -18,8 +18,8 @@ from syft_flwr.run_simulation import (
 matplotlib.use("Agg")  # Use non-interactive backend
 
 
-# Test asset paths
-ASSETS_DIR = Path(__file__).parent / "assets"
+# Test asset paths (assets are in tests/assets/)
+ASSETS_DIR = Path(__file__).parent.parent.parent / "assets"
 CODE_DIR = ASSETS_DIR / "code" / "fed-analytics-diabetes"
 DATA_DIR = ASSETS_DIR / "data"
 PARTITIONED_DATA_DIRS = [

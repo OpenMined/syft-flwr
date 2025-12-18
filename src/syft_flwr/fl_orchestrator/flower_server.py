@@ -1,12 +1,14 @@
 import traceback
+from pathlib import Path
 from random import randint
+from typing import Optional
 
 from flwr.common import Context
 from flwr.server import ServerApp
 from flwr.server.run_serverapp import run as run_server
 from loguru import logger
 
-from syft_flwr.grid import SyftGrid
+from syft_flwr.fl_orchestrator.syft_grid import SyftGrid
 from syft_flwr.utils import setup_client
 
 
@@ -15,9 +17,10 @@ def syftbox_flwr_server(
     context: Context,
     datasites: list[str],
     app_name: str,
+    project_dir: Optional[Path] = None,
 ) -> Context:
     """Run the Flower ServerApp with SyftBox."""
-    client, _, syft_flwr_app_name = setup_client(app_name)
+    client, _, syft_flwr_app_name = setup_client(app_name, project_dir=project_dir)
 
     # Construct the SyftGrid
     syft_grid = SyftGrid(
@@ -28,7 +31,7 @@ def syftbox_flwr_server(
     run_id = randint(0, 1000)
     syft_grid.set_run(run_id)
 
-    logger.info(f"Started SyftBox Flower Server on: {syft_grid._client.email}")
+    logger.info(f"Started SyftBox Flower Server on: {syft_grid.get_client_email()}")
     logger.info(f"syft_flwr app name: {syft_flwr_app_name}")
 
     try:

@@ -1,6 +1,7 @@
 import base64
 import sys
 import traceback
+from pathlib import Path
 
 from flwr.client import ClientApp
 from flwr.common import Context
@@ -8,10 +9,9 @@ from flwr.common.constant import ErrorCode, MessageType
 from flwr.common.message import Error, Message
 from flwr.common.record import RecordDict
 from loguru import logger
-from syft_event import SyftEvents
-from syft_event.types import Request
 from typing_extensions import Optional, Union
 
+from syft_flwr.events import SyftFlwrEvents, create_events_watcher
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
 from syft_flwr.utils import create_flwr_message, setup_client
 
@@ -65,10 +65,10 @@ class RequestProcessor:
     """Processes incoming requests and handles encryption/decryption."""
 
     def __init__(
-        self, message_handler: MessageHandler, box: SyftEvents, client_email: str
+        self, message_handler: MessageHandler, events: SyftFlwrEvents, client_email: str
     ):
         self.message_handler = message_handler
-        self.box = box
+        self.events = events
         self.client_email = client_email
 
     def decode_request_body(self, request_body: Union[bytes, str]) -> bytes:
@@ -102,9 +102,12 @@ class RequestProcessor:
         # Alternative stop signal format
         return message.metadata.group_id == "final"
 
-    def process(self, request: Request) -> Optional[Union[str, bytes]]:
-        """Process incoming request and return response."""
-        original_sender = request.headers.get("X-Syft-Original-Sender", "unknown")
+    def process(self, request_body: bytes) -> Optional[Union[str, bytes]]:
+        """Process incoming request body and return response.
+
+        Args:
+            request_body: Raw message bytes from the events adapter
+        """
         encryption_status = (
             "🔐 ENCRYPTED"
             if self.message_handler.encryption_enabled
@@ -112,25 +115,21 @@ class RequestProcessor:
         )
 
         logger.info(
-            f"{encryption_status} Received request from {original_sender}, "
-            f"id: {request.id}, size: {len(request.body) / 1024 / 1024:.2f} MB"
+            f"{encryption_status} Received request, "
+            f"size: {len(request_body) / 1024 / 1024:.2f} MB"
         )
 
         # Parse message
         try:
-            request_body = self.decode_request_body(request.body)
-            message = bytes_to_flower_message(request_body)
+            decoded_body = self.decode_request_body(request_body)
+            message = bytes_to_flower_message(decoded_body)
 
             if self.message_handler.encryption_enabled:
-                logger.debug(
-                    f"🔓 Successfully decrypted message from {original_sender}"
-                )
+                logger.debug("🔓 Successfully decrypted message")
         except Exception as e:
-            logger.error(
-                f"❌ Failed to deserialize message from {original_sender}: {e}"
-            )
+            logger.error(f"❌ Failed to deserialize message: {e}")
             logger.debug(
-                f"Request body preview (first 200 bytes): {str(request.body[:200])}"
+                f"Request body preview (first 200 bytes): {str(request_body[:200])}"
             )
 
             # Can't create error reply without valid message - skip response
@@ -144,7 +143,7 @@ class RequestProcessor:
             # Check for stop signal
             if self.is_stop_signal(message):
                 logger.info("Received stop signal")
-                self.box._stop_event.set()
+                self.events.stop()
                 return None
 
             # Process normal message
@@ -160,38 +159,53 @@ class RequestProcessor:
             return self.message_handler.create_error_reply(message, error)
 
 
-def syftbox_flwr_client(client_app: ClientApp, context: Context, app_name: str):
-    """Run the Flower ClientApp with SyftBox."""
-    # Setup
-    client, encryption_enabled, syft_flwr_app_name = setup_client(app_name)
-    box = SyftEvents(
-        app_name=syft_flwr_app_name,
-        client=client,
-        cleanup_expiry="1d",  # Keep request/response files for 1 days
-        cleanup_interval="1d",  # Run cleanup daily
+def syftbox_flwr_client(
+    client_app: ClientApp,
+    context: Context,
+    app_name: str,
+    project_dir: Optional[Path] = None,
+):
+    """Run the Flower ClientApp with SyftBox.
+
+    Supports both syft_core (traditional SyftBox) and syft_client (P2P file sync).
+    The appropriate events adapter is auto-detected based on environment.
+    """
+    # Setup - now works for both syft_core and syft_client
+    client, encryption_enabled, syft_flwr_app_name = setup_client(
+        app_name, project_dir=project_dir
     )
 
-    logger.info(f"Started SyftBox Flower Client on: {box.client.email}")
-    logger.info(f"syft_flwr app name: {syft_flwr_app_name}")
+    # Create events adapter (auto-detects syft_core vs syft_client)
+    events_watcher = create_events_watcher(
+        app_name=syft_flwr_app_name,
+        client=client,
+        cleanup_expiry="1d",
+        cleanup_interval="1d",
+    )
 
-    # Check if cleanup is running
-    if box.is_cleanup_running():
-        logger.info("Cleanup service is active")
+    logger.info(f"Started SyftBox Flower Client on: {events_watcher.client_email}")
+    logger.info(f"syft_flwr app name: {syft_flwr_app_name}")
 
     # Create handlers
     message_handler = MessageHandler(client_app, context, encryption_enabled)
-    processor = RequestProcessor(message_handler, box, box.client.email)
-
-    # Register message handler
-    @box.on_request(
-        "/messages", auto_decrypt=encryption_enabled, encrypt_reply=encryption_enabled
+    processor = RequestProcessor(
+        message_handler, events_watcher, events_watcher.client_email
     )
-    def handle_messages(request: Request) -> Optional[Union[str, bytes]]:
-        return processor.process(request)
+
+    # Register message handler - works for both adapters
+    events_watcher.on_request(
+        "/messages",
+        handler=lambda body: processor.process(body),
+        auto_decrypt=encryption_enabled,
+        encrypt_reply=encryption_enabled,
+    )
 
     # Run
     try:
-        box.run_forever()
+        events_watcher.run_forever()
+    except KeyboardInterrupt:
+        logger.info("Received interrupt, shutting down...")
+        events_watcher.stop()
     except Exception as e:
         logger.error(
             f"Fatal error in syftbox_flwr_client: {str(e)}\n{traceback.format_exc()}"

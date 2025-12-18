@@ -9,8 +9,7 @@ from flwr.common.record import RecordDict
 from flwr.server.server_app import LoadServerAppError
 
 from syft_flwr.config import load_flwr_pyproject
-from syft_flwr.flower_client import syftbox_flwr_client
-from syft_flwr.flower_server import syftbox_flwr_server
+from syft_flwr.fl_orchestrator import syftbox_flwr_client, syftbox_flwr_server
 from syft_flwr.run_simulation import run
 
 __all__ = ["syftbox_run_flwr_client", "syftbox_run_flwr_server", "run"]
@@ -38,7 +37,12 @@ def syftbox_run_flwr_client(flower_project_dir: Path) -> None:
         flower_project_dir,
     )
 
-    syftbox_flwr_client(client_app, context, app_name)
+    syftbox_flwr_client(
+        client_app=client_app,
+        context=context,
+        app_name=app_name,
+        project_dir=flower_project_dir,
+    )
 
 
 def syftbox_run_flwr_server(flower_project_dir: Path) -> None:
@@ -60,4 +64,10 @@ def syftbox_run_flwr_server(flower_project_dir: Path) -> None:
         flower_project_dir,
     )
 
-    syftbox_flwr_server(server_app, context, datasites, app_name)
+    syftbox_flwr_server(
+        server_app=server_app,
+        context=context,
+        datasites=datasites,
+        app_name=app_name,
+        project_dir=flower_project_dir,
+    )

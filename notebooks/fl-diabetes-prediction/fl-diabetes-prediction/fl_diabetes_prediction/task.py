@@ -137,13 +137,41 @@ def dataset_processing(
 def load_syftbox_dataset() -> tuple[DataLoader, DataLoader]:
     import pandas as pd
 
-    from syft_flwr.utils import get_syftbox_dataset_path
+    # Try syft_client first (for distributed-gdrive setup)
+    try:
+        import syft_client as sc
 
-    data_dir = get_syftbox_dataset_path()
-    logger.info(f"Loading dataset from {data_dir}")
+        logger.info("[P2P TRANSFPORT] Using syft_client to load dataset")
 
-    train_df = pd.read_csv(data_dir / "train.csv")
-    test_df = pd.read_csv(data_dir / "test.csv")
+        # Define the syft paths to the private dataset
+        train_data_path = (
+            "syft://private/syft_datasets/pima-indians-diabetes-database/train.csv"
+        )
+        test_data_path = (
+            "syft://private/syft_datasets/pima-indians-diabetes-database/test.csv"
+        )
+
+        # Resolve the syft paths to actual file paths
+        train_resolved_path = sc.resolve_path(train_data_path)
+        test_resolved_path = sc.resolve_path(test_data_path)
+
+        logger.info("Loading dataset from syft_client paths")
+        train_df = pd.read_csv(train_resolved_path)
+        test_df = pd.read_csv(test_resolved_path)
+
+    except (ImportError, Exception) as e:
+        # Fall back to syft_flwr approach using DATA_DIR (syft-rds and syftbox setups)
+        logger.info(
+            f"[SYFTBOX TRANSFPORT] syft_client not available ({e}), falling back to DATA_DIR"
+        )
+
+        from syft_flwr.utils import get_syftbox_dataset_path
+
+        data_dir = get_syftbox_dataset_path()
+        logger.info(f"Loading dataset from {data_dir}")
+
+        train_df = pd.read_csv(data_dir / "train.csv")
+        test_df = pd.read_csv(data_dir / "test.csv")
 
     return dataset_processing(train_df, test_df)
 

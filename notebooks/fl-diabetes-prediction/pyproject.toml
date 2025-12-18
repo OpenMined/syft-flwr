@@ -17,9 +17,9 @@ dependencies = [
     "ray==2.31.0",
 ]
 
-# [tool.uv.sources]
-# syft-flwr = { git = "https://github.com/OpenMined/syft-flwr/", branch = "feat/rds-dashboard-integration" }  # for development
-# syft-flwr = { path = "../../../syft-flwr", editable = true }  # local development
+[tool.uv.sources]
+# syft-flwr = { path = "/Users/khoaguin/Desktop/projects/OpenMined/syft-flwr", editable = true }  # local development
+syft-flwr = { git = "https://github.com/OpenMined/syft-flwr/", branch = "feat/syft-client-p2p" }  # for development
 
 [tool.uv]
 package = false

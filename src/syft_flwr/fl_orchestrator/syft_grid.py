@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import base64
 import os
-import random
 import time
 
 from flwr.common import ConfigRecord
@@ -13,10 +14,16 @@ from flwr.server.grid import Grid
 from loguru import logger
 from syft_core import Client
 from syft_crypto import EncryptedPayload, decrypt_message
-from syft_rpc import SyftResponse, rpc, rpc_db
-from typing_extensions import Dict, Iterable, List, Optional, Tuple, cast
+from typing_extensions import Dict, Iterable, List, Optional, Tuple, Union, cast
 
+from syft_flwr.client import (
+    SyftCoreClient,
+    SyftFlwrClient,
+    SyftP2PClient,
+    create_client,
+)
 from syft_flwr.consts import SYFT_FLWR_ENCRYPTION_ENABLED
+from syft_flwr.rpc import SyftFlwrRpc, create_rpc
 from syft_flwr.serde import bytes_to_flower_message, flower_message_to_bytes
 from syft_flwr.utils import check_reply_to_field, create_flwr_message, str_to_int
 
@@ -29,38 +36,84 @@ SYFT_FLWR_POLL_INTERVAL = "SYFT_FLWR_POLL_INTERVAL"
 
 
 class SyftGrid(Grid):
+    """SyftGrid is the server-side message orchestrator for federated learning.
+
+    This class abstracts the RPC layer to support both syft_core and syft_client
+    environments. The appropriate RPC adapter is auto-detected based on the client.
+
+    Supported configurations:
+    - syft_core: Full syft_rpc/syft_crypto stack with optional encryption
+    - syft_client: P2P File-based RPC via Google Drive (no encryption)
+    """
+
     def __init__(
         self,
         app_name: str,
-        datasites: list[str] = [],
-        client: Client = None,
+        datasites: Optional[list[str]] = None,
+        client: Optional[Union[Client, SyftFlwrClient]] = None,
+        rpc: Optional[SyftFlwrRpc] = None,
     ) -> None:
+        """Initialize SyftGrid.
+
+        Args:
+            app_name: Name of the FL application
+            datasites: List of DO email addresses to communicate with
+            client: SyftFlwrClient or syft_core.Client (for backward compatibility)
+            rpc: RPC adapter for message transport (auto-created if None)
+
+        Note:
+            Encryption is only available when using syft_core (SyftCoreClient).
+            When using syft_client (SyftP2PClient), encryption is automatically
+            disabled and a warning is logged.
         """
-        SyftGrid is the server-side message orchestrator for federated learning in syft_flwr.
-        It acts as a bridge between Flower's server logic and SyftBox's communication layer:
+        # Handle client setup
+        if client is None:
+            self._client = create_client()
+        elif isinstance(client, SyftFlwrClient):
+            self._client = client
+        else:
+            # Direct syft_core.Client passed - wrap it
+            self._client = SyftCoreClient(client)
 
-        Flower Server → SyftGrid → syft_rpc → SyftBox network → FL Clients
-                            ↑                                          ↓
-                            └──────────── responses ←─────────────────┘
+        # Create or use provided RPC adapter
+        if rpc is None:
+            self._rpc = create_rpc(
+                client=self._client,
+                app_name=app_name,
+            )
+        else:
+            self._rpc = rpc
 
-        SyftGrid enables Flower's centralized server to communicate with distributed SyftBox
-        clients without knowing the underlying transport details.
+        # Determine encryption capability based on client type
+        # Store syft_core.Client separately for encryption operations (only needed for syft_core)
+        self._syft_core_client: Optional[Client] = None
+        if isinstance(self._client, SyftP2PClient):
+            # P2P mode (syft_client) - encryption not available
+            self._encryption_enabled = False
+            logger.warning(
+                "⚠️ Running via syft_client (P2P mode) - no e2e encryption yet"
+            )
+        elif isinstance(self._client, SyftCoreClient):
+            # Traditional SyftBox mode - encryption available
+            self._encryption_enabled = (
+                os.environ.get(SYFT_FLWR_ENCRYPTION_ENABLED, "true").lower() != "false"
+            )
+            if self._encryption_enabled:
+                self._syft_core_client = self._client.get_client()
+        else:
+            # Unknown client type - disable encryption for safety
+            self._encryption_enabled = False
+            logger.warning(
+                f"⚠️ Unknown client type {type(self._client)}, encryption disabled"
+            )
 
-        Core functionalities:
-        - push_messages(): Sends messages to clients via syft_rpc, returns future IDs
-        - pull_messages(): Retrieves responses using futures
-        - send_and_receive(): Combines push/pull with timeout handling
-        """
-        self._client = Client.load() if client is None else client
         self._run: Optional[Run] = None
         self.node = Node(node_id=AGGREGATOR_NODE_ID)
-        self.datasites = datasites
+        self.datasites = datasites or []
         self.client_map = {str_to_int(ds): ds for ds in self.datasites}
-
-        # Check if encryption is enabled (default: True for production)
-        self._encryption_enabled = (
-            os.environ.get(SYFT_FLWR_ENCRYPTION_ENABLED, "true").lower() != "false"
-        )
+        self.app_name = app_name
+        # Track pending messages: message_id -> client_email for debugging
+        self._pending_messages: Dict[str, str] = {}
 
         logger.debug(
             f"Initialize SyftGrid for '{self._client.email}' with datasites: {self.datasites}"
@@ -68,11 +121,15 @@ class SyftGrid(Grid):
         if self._encryption_enabled:
             logger.info("🔐 End-to-end encryption is ENABLED for FL messages")
         else:
-            logger.warning(
-                "⚠️ End-to-end encryption is DISABLED for FL messages (development mode / insecure)"
-            )
+            logger.warning("⚠️ End-to-end encryption is DISABLED for FL messages")
 
-        self.app_name = app_name
+    def get_client_email(self) -> str:
+        """Get the email address of the server's SyftFlwrClient.
+
+        Returns:
+            Email address as a string
+        """
+        return self._client.email
 
     def set_run(self, run_id: int) -> None:
         """Set the run ID for this federated learning session.
@@ -152,20 +209,20 @@ class SyftGrid(Grid):
 
         for msg in messages:
             # Prepare message
-            dest_datasite, url, msg_bytes = self._prepare_message(msg)
+            dest_datasite, msg_bytes = self._prepare_message(msg)
 
-            # Send message
+            # Send message using RPC abstraction
             if self._encryption_enabled:
-                future_id = self._send_encrypted_message(
-                    url, msg_bytes, dest_datasite, msg
-                )
+                future_id = self._send_encrypted_message(msg_bytes, dest_datasite, msg)
             else:
                 future_id = self._send_unencrypted_message(
-                    url, msg_bytes, dest_datasite, msg
+                    msg_bytes, dest_datasite, msg
                 )
 
             if future_id:
                 message_ids.append(future_id)
+                # Track which client this message was sent to (for debugging)
+                self._pending_messages[future_id] = dest_datasite
 
         return message_ids
 
@@ -182,37 +239,41 @@ class SyftGrid(Grid):
         """
         messages = {}
         completed_ids = set()
+        responded_clients: set[str] = set()
 
         for msg_id in message_ids:
             try:
-                # Get and resolve future
-                future = rpc_db.get_future(future_id=msg_id, client=self._client)
-                response = future.resolve()
+                # Get response using RPC abstraction
+                response_body = self._rpc.get_response(msg_id)
 
-                if response is None:
+                if response_body is None:
                     continue  # Message not ready yet
 
-                response.raise_for_status()
-
                 # Process the response
-                message = self._process_response(response, msg_id)
+                message = self._process_response_body(response_body, msg_id)
 
                 # Always delete the future once we get a response (success or error)
                 # This prevents retrying failed messages indefinitely
-                rpc_db.delete_future(future_id=msg_id, client=self._client)
+                self._rpc.delete_future(msg_id)
 
                 # Mark as completed regardless of success/failure
                 completed_ids.add(msg_id)
 
+                # Get and remove from pending tracking dict
+                client_email = self._pending_messages.pop(msg_id, None)
+
                 if message:
                     messages[msg_id] = message
+                    # Track which client this message came from
+                    if client_email:
+                        responded_clients.add(client_email)
 
             except Exception as e:
                 logger.error(f"❌ Unexpected error pulling message {msg_id}: {e}")
                 continue
 
         # Log summary
-        self._log_pull_summary(messages, message_ids)
+        self._log_pull_summary(messages, message_ids, responded_clients)
 
         return messages, completed_ids
 
@@ -305,106 +366,56 @@ class SyftGrid(Grid):
             logger.debug(f"Invalid message with metadata: {message.metadata}")
             raise ValueError(f"Invalid message: {message}")
 
-    def _prepare_message(self, msg: Message) -> Tuple[str, str, bytes]:
+    def _prepare_message(self, msg: Message) -> Tuple[str, bytes]:
         """Prepare a message for sending.
 
         Returns:
-            Tuple of (destination_datasite, url, message_bytes)
+            Tuple of (destination_datasite, message_bytes)
+
+        Raises:
+            ValueError: If destination node ID is not in the client map
         """
         run_id = cast(Run, self._run).run_id
         msg.metadata.__dict__["_run_id"] = run_id
         msg.metadata.__dict__["_src_node_id"] = self.node.node_id
 
-        dest_datasite = self.client_map[msg.metadata.dst_node_id]
-        url = rpc.make_url(dest_datasite, app_name=self.app_name, endpoint="messages")
+        dst_node_id = msg.metadata.dst_node_id
+        if dst_node_id not in self.client_map:
+            raise ValueError(
+                f"Unknown destination node ID {dst_node_id}. "
+                f"Known nodes: {list(self.client_map.keys())}. "
+                f"Datasites: {self.datasites}"
+            )
+        dest_datasite = self.client_map[dst_node_id]
 
         self._check_message(msg)
         msg_bytes = flower_message_to_bytes(msg)
 
-        return dest_datasite, url, msg_bytes
-
-    def _retry_with_backoff(
-        self,
-        func,
-        max_retries: int = 3,
-        initial_delay: float = 0.1,
-        context: str = "",
-        check_error=None,
-    ):
-        """Generic retry logic with exponential backoff and jitter.
-
-        Args:
-            func: Function to retry
-            max_retries: Maximum number of retry attempts
-            initial_delay: Initial delay in seconds
-            context: Context string for logging
-            check_error: Optional function to check if error is retryable
-
-        Returns:
-            Result of func if successful
-
-        Raises:
-            Last exception if all retries fail
-        """
-        for attempt in range(max_retries):
-            try:
-                return func()
-            except Exception as e:
-                is_retryable = check_error(e) if check_error else True
-                if is_retryable and attempt < max_retries - 1:
-                    jitter = random.uniform(0, 0.05)
-                    delay = initial_delay * (2**attempt) + jitter
-                    logger.debug(
-                        f"{context} failed (attempt {attempt + 1}/{max_retries}): {e}. "
-                        f"Retrying in {delay:.3f}s"
-                    )
-                    time.sleep(delay)
-                else:
-                    raise
-
-    def _save_future_with_retry(self, future, dest_datasite: str) -> bool:
-        """Save future to database with retry logic for database locks.
-
-        Returns:
-            True if saved successfully, False if failed after retries
-        """
-        try:
-            self._retry_with_backoff(
-                func=lambda: rpc_db.save_future(
-                    future=future, namespace=self.app_name, client=self._client
-                ),
-                context=f"Database save for {dest_datasite}",
-                check_error=lambda e: "database is locked" in str(e).lower(),
-            )
-            return True
-        except Exception as e:
-            logger.warning(
-                f"⚠️ Failed to save future to database for {dest_datasite}: {e}. "
-                f"Message sent but future not persisted."
-            )
-            return False
+        return dest_datasite, msg_bytes
 
     def _send_encrypted_message(
-        self, url: str, msg_bytes: bytes, dest_datasite: str, msg: Message
+        self, msg_bytes: bytes, dest_datasite: str, msg: Message
     ) -> Optional[str]:
         """Send an encrypted message and return future ID if successful."""
         try:
-            # Send encrypted message
-            future = rpc.send(
-                url=url,
-                body=base64.b64encode(msg_bytes).decode("utf-8"),
-                client=self._client,
+            # Base64 encode for encrypted transmission
+            encoded_body = base64.b64encode(msg_bytes).decode("utf-8")
+
+            # Send encrypted message using RPC abstraction
+            future_id = self._rpc.send(
+                to_email=dest_datasite,
+                app_name=self.app_name,
+                endpoint="messages",
+                body=encoded_body.encode("utf-8"),
                 encrypt=True,
             )
 
             logger.debug(
-                f"🔐 Pushed ENCRYPTED message to {dest_datasite} at {url} "
+                f"🔐 Pushed ENCRYPTED message to {dest_datasite} "
                 f"with metadata {msg.metadata}; size {len(msg_bytes) / 1024 / 1024:.2f} MB"
             )
 
-            # Save future to database (non-critical - log warning if fails)
-            self._save_future_with_retry(future, dest_datasite)
-            return future.id
+            return future_id
 
         except (KeyError, ValueError) as e:
             # Encryption setup errors - don't retry or fallback
@@ -423,22 +434,26 @@ class SyftGrid(Grid):
                 f"⚠️ Encryption failed for {dest_datasite}: {e}. "
                 f"Falling back to unencrypted transmission"
             )
-            return self._send_unencrypted_message(url, msg_bytes, dest_datasite, msg)
+            return self._send_unencrypted_message(msg_bytes, dest_datasite, msg)
 
     def _send_unencrypted_message(
-        self, url: str, msg_bytes: bytes, dest_datasite: str, msg: Message
+        self, msg_bytes: bytes, dest_datasite: str, msg: Message
     ) -> Optional[str]:
         """Send an unencrypted message and return future ID if successful."""
         try:
-            future = rpc.send(url=url, body=msg_bytes, client=self._client)
+            # Send unencrypted message using RPC abstraction
+            future_id = self._rpc.send(
+                to_email=dest_datasite,
+                app_name=self.app_name,
+                endpoint="messages",
+                body=msg_bytes,
+                encrypt=False,
+            )
             logger.debug(
-                f"📤 Pushed PLAINTEXT message to {dest_datasite} at {url} "
+                f"📤 Pushed PLAINTEXT message to {dest_datasite} "
                 f"with metadata {msg.metadata}; size {len(msg_bytes) / 1024 / 1024:.2f} MB"
             )
-            rpc_db.save_future(
-                future=future, namespace=self.app_name, client=self._client
-            )
-            return future.id
+            return future_id
 
         except Exception as e:
             logger.error(f"❌ Failed to send message to {dest_datasite}: {e}")
@@ -473,19 +488,17 @@ class SyftGrid(Grid):
 
         return responses
 
-    def _process_response(
-        self, response: SyftResponse, msg_id: str
-    ) -> Optional[Message]:
-        """Process a single response and return the deserialized message."""
-        if not response.body:
+    def _process_response_body(self, body: bytes, msg_id: str) -> Optional[Message]:
+        """Process a single response body and return the deserialized message."""
+        if not body:
             logger.warning(f"⚠️ Empty response for message {msg_id}, skipping")
             return None
 
-        response_body = response.body
+        response_body = body
 
         # Try to decrypt if encryption is enabled
         if self._encryption_enabled:
-            response_body = self._try_decrypt_response(response.body, msg_id)
+            response_body = self._try_decrypt_response(body, msg_id)
 
         # Deserialize message
         try:
@@ -510,8 +523,8 @@ class SyftGrid(Grid):
                 "🔐 ENCRYPTED" if self._encryption_enabled else "📥 PLAINTEXT"
             )
             logger.debug(
-                f"{encryption_status} Pulled message from {response.url} "
-                f"with metadata: {message.metadata}, "
+                f"{encryption_status} Pulled message for {msg_id}, "
+                f"metadata: {message.metadata}, "
                 f"size: {len(response_body) / 1024 / 1024:.2f} MB"
             )
 
@@ -520,11 +533,17 @@ class SyftGrid(Grid):
 
     def _try_decrypt_response(self, body: bytes, msg_id: str) -> bytes:
         """Try to decrypt response body if it's encrypted."""
+        if self._syft_core_client is None:
+            # No syft_core client available for decryption
+            return body
+
         try:
             # Try to parse as encrypted payload
             encrypted_payload = EncryptedPayload.model_validate_json(body.decode())
             # Decrypt the message
-            decrypted_body = decrypt_message(encrypted_payload, client=self._client)
+            decrypted_body = decrypt_message(
+                encrypted_payload, client=self._syft_core_client
+            )
             # The decrypted body should be a base64-encoded string
             response_body = base64.b64decode(decrypted_body)
             logger.debug(f"🔓 Successfully decrypted response for message {msg_id}")
@@ -538,19 +557,34 @@ class SyftGrid(Grid):
             return body
 
     def _log_pull_summary(
-        self, messages: Dict[str, Message], message_ids: List[str]
+        self,
+        messages: Dict[str, Message],
+        message_ids: List[str],
+        responded_clients: set[str],
     ) -> None:
         """Log summary of pulled messages."""
         if messages:
+            clients_str = (
+                ", ".join(sorted(responded_clients)) if responded_clients else "unknown"
+            )
             if self._encryption_enabled:
                 logger.info(
-                    f"🔐 Successfully pulled {len(messages)} messages (encryption enabled)"
+                    f"🔐 Successfully pulled {len(messages)} message(s) from [{clients_str}] (encryption enabled)"
                 )
             else:
-                logger.info(f"📥 Successfully pulled {len(messages)} messages")
+                logger.info(
+                    f"📥 Successfully pulled {len(messages)} message(s) from [{clients_str}]"
+                )
         elif message_ids:
+            # Get the client emails for pending messages
+            pending_clients = [
+                self._pending_messages.get(msg_id, "unknown")
+                for msg_id in message_ids
+                if msg_id in self._pending_messages
+            ]
+            clients_str = ", ".join(pending_clients) if pending_clients else "unknown"
             logger.debug(
-                f"No messages pulled yet from {len(message_ids)} attempts "
+                f"No messages pulled yet from {len(message_ids)} client(s): [{clients_str}] "
                 f"(clients may still be processing)"
             )
 

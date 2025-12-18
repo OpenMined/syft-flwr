@@ -1,0 +1,120 @@
+name: Integration Tests (GDrive Transport)
+
+# Disabled for now - only manual trigger - TODO: re-enable on PRs/commits after fixing secrets issue
+on:
+  workflow_dispatch:
+
+jobs:
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    # Only run if secrets are available (skip for forks)
+    if: github.repository == 'OpenMined/syft-flwr'
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.12'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+
+    - name: Install just
+      uses: extractions/setup-just@v3
+
+    - name: Setup Google Drive credentials
+      env:
+        GDRIVE_CRED_DO1: ${{ secrets.GDRIVE_CRED_DO1 }}
+        GDRIVE_CRED_DO2: ${{ secrets.GDRIVE_CRED_DO2 }}
+        GDRIVE_CRED_DS: ${{ secrets.GDRIVE_CRED_DS }}
+        GDRIVE_TOKEN_DO1: ${{ secrets.GDRIVE_TOKEN_DO1 }}
+        GDRIVE_TOKEN_DO2: ${{ secrets.GDRIVE_TOKEN_DO2 }}
+        GDRIVE_TOKEN_DS: ${{ secrets.GDRIVE_TOKEN_DS }}
+        EMAIL_DO1: ${{ secrets.EMAIL_DO1 }}
+        EMAIL_DO2: ${{ secrets.EMAIL_DO2 }}
+        EMAIL_DS: ${{ secrets.EMAIL_DS }}
+      run: |
+        set +x  # Disable command echoing to prevent secrets in logs
+
+        # Create credentials directory with restricted permissions
+        mkdir -p credentials
+        chmod 700 credentials
+
+        # Write OAuth credentials (client secrets) using printf for proper handling
+        printf '%s' "$GDRIVE_CRED_DO1" > credentials/do1.json
+        chmod 600 credentials/do1.json
+        printf '%s' "$GDRIVE_CRED_DO2" > credentials/do2.json
+        chmod 600 credentials/do2.json
+        printf '%s' "$GDRIVE_CRED_DS" > credentials/ds.json
+        chmod 600 credentials/ds.json
+
+        # Write OAuth tokens (refresh tokens) using printf for proper handling
+        printf '%s' "$GDRIVE_TOKEN_DO1" > credentials/token_do1.json
+        chmod 600 credentials/token_do1.json
+        printf '%s' "$GDRIVE_TOKEN_DO2" > credentials/token_do2.json
+        chmod 600 credentials/token_do2.json
+        printf '%s' "$GDRIVE_TOKEN_DS" > credentials/token_ds.json
+        chmod 600 credentials/token_ds.json
+
+        # Create .env file with restricted permissions
+        {
+          echo "SYFT_EMAIL_DO1=$EMAIL_DO1"
+          echo "SYFT_CRED_FNAME_DO1=do1.json"
+          echo "SYFT_TOKEN_FNAME_DO1=token_do1.json"
+          echo "SYFT_EMAIL_DO2=$EMAIL_DO2"
+          echo "SYFT_CRED_FNAME_DO2=do2.json"
+          echo "SYFT_TOKEN_FNAME_DO2=token_do2.json"
+          echo "SYFT_EMAIL_DS=$EMAIL_DS"
+          echo "SYFT_CRED_FNAME_DS=ds.json"
+          echo "SYFT_TOKEN_FNAME_DS=token_ds.json"
+        } > credentials/.env
+        chmod 600 credentials/.env
+
+        echo "Credentials setup complete"
+
+    - name: Verify credentials exist and are valid
+      run: |
+        # Check all files exist and are non-empty
+        for file in do1.json do2.json ds.json token_do1.json token_do2.json token_ds.json .env; do
+          if [ ! -s "credentials/$file" ]; then
+            echo "ERROR: credentials/$file is missing or empty"
+            echo "Please ensure all GitHub secrets are configured"
+            exit 1
+          fi
+        done
+
+        # Verify JSON files are valid JSON
+        for json_file in do1.json do2.json ds.json token_do1.json token_do2.json token_ds.json; do
+          if ! python -c "import json; json.load(open('credentials/$json_file'))" 2>/dev/null; then
+            echo "ERROR: credentials/$json_file is not valid JSON"
+            echo "File size: $(wc -c < "credentials/$json_file") bytes"
+            exit 1
+          fi
+        done
+
+        # Show file sizes for debugging (without revealing content)
+        echo "Credential file sizes:"
+        for file in do1.json do2.json ds.json token_do1.json token_do2.json token_ds.json .env; do
+          echo "  $file: $(wc -c < "credentials/$file") bytes"
+        done
+
+        echo "All credential files verified and valid"
+
+    - name: Run integration tests
+      run: just test-integration
+      timeout-minutes: 30
+      env:
+        SYFT_EMAIL_DO1: ${{ secrets.EMAIL_DO1 }}
+        SYFT_EMAIL_DO2: ${{ secrets.EMAIL_DO2 }}
+        SYFT_EMAIL_DS: ${{ secrets.EMAIL_DS }}
+
+    - name: Cleanup credentials
+      if: always()
+      run: |
+        rm -rf credentials/
+        echo "Credentials cleaned up"

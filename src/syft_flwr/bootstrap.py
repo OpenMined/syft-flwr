@@ -1,5 +1,6 @@
 import time
 from pathlib import Path
+from typing import Optional
 
 from loguru import logger
 from typing_extensions import List, Union
@@ -9,6 +10,16 @@ from syft_flwr.config import load_flwr_pyproject, write_toml
 from syft_flwr.utils import is_valid_datasite
 
 __all__ = ["bootstrap"]
+
+
+def _is_colab() -> bool:
+    """Check if running in Google Colab."""
+    try:
+        import google.colab  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
 
 
 MAIN_TEMPLATE_PATH = Path(__file__).parent / "templates" / "main.py.tpl"
@@ -31,6 +42,7 @@ def __update_pyproject_toml(
     flwr_project_dir: Union[str, Path],
     aggregator: str,
     datasites: List[str],
+    transport: str = "syftbox",
 ) -> None:
     """Update the `pyproject.toml` file to the syft-flwr project"""
     flwr_project_dir = Path(flwr_project_dir)
@@ -63,6 +75,11 @@ def __update_pyproject_toml(
     pyproject_conf["tool"]["syft_flwr"]["datasites"] = datasites
     pyproject_conf["tool"]["syft_flwr"]["aggregator"] = aggregator
 
+    # set the transport type
+    # "syftbox" = SyftBox file sync with RPC/crypto (default)
+    # "p2p" = P2P sync via Google Drive/OneDrive
+    pyproject_conf["tool"]["syft_flwr"]["transport"] = transport
+
     write_toml(flwr_pyproject, pyproject_conf)
 
 
@@ -81,10 +98,35 @@ def __validate_flwr_project_dir(flwr_project_dir: Union[str, Path]) -> Path:
 
 
 def bootstrap(
-    flwr_project_dir: Union[str, Path], aggregator: str, datasites: List[str]
+    flwr_project_dir: Union[str, Path],
+    aggregator: str,
+    datasites: List[str],
+    transport: Optional[str] = None,
 ) -> None:
-    """Bootstrap a new syft-flwr project from the flwr project at the given path"""
+    """Bootstrap a new syft-flwr project from the flwr project at the given path.
+
+    Args:
+        flwr_project_dir: Path to the Flower project directory
+        aggregator: Email of the aggregator (DS)
+        datasites: List of datasite emails (DOs)
+        transport: Communication transport to use at runtime:
+            - "syftbox": Local SyftBox with RPC/crypto
+            - "p2p": P2P sync via Google Drive/OneDrive (for Colab)
+            - None: Auto-detect (p2p if Colab, syftbox otherwise)
+    """
     flwr_project_dir = Path(flwr_project_dir)
+
+    # Auto-detect transport if not specified
+    if transport is None:
+        if _is_colab():
+            transport = "p2p"
+            logger.info("Detected Colab environment, using 'p2p' transport")
+        else:
+            transport = "syftbox"
+            logger.info("Using default 'syftbox' transport")
+
+    if transport not in ("syftbox", "p2p"):
+        raise ValueError(f"Invalid transport '{transport}'. Must be 'syftbox' or 'p2p'")
 
     if not is_valid_datasite(aggregator):
         raise ValueError(f"'{aggregator}' is not a valid datasite")
@@ -94,9 +136,11 @@ def bootstrap(
             raise ValueError(f"{ds} is not a valid datasite")
 
     __validate_flwr_project_dir(flwr_project_dir)
-    __update_pyproject_toml(flwr_project_dir, aggregator, datasites)
+    __update_pyproject_toml(flwr_project_dir, aggregator, datasites, transport)
     __copy_main_py(flwr_project_dir)
 
     logger.info(
-        f"Successfully bootstrapped syft-flwr project at {flwr_project_dir} with datasites {datasites} and aggregator '{aggregator}' ✅"
+        f"Successfully bootstrapped syft-flwr project at {flwr_project_dir} "
+        f"with datasites {datasites}, aggregator '{aggregator}', "
+        f"and transport '{transport}' ✅"
     )
