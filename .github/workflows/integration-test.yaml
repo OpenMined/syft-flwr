@@ -1,6 +1,6 @@
 name: Integration Tests (GDrive Transport)
 
-# Disabled for now - only manual trigger
+# Disabled for now - only manual trigger - TODO: re-enable on PRs/commits after fixing secrets issue
 on:
   workflow_dispatch:
 

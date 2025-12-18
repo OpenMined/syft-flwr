@@ -126,7 +126,7 @@ def _run_do_client_process(
         logger.info(f"[Subprocess] Manager created for {do_email}, processing jobs...")
 
         start_time = time.time()
-        do_manager.process_approved_jobs()
+        do_manager.process_approved_jobs(stream_output=True)
         duration = time.time() - start_time
 
         result_dict["success"] = True
@@ -276,6 +276,7 @@ def test_phase_06_submit_fl_jobs(syft_managers):
         user=env["EMAIL_DO1"],
         code_path=str(fl_project),
         job_name="fl-diabetes-training",
+        entrypoint="main.py",
     )
     logger.success("✅ FL job submitted to DO1")
 
@@ -285,6 +286,7 @@ def test_phase_06_submit_fl_jobs(syft_managers):
         user=env["EMAIL_DO2"],
         code_path=str(fl_project),
         job_name="fl-diabetes-training",
+        entrypoint="main.py",
     )
     logger.success("✅ FL job submitted to DO2")
 

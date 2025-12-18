@@ -178,12 +178,20 @@ def test_phase_06_submit_fl_job(syft_managers_single_do):
     logger.info(f"FL project folder: {fl_project}")
     logger.info(f"Submitting FL job to {env['EMAIL_DO1']}...")
 
-    ds_manager.submit_python_job(
-        user=env["EMAIL_DO1"],
-        code_path=str(fl_project),
-        job_name="fl-diabetes-training",
-    )
-    logger.success("✅ FL job submitted to DO1")
+    try:
+        ds_manager.submit_python_job(
+            user=env["EMAIL_DO1"],
+            code_path=str(fl_project),
+            job_name="fl-diabetes-training",
+            entrypoint="main.py",
+        )
+        logger.success("✅ FL job submitted to DO1")
+    except Exception as e:
+        logger.error(f"❌ Failed to submit FL job: {e}")
+        import traceback
+
+        logger.error(f"Traceback:\n{traceback.format_exc()}")
+        raise
 
     # Wait for job to propagate
     sleep(2)
@@ -362,7 +370,7 @@ def test_phase_08_execute_fl_job(syft_managers_single_do):
 
             logger.info("Starting DO1 Flower client (process_approved_jobs)...")
             start_time = time.time()
-            do1_manager.process_approved_jobs()
+            do1_manager.process_approved_jobs(stream_output=True)
             do1_result["duration"] = time.time() - start_time
             do1_result["success"] = True
             logger.success(f"DO1 client completed in {do1_result['duration']:.1f}s")
