@@ -3124,7 +3124,7 @@ wheels = [
 [[package]]
 name = "syft-client"
 version = "0.1.93"
-source = { git = "https://github.com/OpenMined/syft-client/?branch=main#55d7b61ae71c27a6b533ec8163b4e2a6e86af24d" }
+source = { git = "https://github.com/OpenMined/syft-client/?branch=for-syft-flwr#6476f97bb9c5a60fc562ba192c4f08366984f6c8" }
 dependencies = [
     { name = "click" },
     { name = "google-api-python-client" },
@@ -3175,7 +3175,7 @@ wheels = [
 [[package]]
 name = "syft-dataset"
 version = "0.1.4"
-source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-datasets&branch=main#55d7b61ae71c27a6b533ec8163b4e2a6e86af24d" }
+source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-datasets&branch=for-syft-flwr#6476f97bb9c5a60fc562ba192c4f08366984f6c8" }
 dependencies = [
     { name = "pyyaml" },
     { name = "syft-notebook-ui" },
@@ -3237,7 +3237,7 @@ requires-dist = [
     { name = "huggingface-hub", specifier = ">=0.26.0" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "safetensors", specifier = ">=0.7.0" },
-    { name = "syft-client", git = "https://github.com/OpenMined/syft-client/?branch=main" },
+    { name = "syft-client", git = "https://github.com/OpenMined/syft-client/?branch=for-syft-flwr" },
     { name = "syft-rds", specifier = ">=0.5.0" },
     { name = "tomli", specifier = ">=2.3.0" },
     { name = "tomli-w", specifier = ">=1.2.0" },
@@ -3263,7 +3263,7 @@ dev = [
 [[package]]
 name = "syft-job"
 version = "0.1.22"
-source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-job&branch=main#55d7b61ae71c27a6b533ec8163b4e2a6e86af24d" }
+source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-job&branch=for-syft-flwr#6476f97bb9c5a60fc562ba192c4f08366984f6c8" }
 dependencies = [
     { name = "pandas" },
     { name = "pydantic" },
@@ -3273,7 +3273,7 @@ dependencies = [
 [[package]]
 name = "syft-notebook-ui"
 version = "0.1.1"
-source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-notebook-ui&branch=main#55d7b61ae71c27a6b533ec8163b4e2a6e86af24d" }
+source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-notebook-ui&branch=for-syft-flwr#6476f97bb9c5a60fc562ba192c4f08366984f6c8" }
 dependencies = [
     { name = "ipython" },
     { name = "jinja2" },
