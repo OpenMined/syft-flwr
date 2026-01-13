@@ -106,7 +106,7 @@ jobs:
         echo "All credential files verified and valid"
 
     - name: Run integration tests
-      run: just test-integration
+      run: just test-integration-gdrive
       timeout-minutes: 30
       env:
         SYFT_EMAIL_DO1: ${{ secrets.EMAIL_DO1 }}
