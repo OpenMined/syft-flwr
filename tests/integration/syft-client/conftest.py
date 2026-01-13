@@ -391,6 +391,19 @@ def syft_managers(cleanup_drive, validate_environment):
     # Wait for Google Drive operations to complete
     sleep(2)
 
+    # DOs must approve peer requests from DS
+    logger.info("DOs approving peer requests from DS...")
+    do1_manager.load_peers()
+    do1_manager.approve_peer_request(env["EMAIL_DS"])
+    logger.info(f"  DO1 approved peer request from {env['EMAIL_DS']}")
+
+    do2_manager.load_peers()
+    do2_manager.approve_peer_request(env["EMAIL_DS"])
+    logger.info(f"  DO2 approved peer request from {env['EMAIL_DS']}")
+
+    # Wait for approval to propagate
+    sleep(2)
+
     # Verify all managers initialized
     assert ds_manager is not None
     assert do1_manager is not None
@@ -509,6 +522,15 @@ def syft_managers_single_do(cleanup_drive_single_do, validate_environment_single
     ds_manager.add_peer(env["EMAIL_DO1"])
 
     # Wait for Google Drive operations to complete
+    sleep(2)
+
+    # DO1 must approve peer request from DS
+    logger.info("DO1 approving peer request from DS...")
+    do1_manager.load_peers()
+    do1_manager.approve_peer_request(env["EMAIL_DS"])
+    logger.info(f"  DO1 approved peer request from {env['EMAIL_DS']}")
+
+    # Wait for approval to propagate
     sleep(2)
 
     # Verify managers initialized

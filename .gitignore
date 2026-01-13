@@ -190,6 +190,7 @@ checkpoints/
 
 # AI stuff
 .claude/
+CLAUDE.md
 
 # credentials and keys
 credentials/
