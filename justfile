@@ -23,21 +23,28 @@ _nc := '\033[0m'
 @default:
     just --list
 
-# Run unit tests (excludes integration tests)
+# Run unit tests only (runs in CI)
 [group('test')]
 test-unit:
     @echo "{{ _cyan }}Running unit tests...{{ _nc }}"
     bash scripts/test.sh unit
     @just clean
 
-# Run integration tests (requires Google OAuth credentials)
+# Run in-memory integration tests (no credentials needed, runs in CI)
 [group('test')]
-test-integration:
-    @echo "{{ _cyan }}Running integration tests...{{ _nc }}"
-    bash scripts/test.sh integration
+test-integration-inmemory:
+    @echo "{{ _cyan }}Running in-memory integration tests...{{ _nc }}"
+    bash scripts/test.sh integration-inmemory
     @just clean
 
-# Run all tests (unit + integration)
+# Run GDrive integration tests (requires Google OAuth credentials, run manually)
+[group('test')]
+test-integration-gdrive:
+    @echo "{{ _cyan }}Running GDrive integration tests...{{ _nc }}"
+    bash scripts/test.sh integration-gdrive
+    @just clean
+
+# Run all tests (unit + in-memory + GDrive integration)
 [group('test')]
 test:
     @echo "{{ _cyan }}Running all tests...{{ _nc }}"

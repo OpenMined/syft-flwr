@@ -1,6 +1,6 @@
 #!/bin/bash
 # Test script for syft-flwr project
-# Usage: ./test.sh [unit|integration|all]
+# Usage: ./test.sh [unit|integration-inmemory|integration-gdrive|all]
 
 TEST_TYPE="${1:-unit}"  # Default to unit tests
 
@@ -59,7 +59,7 @@ setup_env() {
     return 0
 }
 
-# Function to run unit tests
+# Function to run unit tests only
 run_unit_tests() {
     echo ""
     echo "========================================="
@@ -70,6 +70,7 @@ run_unit_tests() {
 
     if [ -d "tests" ]; then
         echo "Running unit tests in parallel..."
+        # Ignore all syft-client integration tests (both gdrive and in-memory)
         if uv run pytest tests/ -v -n auto --cov=syft_flwr --cov-report=term-missing --cov-report=xml --ignore="$ROOT_DIR/tests/integration/syft-client"; then
             echo -e "${GREEN}Unit tests PASSED${NC}"
         else
@@ -81,8 +82,28 @@ run_unit_tests() {
     fi
 }
 
-# Function to run integration tests
-run_integration_tests() {
+# Function to run in-memory integration tests (no credentials needed)
+run_integration_inmemory_tests() {
+    echo ""
+    echo "========================================="
+    echo "Running Integration Tests (In-Memory)"
+    echo "========================================="
+
+    if [ -d "tests/integration/syft-client/in-memory" ]; then
+        echo "Running in-memory integration tests..."
+        if uv run pytest tests/integration/syft-client/in-memory/ -v; then
+            echo -e "${GREEN}In-memory integration tests PASSED${NC}"
+        else
+            echo -e "${RED}In-memory integration tests FAILED${NC}"
+            ALL_TESTS_PASSED=false
+        fi
+    else
+        echo "No in-memory integration tests directory found"
+    fi
+}
+
+# Function to run GDrive integration tests (requires credentials, run manually)
+run_integration_gdrive_tests() {
     echo ""
     echo "========================================="
     echo "Running Integration Tests (Google Drive)"
@@ -97,10 +118,10 @@ run_integration_tests() {
         return 1
     fi
 
-    if [ -d "tests/integration/syft-client" ]; then
+    if [ -d "tests/integration/syft-client/gdrive" ]; then
         # Run each test file separately to avoid conflicts
         # (tests share the same Google Drive accounts and their fixtures conflict)
-        for test_file in tests/integration/syft-client/*_test.py; do
+        for test_file in tests/integration/syft-client/gdrive/*_test.py; do
             if [ -f "$test_file" ]; then
                 echo ""
                 echo "-----------------------------------------"
@@ -115,7 +136,7 @@ run_integration_tests() {
             fi
         done
     else
-        echo "No integration tests directory found"
+        echo "No gdrive integration tests directory found"
     fi
 }
 
@@ -130,16 +151,20 @@ case "$TEST_TYPE" in
     unit)
         run_unit_tests
         ;;
-    integration)
-        run_integration_tests
+    integration-inmemory)
+        run_integration_inmemory_tests
+        ;;
+    integration-gdrive)
+        run_integration_gdrive_tests
         ;;
     all)
         run_unit_tests
-        run_integration_tests
+        run_integration_inmemory_tests
+        run_integration_gdrive_tests
         ;;
     *)
         echo -e "${RED}Unknown test type: $TEST_TYPE${NC}"
-        echo "Usage: $0 [unit|integration|all]"
+        echo "Usage: $0 [unit|integration-inmemory|integration-gdrive|all]"
         exit 1
         ;;
 esac
