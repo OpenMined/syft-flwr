@@ -30,9 +30,8 @@ jobs:
       with:
         enable-cache: true
 
-    - name: Install dependencies
-      run: uv sync --group dev
+    - name: Install just
+      uses: extractions/setup-just@v3
 
     - name: Run in-memory integration tests
-      run: |
-        uv run pytest tests/integration/syft-client/in-memory/ -v
+      run: just test-integration-inmemory
