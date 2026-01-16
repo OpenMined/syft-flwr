@@ -23,7 +23,10 @@ from dotenv import load_dotenv
 from huggingface_hub import snapshot_download
 from loguru import logger
 from syft_client.sync.syftbox_manager import SyftboxManager, SyftboxManagerConfig
-from utils import (
+
+from .utils import (
+    CREDENTIALS_DIR,
+    ENV_FILE,
     SCOPES,
     create_token,
     remove_syftbox_single_do_from_drive,
@@ -46,20 +49,6 @@ def pytest_runtest_setup(item):
     logger.info(f"  RUNNING: {test_name}")
     logger.info(f"  FILE: {test_file}")
     logger.info("=" * 70)
-
-
-# ==============================================================================
-# Constants
-# ==============================================================================
-
-# Paths
-SYFT_FLWR_DIR = Path(__file__).parent.parent.parent.parent
-CREDENTIALS_DIR = SYFT_FLWR_DIR / "credentials"
-ENV_FILE = CREDENTIALS_DIR / ".env"
-FL_PROJECT_DIR = (
-    SYFT_FLWR_DIR / "notebooks" / "fl-diabetes-prediction" / "fl-diabetes-prediction"
-)
-TEST_LOGS_DIR = Path("/tmp/syft_flwr_test_logs")
 
 
 # ==============================================================================

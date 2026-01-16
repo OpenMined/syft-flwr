@@ -23,12 +23,13 @@ from pathlib import Path
 from time import sleep
 
 import pytest
-from common_rds_phases import (
+from loguru import logger
+
+from .common_rds_phases import (
     dos_approve_jobs,
     dos_upload_datasets,
     ds_discover_datasets,
 )
-from loguru import logger
 
 # Mark all tests in this module as slow (integration tests)
 pytestmark = pytest.mark.slow

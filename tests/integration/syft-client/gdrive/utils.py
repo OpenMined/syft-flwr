@@ -25,6 +25,15 @@ SYFT_EVENT_MESSAGE_PREFIX_V2 = "msgv2_"  # Older format
 # Google Drive OAuth scopes
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
+# Project paths
+SYFT_FLWR_DIR = Path(__file__).parent.parent.parent.parent.parent  # syft-flwr root
+CREDENTIALS_DIR = SYFT_FLWR_DIR / "credentials"
+ENV_FILE = CREDENTIALS_DIR / ".env"
+FL_PROJECT_DIR = (
+    SYFT_FLWR_DIR / "notebooks" / "fl-diabetes-prediction" / "fl-diabetes-prediction"
+)
+TEST_LOGS_DIR = Path("/tmp/syft_flwr_test_logs")
+
 
 # ==============================================================================
 # Token Management

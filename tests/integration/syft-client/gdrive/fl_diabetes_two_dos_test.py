@@ -46,15 +46,16 @@ from time import sleep
 
 import pytest
 import tomli
-from common_rds_phases import (
+from loguru import logger
+
+import syft_flwr
+
+from .common_rds_phases import (
     dos_approve_jobs,
     dos_upload_datasets,
     ds_discover_datasets,
 )
-from conftest import FL_PROJECT_DIR, TEST_LOGS_DIR
-from loguru import logger
-
-import syft_flwr
+from .utils import FL_PROJECT_DIR, TEST_LOGS_DIR
 
 # Mark all tests in this module as slow (integration tests)
 pytestmark = pytest.mark.slow

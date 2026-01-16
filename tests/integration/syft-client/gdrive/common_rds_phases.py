@@ -18,7 +18,8 @@ from time import sleep
 from googleapiclient.errors import HttpError
 from loguru import logger
 from syft_client.sync.syftbox_manager import SyftboxManager
-from utils import has_file
+
+from .utils import has_file
 
 # ==============================================================================
 # Phase: Upload Datasets
