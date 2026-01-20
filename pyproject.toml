@@ -6,7 +6,9 @@ readme = "README.md"
 requires-python = ">=3.12,<3.14"
 dependencies = [
     "syft-rds>=0.5.0",
-    "syft-client>=0.1.93",
+    "syft-client>=0.1.94",
+    "syft-dataset>=0.1.5",
+    "syft-job>=0.1.23",
     "flwr[simulation]==1.25.0",
     "flwr-datasets[vision]>=0.5.0",
     "huggingface-hub>=0.26.0",
@@ -17,8 +19,8 @@ dependencies = [
     "tomli-w>=1.2.0",
 ]
 
-[tool.uv.sources]
-syft-client = { git = "https://github.com/OpenMined/syft-client/", branch = "main" }  # for development
+# [tool.uv.sources]
+# syft-client = { git = "https://github.com/OpenMined/syft-client/", branch = "main" }  # for development
 # syft-client = { path = "../syft-client", editable = true }  # for development
 # syft-rds = { path = "../syft-rds", editable = true }  # for development
 

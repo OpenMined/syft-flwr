@@ -3124,8 +3124,8 @@ wheels = [
 
 [[package]]
 name = "syft-client"
-version = "0.1.93"
-source = { git = "https://github.com/OpenMined/syft-client/?branch=main#1a2fef0035873b024decb2f1968cbefe855f051f" }
+version = "0.1.94"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "google-api-python-client" },
@@ -3140,6 +3140,10 @@ dependencies = [
     { name = "rich" },
     { name = "syft-dataset" },
     { name = "syft-job" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/63/e3/479c8c4904e085bc81e80cde368541784d50fa95e6e13957d3fc1a14b389/syft_client-0.1.94.tar.gz", hash = "sha256:b2692aad3406ba97a6d977d8f7b956b769a816856fa743eb44845e2e385cf202", size = 67883, upload-time = "2026-01-19T15:32:27.7Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e7/47/5ce865f0b395aa1ab9c19a200764c2560c500a382ca6419b9d2b17b2c4bb/syft_client-0.1.94-py3-none-any.whl", hash = "sha256:a41d9c4294ea433470ade024a02754445f4d80c1261c42b01cba91930d9ba484", size = 87534, upload-time = "2026-01-19T15:32:26.358Z" },
 ]
 
 [[package]]
@@ -3175,11 +3179,15 @@ wheels = [
 
 [[package]]
 name = "syft-dataset"
-version = "0.1.4"
-source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-datasets&branch=main#1a2fef0035873b024decb2f1968cbefe855f051f" }
+version = "0.1.5"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyyaml" },
     { name = "syft-notebook-ui" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/38/2f/1803dd24784ae4fc0f7dd2120b1686c2e13f550b0539fb580d7a0e184d3b/syft_dataset-0.1.5.tar.gz", hash = "sha256:e8123c209a2c01ac16c2e3a227c0ed0319c337e38a24c9ebc24fda2297c0f015", size = 8470, upload-time = "2026-01-19T15:47:08.474Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5e/e8/d8e86cafb0dd97908b2f38f250d168c0a369d0c598d90d690e4dc201388b/syft_dataset-0.1.5-py3-none-any.whl", hash = "sha256:907ea689a0527521c2624e7181a0c119810aa063f3a5c07f2206cd748d8ec9a7", size = 10065, upload-time = "2026-01-19T15:47:06.866Z" },
 ]
 
 [[package]]
@@ -3209,6 +3217,8 @@ dependencies = [
     { name = "loguru" },
     { name = "safetensors" },
     { name = "syft-client" },
+    { name = "syft-dataset" },
+    { name = "syft-job" },
     { name = "syft-rds" },
     { name = "tomli" },
     { name = "tomli-w" },
@@ -3238,7 +3248,9 @@ requires-dist = [
     { name = "huggingface-hub", specifier = ">=0.26.0" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "safetensors", specifier = ">=0.7.0" },
-    { name = "syft-client", git = "https://github.com/OpenMined/syft-client/?branch=main" },
+    { name = "syft-client", specifier = ">=0.1.94" },
+    { name = "syft-dataset", specifier = ">=0.1.5" },
+    { name = "syft-job", specifier = ">=0.1.23" },
     { name = "syft-rds", specifier = ">=0.5.0" },
     { name = "tomli", specifier = ">=2.3.0" },
     { name = "tomli-w", specifier = ">=1.2.0" },
@@ -3263,18 +3275,22 @@ dev = [
 
 [[package]]
 name = "syft-job"
-version = "0.1.22"
-source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-job&branch=main#1a2fef0035873b024decb2f1968cbefe855f051f" }
+version = "0.1.23"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pandas" },
     { name = "pydantic" },
     { name = "pyyaml" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/71/e0/dcb6d0e35c16afd533727a709faa15e49239ba9ce63e5790363f3a6e7e6f/syft_job-0.1.23.tar.gz", hash = "sha256:7021920e800c4847b63396ff0f033f3ebda1105117316ed364acb82ad4653731", size = 21087, upload-time = "2026-01-19T15:52:04.609Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/52/7d/a3a74dd2b28be5a2098fdb38a2ac0e85815adfec06cfbc0889f8725ad893/syft_job-0.1.23-py3-none-any.whl", hash = "sha256:e1a09b762199ca6df2ed5269cd05d5aa4ba5eebd1b104a9c45d6de263a7a1594", size = 22895, upload-time = "2026-01-19T15:52:03.583Z" },
+]
 
 [[package]]
 name = "syft-notebook-ui"
 version = "0.1.1"
-source = { git = "https://github.com/OpenMined/syft-client/?subdirectory=packages%2Fsyft-notebook-ui&branch=main#1a2fef0035873b024decb2f1968cbefe855f051f" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ipython" },
     { name = "jinja2" },
@@ -3282,6 +3298,10 @@ dependencies = [
     { name = "nh3" },
     { name = "pydantic", extra = ["email"] },
     { name = "rich" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e6/c9/4bebdde2ce0f72ac063afa358ffbe346c17032506fffc2c0a2650a67be2e/syft_notebook_ui-0.1.1.tar.gz", hash = "sha256:7069a872dcb233ee7cfb4f62bad4f69505de3ff7ca77895a9c32c045eee1b98d", size = 124199, upload-time = "2025-11-17T11:14:42.088Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/24/1f/3594ee7b0ab8225255fc96dd8709b52fddf4c5914b6f7c91dd37cc866f61/syft_notebook_ui-0.1.1-py3-none-any.whl", hash = "sha256:d12d1d309d645e0e35a46174610dcbe04209715822869c44a7398aa48f8fc28b", size = 133148, upload-time = "2025-11-17T11:14:40.139Z" },
 ]
 
 [[package]]
