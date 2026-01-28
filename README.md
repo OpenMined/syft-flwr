@@ -32,6 +32,8 @@ The easiest way to get started is with our **Google Colab tutorial**—no local 
 
 ## Installation
 
+Install from [PyPI](https://pypi.org/project/syft-flwr/):
+
 ```bash
 pip install syft-flwr
 ```
@@ -42,9 +44,9 @@ Or install from source:
 pip install "git+https://github.com/OpenMined/syft-flwr.git@main"
 ```
 
-## Documentation
+<!-- ## Documentation
 
-📚 [Full Documentation](https://syft-flwr-documentation.openmined.org/)
+📚 [Full Documentation](https://syft-flwr-documentation.openmined.org/) -->
 
 ## Development
 
