@@ -54,7 +54,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for development setup and guidelines.
 
 ### Releasing
 
-See [RELEASE.md](RELEASE.md) for the complete release process.
+See the [Releasing](DEVELOPMENT.md#releasing) section in DEVELOPMENT.md for the complete release process.
 
 ## Community
 

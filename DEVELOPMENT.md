@@ -303,4 +303,65 @@ syft-flwr/
 
 ## Releasing
 
-See [RELEASE.md](RELEASE.md) for the complete release process.
+### Quick Release (Recommended)
+
+The release process is fully automated via GitHub Actions:
+
+1. Go to **Actions** tab → **Release** workflow
+2. Click **"Run workflow"**
+3. Select **bump_type**: `patch`, `minor`, or `major`
+4. Optionally check **"Skip PyPI publish"** for a dry run
+5. Click **"Run workflow"**
+
+The workflow automatically:
+- Runs unit + in-memory integration tests
+- Bumps the version via `just bump` (commitizen)
+- Builds and validates the package
+- Pushes the commit + tags to `main`
+- Publishes to PyPI
+- Creates a GitHub release
+- Updates notebook lock files with the published version
+
+### Testing a Release
+
+Set **skip_publish** to `true`. The workflow will bump, build, and validate but skip all pushes, uploads, and releases. No cleanup needed.
+
+### Manual Release (if needed)
+
+```bash
+# 1. Bump version
+just bump patch  # or minor/major
+
+# 2. Run tests
+just test
+
+# 3. Build package
+just build
+
+# 4. Push to GitHub
+git push upstream main --tags
+
+# 5. Upload to PyPI
+uvx twine upload dist/* --username __token__ --password <token>
+
+# 6. Update notebook locks (after PyPI publication)
+just update-notebook-locks
+git add notebooks/*/uv.lock
+git commit -m "chore: update notebook locks"
+git push upstream main
+```
+
+### Version Strategy
+
+- **Patch** (0.5.0 → 0.5.1): Bug fixes, dependency pins
+- **Minor** (0.5.0 → 0.6.0): New features, backward compatible
+- **Major** (0.5.0 → 1.0.0): Breaking changes
+
+### Troubleshooting
+
+| Issue | Fix |
+|-------|-----|
+| Notebook lock updates fail | Wait a few minutes for PyPI indexing, then run `just update-notebook-locks` manually |
+| Tests fail | Fix failing tests before attempting release |
+| PyPI upload fails | Ensure `OM_PYPI_TOKEN` secret is set in repo settings; check if version already exists |
+| Version conflicts | Never reuse version numbers; bump to a higher version |
