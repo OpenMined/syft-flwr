@@ -3248,7 +3248,7 @@ requires-dist = [
     { name = "huggingface-hub", specifier = ">=0.26.0" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "safetensors", specifier = ">=0.7.0" },
-    { name = "syft-client", specifier = ">=0.1.94" },
+    { name = "syft-client", specifier = "==0.1.94" },
     { name = "syft-dataset", specifier = ">=0.1.5" },
     { name = "syft-job", specifier = ">=0.1.23" },
     { name = "syft-rds", specifier = ">=0.5.0" },
