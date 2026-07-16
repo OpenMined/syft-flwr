@@ -625,7 +625,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.3.2" },
     { name = "pandas", specifier = ">=2.3.0" },
     { name = "seaborn", specifier = ">=0.13.2" },
-    { name = "syft-flwr", specifier = ">=0.5.0" },
+    { name = "syft-flwr", specifier = ">=0.5.2" },
 ]
 
 [[package]]
@@ -1959,7 +1959,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess", marker = "python_full_version != '3.13.*' or sys_platform != 'win32'" },
+    { name = "ptyprocess" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [
@@ -2555,14 +2555,14 @@ name = "ray"
 version = "2.51.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click", marker = "(python_full_version < '3.14' and sys_platform != 'win32') or (python_full_version < '3.13' and sys_platform == 'win32')" },
-    { name = "filelock", marker = "(python_full_version < '3.14' and sys_platform != 'win32') or (python_full_version < '3.13' and sys_platform == 'win32')" },
-    { name = "jsonschema", marker = "(python_full_version < '3.14' and sys_platform != 'win32') or (python_full_version < '3.13' and sys_platform == 'win32')" },
-    { name = "msgpack", marker = "(python_full_version < '3.14' and sys_platform != 'win32') or (python_full_version < '3.13' and sys_platform == 'win32')" },
-    { name = "packaging", marker = "(python_full_version < '3.14' and sys_platform != 'win32') or (python_full_version < '3.13' and sys_platform == 'win32')" },
-    { name = "protobuf", marker = "(python_full_version < '3.14' and sys_platform != 'win32') or (python_full_version < '3.13' and sys_platform == 'win32')" },
-    { name = "pyyaml", marker = "(python_full_version < '3.14' and sys_platform != 'win32') or (python_full_version < '3.13' and sys_platform == 'win32')" },
-    { name = "requests", marker = "(python_full_version < '3.14' and sys_platform != 'win32') or (python_full_version < '3.13' and sys_platform == 'win32')" },
+    { name = "click" },
+    { name = "filelock" },
+    { name = "jsonschema" },
+    { name = "msgpack" },
+    { name = "packaging" },
+    { name = "protobuf" },
+    { name = "pyyaml" },
+    { name = "requests" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f6/95/51e44ce79e42f02ca1c4d4c5501e6dd49f3a384c5f6324aceb4e0015988a/ray-2.51.1-cp312-cp312-macosx_12_0_arm64.whl", hash = "sha256:ef847b025ca758baee4571a1ca001d973897cad772f8e95d7f303d24c38b649e", size = 68029226, upload-time = "2025-11-01T03:24:21.928Z" },
@@ -2945,7 +2945,7 @@ wheels = [
 
 [[package]]
 name = "syft-flwr"
-version = "0.5.0"
+version = "0.5.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "flwr", extra = ["simulation"] },
@@ -2961,9 +2961,9 @@ dependencies = [
     { name = "tomli-w" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f2/e6/a8104b076174e1071838ba61acbf2f12eb0d24891617a73cc62669ccabf8/syft_flwr-0.5.0.tar.gz", hash = "sha256:b05f1d9be72ab5863896ab6052d3cbe405a36b830cb841aae0397da5c782ec72", size = 38074, upload-time = "2026-01-21T03:30:02.06Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b8/ce/df3898ad518dc0fd3b7cf2f1f03bf3cb238d7ddc43accf9819a23833a31d/syft_flwr-0.5.2.tar.gz", hash = "sha256:b79c96225be916c8e52331507ae34d73a63b9433ad86b25afe0028dac2301a53", size = 38118, upload-time = "2026-07-16T08:40:41.861Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/fd/3460721a3d76fb695b4758d435b381d17edf405f260a44cfd899a3f99b36/syft_flwr-0.5.0-py3-none-any.whl", hash = "sha256:8c062c755fdc80261e92a290f1bf2f5f6b9500dbda1d819371513f371f93a216", size = 50240, upload-time = "2026-01-21T03:30:00.973Z" },
+    { url = "https://files.pythonhosted.org/packages/6f/e9/532977aec0569a2b88cda9b7fa11faf1b68482dc8d3656c85d2aa70add5f/syft_flwr-0.5.2-py3-none-any.whl", hash = "sha256:c3f2714014db0707256c95195942034e917832e56e7504588983d7ca04ba1a1d", size = 50279, upload-time = "2026-07-16T08:40:40.945Z" },
 ]
 
 [[package]]
