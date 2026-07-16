@@ -1,4 +1,4 @@
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 
 from syft_flwr.bootstrap import bootstrap
 from syft_flwr.run import run
